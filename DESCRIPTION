@@ -19,6 +19,7 @@ Suggests:
     raster,
     rgdal
 Collate: 
+    'Band-class.R'
     'Granule-class.R'
     'Collection-class.R'
     'Product-class.R'

@@ -1,5 +1,6 @@
 #' @include config.R
 #' @include Product-class.R
+#' @include Band-class.R
 
 library(raster)
 
@@ -36,5 +37,7 @@ library(raster)
   lapply(ls7.filepaths, function(file) {
     createGranuleFromLS7NDVIFile(file)
   })
+  openeo$data$landsat7_ndvi$bands = append(openeo$data$landsat7_ndvi$bands,
+                                           Band$new(band_id=1,name="ndvi"))
   openeo$data$landsat7_ndvi$finalize()
 

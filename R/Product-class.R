@@ -1,4 +1,5 @@
 #' @include Collection-class.R
+#' @include Band-class.R
 library(R6)
 
 Product <- R6Class("Product",
@@ -16,6 +17,7 @@ Product <- R6Class("Product",
             self$description= description
             self$source=source
             self$collection = Collection$new()
+            self$bands = list()
           },
           shortInfo = function() {
             list(
@@ -33,7 +35,7 @@ Product <- R6Class("Product",
               source=self$source,
               extent=list(left=xmin(ext),right=xmax(ext),bottom=ymin(ext),top=ymax(ext),srs=toString(self$srs)),
               time=self$time,
-              bands=self$bands
+              bands=self$getBandList()
             )
           },
           addGranule = function(granule) {
@@ -48,6 +50,11 @@ Product <- R6Class("Product",
             self$extent = self$collection$calculateExtent()
             self$srs = self$collection$getGlobalSRS()
             
+          },
+          getBandList = function() {
+            lapply(self$bands, function(b) {
+              b$toList()
+            })
           }
           
         )
