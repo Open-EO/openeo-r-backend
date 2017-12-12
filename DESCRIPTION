@@ -16,10 +16,13 @@ Imports:
     jsonlite,
     R6
 Suggests:
-    raster
+    raster,
+    rgdal
 Collate: 
+    'Granule-class.R'
+    'Collection-class.R'
     'Product-class.R'
     'config.R'
-    'api.R'
     'data.R'
+    'api.R'
     'server.R'
