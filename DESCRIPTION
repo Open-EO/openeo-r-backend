@@ -1,0 +1,25 @@
+Package: openEO.R.Backend
+Title: Reference backend implementation for openEO conformant backend with a local filesystem
+Version: 0.0.1
+Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre"))
+Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
+    the file backend solution is the local file system containing some raster data collections.
+Depends: 
+    R (>= 3.4.3)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
+VignetteBuilder: knitr
+License: Apache License
+Imports:
+    plumber,
+    jsonlite,
+    R6
+Suggests:
+    raster
+Collate: 
+    'Product-class.R'
+    'config.R'
+    'api.R'
+    'data.R'
+    'server.R'
