@@ -1,7 +1,6 @@
 #' @include Granule-class.R
-
-library(R6)
-
+#' @importFrom R6 R6Class
+#' @export
 Collection <- R6Class(
   "Collection",
   public = list(

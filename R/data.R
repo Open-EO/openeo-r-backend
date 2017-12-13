@@ -1,18 +1,17 @@
 #' @include config.R
 #' @include Product-class.R
 #' @include Band-class.R
-
-library(raster)
-
+#' @import raster
+loadLandsat7Dataset = function() {
 
   ls7.filepaths = list.files(path="data/landsat7/",pattern='*.tif$')
   
   #
   # register empty products
   #
-  openeo$data <- list(landsat7_ndvi = Product$new("landsat7_ndvi", 
+  openeo$data <- append(openeo$data, list(landsat7_ndvi = Product$new("landsat7_ndvi", 
                                                   "Landsat7 NDVI calculation", 
-                                                  "Marius Appel")
+                                                  "Marius Appel"))
                       )
   
   #
@@ -37,7 +36,17 @@ library(raster)
   lapply(ls7.filepaths, function(file) {
     createGranuleFromLS7NDVIFile(file)
   })
+  
+  # add band and finalize information on landsat7 series
   openeo$data$landsat7_ndvi$bands = append(openeo$data$landsat7_ndvi$bands,
                                            Band$new(band_id=1,name="ndvi"))
   openeo$data$landsat7_ndvi$finalize()
+}
+
+loadData = function() {
+  openeo$data = list()
+  
+  loadLandsat7Dataset()
+}
+
 

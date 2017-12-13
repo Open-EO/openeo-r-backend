@@ -8,12 +8,6 @@
 #' @include Product-class.R
 #' @include config.R
 #' @include data.R
-source("R/config.R")
-source("R/Granule-class.R")
-source("R/Collection-class.R")
-source("R/Band-class.R")
-source("R/Product-class.R")
-source("R/data.R")
 
 
 #* @get /api/version

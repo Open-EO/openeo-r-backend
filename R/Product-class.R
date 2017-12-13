@@ -1,7 +1,7 @@
 #' @include Collection-class.R
 #' @include Band-class.R
-library(R6)
-
+#' @importFrom R6 R6Class
+#' @export
 Product <- R6Class("Product",
         public = list(
           product_id = NULL,
@@ -10,13 +10,12 @@ Product <- R6Class("Product",
           extent = NULL,
           time = NULL,
           bands = NULL,
-          collection=NULL,
           srs=NULL,
           initialize = function(product_id=NA,description=NA,source=NA) {
             self$product_id = product_id
             self$description= description
             self$source=source
-            self$collection = Collection$new()
+            private$collection = Collection$new()
             self$bands = list()
           },
           shortInfo = function() {
@@ -39,16 +38,16 @@ Product <- R6Class("Product",
             )
           },
           addGranule = function(granule) {
-            self$collection$addGranule(granule=granule)
+            private$collection$addGranule(granule=granule)
           },
           finalize = function() {
-            self$collection$sortGranulesByTime()
+            private$collection$sortGranulesByTime()
             
-            self$time = list(from = self$collection$getMinTime(),
-                             to = self$collection$getMaxTime())
+            self$time = list(from = private$collection$getMinTime(),
+                             to = private$collection$getMaxTime())
             
-            self$extent = self$collection$calculateExtent()
-            self$srs = self$collection$getGlobalSRS()
+            self$extent = private$collection$calculateExtent()
+            self$srs = private$collection$getGlobalSRS()
             
           },
           getBandList = function() {
@@ -57,5 +56,8 @@ Product <- R6Class("Product",
             })
           }
           
+        ),
+        private = list(
+          collection=NULL
         )
 )

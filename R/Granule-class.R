@@ -1,5 +1,5 @@
-library(R6)
-
+#' @importFrom R6 R6Class
+#' @export
 Granule <- R6Class(
   "Granule",
   public=list(
