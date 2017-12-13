@@ -20,6 +20,18 @@ registerProcesses = function() {
                                     required=FALSE)
                      )),
                      execute = function(imagery,from,to) {
+                       #imagery might be an identifier or a function (Process$execute()) or a json process description or a
+                       # udf or a collection we need to specify that 
+                       
+                       if ("Product" %in% class(imagery)) {
+                         collection = imagery$getCollection()
+                       } else if ("Collection" %in% class(imagery)) {
+                         collection = imagery
+                       } else if (class(imagery) == "character") {
+                         #load image or create process
+                       }
+                       
+                       # collection is at this point a Collection
                        
                      }
                    )

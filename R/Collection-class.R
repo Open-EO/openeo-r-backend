@@ -17,6 +17,20 @@ Collection <- R6Class(
     getMaxTime = function() {
       self$granules[[length(self$granules)]]$time
     },
+    filterByTime = function(from=NA,to=NA) {
+      if (is.na(from)) {
+        from = self$getMinTime()
+      }
+      if (is.na(to)) {
+        to = self$getMaxTime()
+      }
+      
+      indices = .collection.filterbytime(self$granules,from,to)
+      
+      res = self$clone(deep=TRUE)
+      res$granules = res$granules[indices$min : indices$max]
+      return(res)
+    },
     sortGranulesByTime= function () {
       self$granules = self$granules[
         order(
@@ -48,3 +62,34 @@ Collection <- R6Class(
   )
   
 )
+
+
+.collection.filterbytime = function (granules,from,to) {
+  minpos = -1
+  maxpos = -1
+  
+  if (from > to) {
+    old <- to
+    to <- from
+    from <- old
+  }
+  
+  if (length(granules) == 0) return(NULL)
+  
+  for (i in 1:length(granules)) {
+    currentGranule = granules[[i]]
+    if (!is.null(currentGranule)) {
+      if (currentGranule$time >= from && minpos < 0) {
+        minpos = i
+      }
+      
+      if (currentGranule$time > to && maxpos < 0) {
+        maxpos = i-1
+      }
+    }
+    if (minpos >= 0 && maxpos >= 0) {
+      break
+    }
+  }
+  return(list(min = minpos, max = maxpos))
+}
