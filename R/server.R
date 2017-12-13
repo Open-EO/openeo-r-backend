@@ -4,12 +4,13 @@
 #' @importFrom plumber plumb
 #' @export
 startup <- function () {
-  initEnvironment()
+  initEnvironmentDefault()
   loadData()
+  registerProcesses()
   
   setwd(openeo$project.path)
   
   root <- plumb("R/api.R")
   
-  root$run(port=8000)
+  root$run(port = openeo$api.port)
 }

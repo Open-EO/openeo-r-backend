@@ -31,9 +31,9 @@ Collection <- R6Class(
     calculateExtent = function() {
       globalExtent = self$granules[[1]]$extent
       
-      lapply(self$granules, function(g, globalExtent) {
-        globalExtent = union(globalExtent,g$extent)
-      }, globalExtent)
+      lapply(self$granules, function(g) {
+        globalExtent <<- union(globalExtent,g$extent)
+      })
       
       return(globalExtent)
     },

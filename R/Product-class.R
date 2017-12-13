@@ -54,6 +54,9 @@ Product <- R6Class("Product",
             lapply(self$bands, function(b) {
               b$toList()
             })
+          },
+          getCollection = function() {
+            return(private$collection)
           }
           
         ),

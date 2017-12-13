@@ -37,6 +37,27 @@ function(req,res,pid) {
   }
 }
 
+# creates an overview on available processes
+#* @get /api/processes
+#* @serializer unboxedJSON
+function() {
+  processeslist = openeo$processes
+  unname(lapply(processeslist, function(l){
+    return(l$shortInfo())
+  }))
+}
+
+# returns details of a certain product
+#* @get /api/processes/<pid>
+#* @serializer unboxedJSON
+function(req,res,pid) {
+  if (pid %in% names(openeo$processes) == FALSE) {
+    return(error(res,404,"Product not found"))
+  } else {
+    return(openeo$processes[[pid]]$detailedInfo())
+  }
+}
+
 error = function(res, status,msg) {
   res$status = status
   
