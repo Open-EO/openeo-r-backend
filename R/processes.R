@@ -18,7 +18,7 @@ registerProcesses = function() {
                        Argument$new(name="to",
                                     description="end date/timestamp for the query interval",
                                     required=FALSE)
-                     )),
+                     ),
                      execute = function(imagery,from,to) {
                        #imagery might be an identifier or a function (Process$execute()) or a json process description or a
                        # udf or a collection we need to specify that 
@@ -34,7 +34,7 @@ registerProcesses = function() {
                        # collection is at this point a Collection
                        
                      }
-                   )
+                   ))
   
 }
 

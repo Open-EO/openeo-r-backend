@@ -4,7 +4,8 @@
 #' @import raster
 loadLandsat7Dataset = function() {
 
-  ls7.filepaths = list.files(path="data/landsat7/",pattern='*.tif$')
+  ls7.path = paste(openeo$data.path,"/landsat7/",sep="")
+  ls7.filepaths = list.files(path=ls7.path,pattern='*.tif$')
   
   #
   # register empty products
@@ -19,7 +20,7 @@ loadLandsat7Dataset = function() {
   #
   createGranuleFromLS7NDVIFile = function(filename) {
     time = parseDateFromLS7FileName(filename)
-    data = raster(paste("data/landsat7/",filename,sep=""))
+    data = raster(paste(ls7.path,filename,sep=""))
     gr = Granule$new(time=time,data=data,extent=extent(data),srs=crs(data))
 
     openeo$data$landsat7_ndvi$addGranule(granule=gr)

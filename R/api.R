@@ -6,8 +6,13 @@
 #' @include Granule-class.R
 #' @include Collection-class.R
 #' @include Product-class.R
+#' @include Job-class.R
 #' @include config.R
+#' @include processes.R
+#' @include jobs.R
 #' @include data.R
+
+openeo$api.version <- "0.0.1"
 
 
 #* @get /api/version
@@ -56,6 +61,23 @@ function(req,res,pid) {
   } else {
     return(openeo$processes[[pid]]$detailedInfo())
   }
+}
+
+#* @post /api/jobs
+#* @serializer unboxedJSON
+function(req,res) {
+  job = Job$new()
+  job$register()
+  
+  job$store(json=req$postBody)
+  
+  return(list(
+    job_id=job$job_id
+  ))
+}
+
+ok = function(res) {
+  error(res,200,"OK")
 }
 
 error = function(res, status,msg) {
