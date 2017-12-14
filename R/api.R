@@ -11,7 +11,7 @@
 #' @include processes.R
 #' @include jobs.R
 #' @include data.R
-
+library(jsonlite)
 openeo$api.version <- "0.0.1"
 
 
@@ -69,7 +69,10 @@ function(req,res) {
   job = Job$new()
   job$register()
   
-  job$store(json=req$postBody)
+  data = fromJSON(req$postBody)
+  data[["submitted"]] = Sys.time()
+  
+  job$store(json=toJSON(data))
   
   return(list(
     job_id=job$job_id
