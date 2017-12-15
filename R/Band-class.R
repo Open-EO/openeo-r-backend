@@ -6,32 +6,35 @@ Band <- R6Class(
     band_id=NULL,
     name=NULL,
     wavelength_nm=NULL,
-    res_m=NULL,
+    res=NULL,
     scale=NULL,
     offset=NULL,
     type=NULL,
     unit=NULL,
+    nodata=NULL,
     
-    initialize= function(band_id=NA,name=NA,wavelength_nm=NA,res_m=NA,scale=NA,offset=NA,type=NA,unit=NA) {
+    initialize= function(band_id=NA,name=NA,wavelength_nm=NA,res=NA,scale=NA,offset=NA,type=NA,unit=NA,nodata=NA) {
       self$band_id=band_id
       self$name=name
       self$wavelength_nm=wavelength_nm
-      self$res_m=res_m
+      self$res=res
       self$scale=scale
       self$offset=offset
       self$type=type
       self$unit=unit
+      self$nodata=nodata
     },
     toList = function() {
       list(
         band_id=self$band_id,
         name=self$name,
         wavelength_nm=self$wavelength_nm,
-        res_m=self$res_m,
+        res=self$res,
         scale=self$scale,
         offset=self$offset,
         type=self$type,
-        unit=self$unit
+        unit=self$unit,
+        nodata=self$nodata
       )
     }
     

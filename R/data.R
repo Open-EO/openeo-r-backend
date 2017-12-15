@@ -10,10 +10,10 @@ loadLandsat7Dataset = function() {
   #
   # register empty products
   #
-  openeo$data <- append(openeo$data, list(landsat7_ndvi = Product$new("landsat7_ndvi", 
-                                                  "Landsat7 NDVI calculation", 
-                                                  "Marius Appel"))
-                      )
+  ls7.product = Product$new("landsat7_ndvi", 
+                            "Landsat7 NDVI calculation", 
+                            "Marius Appel")
+  
   
   #
   # add granules and data to the products
@@ -23,9 +23,8 @@ loadLandsat7Dataset = function() {
     data = raster(paste(ls7.path,filename,sep=""))
     gr = Granule$new(time=time,data=data,extent=extent(data),srs=crs(data))
 
-    openeo$data$landsat7_ndvi$addGranule(granule=gr)
+    ls7.product$addGranule(granule=gr)
   }
-  
   
   
   parseDateFromLS7FileName = function (filename) {
@@ -38,10 +37,29 @@ loadLandsat7Dataset = function() {
     createGranuleFromLS7NDVIFile(file)
   })
   
+  firstGranule = ls7.product$getCollection()$granules[[1]]
+  filePath = attr(attr(firstGranule$data,"file"),"name")
+  
+  md = GDALinfo(filePath,silent=TRUE)
+  scale = attr(md,"ScaleOffset")[,"scale"]
+  offset = attr(md,"ScaleOffset")[,"offset"]
+  type = tolower(attr(md,"df")[1,"GDType"])
+  nodata=attr(info,"df")[1,"NoDataValue"]
+  resolution = list(x=md["res.x"],y=md["res.y"])
+  
   # add band and finalize information on landsat7 series
-  openeo$data$landsat7_ndvi$bands = append(openeo$data$landsat7_ndvi$bands,
-                                           Band$new(band_id=1,name="ndvi"))
-  openeo$data$landsat7_ndvi$finalize()
+  ls7.product$bands = append(ls7.product$bands,
+                                           Band$new(band_id=1,
+                                                    name="ndvi",
+                                                    type = type,
+                                                    scale = scale, 
+                                                    offset = offset,
+                                                    nodata=nodata,
+                                                    res=resolution))
+  
+  
+  ls7.product$finalize()
+  ls7.product$register()
 }
 
 loadData = function() {
