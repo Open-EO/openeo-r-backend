@@ -14,12 +14,35 @@
 library(jsonlite)
 openeo$api.version <- "0.0.1"
 
+############################
+#
+# serverinformation endpoint
+#
+############################
 
 #* @get /api/version
 #* @serializer unboxedJSON
 function() {
   list(version=openeo$api.version)
 }
+
+#* @get /api/capabilities
+#* @serializer unboxedJSON
+function() {
+  list(
+    "/api/data",
+    "/api/data/{product_id}",
+    "/api/processes",
+    "/api/processes/{process_id}",
+    "/api/jobs"
+  )
+}
+
+############################
+#
+# data endpoint
+#
+############################
 
 # creates an overview on products available
 #* @get /api/data
@@ -42,6 +65,12 @@ function(req,res,pid) {
   }
 }
 
+############################
+#
+# processes endpoint
+#
+############################
+
 # creates an overview on available processes
 #* @get /api/processes
 #* @serializer unboxedJSON
@@ -63,21 +92,71 @@ function(req,res,pid) {
   }
 }
 
+############################
+#
+# jobs endpoint
+#
+############################
+
 #* @post /api/jobs
 #* @serializer unboxedJSON
-function(req,res) {
+function(req,res,evaluate) {
+  if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
+    return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
+  }
+  
   job = Job$new()
   job$register()
   
-  data = fromJSON(req$postBody)
-  data[["submitted"]] = Sys.time()
+  data=list()
   
-  job$store(json=toJSON(data))
+  process_graph = fromJSON(req$postBody)
+  data[["process_graph"]] = process_graph
+  
+  data[["status"]] = "submitted"
+  
+  submit_time = Sys.time()
+  data[["submitted"]] = submit_time
+  job$submitted = submit_time
+  
+  
+  
+  job$store(json=toJSON(data,pretty=TRUE,auto_unbox = TRUE))
+  
+  if (evaluate == "batch") {
+    #TODO load processgraph and execute
+  }
   
   return(list(
     job_id=job$job_id
   ))
 }
+
+#* @delete /api/jobs/<job_id>
+#* @serializer unboxedJSON
+function(req,res,job_id) {
+  if (job_id %in% names(openeo$jobs)) {
+    job = openeo$jobs[[job_id]]
+    tryCatch(
+      {
+        job$delete()
+        ok(res)
+      }, 
+      error = function(err) {
+        error(res,"500",err$message)
+      }
+    )
+  } else {
+    error(res,404,paste("Job with id:",job_id,"cannot been found"))
+  }
+  
+}
+
+############################
+#
+# utility functions
+#
+############################
 
 ok = function(res) {
   error(res,200,"OK")

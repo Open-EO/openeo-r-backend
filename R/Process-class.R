@@ -63,7 +63,11 @@ Process <- R6Class(
       }
     },
     
-    as.executable = function(json) {
+    as.executable = function(json, job) {
+      if (is.null(job)) {
+        stop("No job defined for this executable process")
+      }
+      
       #return a process where the arguments from the parsed json file are set for
       #this "args". E.g. set a value for args[["from"]]$value and set Process$executable to TRUE
       
@@ -75,7 +79,13 @@ Process <- R6Class(
       
       for (key in names(args)) {
         value = args[[key]]
-        runner$args[[key]]$value = value
+        
+        #TODO maybe add a handling for UDF or in the UDF class 
+        if (class(value) == "list" && "process_id" %in% names(value)) {
+          runner$args[[key]]$value= job$loadProcess(value)
+        } else {
+          runner$args[[key]]$value = value
+        }
       }
       
       return(runner)
