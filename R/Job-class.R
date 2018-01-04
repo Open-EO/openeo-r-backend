@@ -1,3 +1,16 @@
+#' Job
+#' 
+#' This class represents an openEO job. Which is submitted by an user, containing an executable process graph.
+#' 
+#' @field job_id The unique identifier of the job
+#' @field status The current status in the job lifecycle
+#' @field process_graph graph of nested processes that is executable
+#' @field view Spatio-Temporal Extent to be used for the calculation
+#' @field submitted Timestamp when the job was submitted to the server
+#' @field user_id The user who owns the job
+#' @field consumed_credits For accounting and billing the amount of credits consumed by this job
+#' @field filePath The system filepath that links to the stored JSON process graph
+#' 
 #' @include Process-class.R
 #' @importFrom R6 R6Class
 #' @export
@@ -18,7 +31,7 @@ Job <- R6Class(
     initialize = function(job_id=NA,filePath=NA,process_graph=NA) {
       if (is.na(job_id) || is.null(job_id)) {
         self$job_id = self$randomJobId()
-        # check if exists, repete randomJobId until free
+        # check if exists, repeate randomJobId until free
       } else {
         self$job_id = job_id
       }
@@ -41,7 +54,8 @@ Job <- R6Class(
     
     loadProcessGraph = function() {
       parsedJson = read_json(paste(self$filePath,"/process_graph.json",sep=""))
-      self$process_graph = loadProcess(parsedJson[["process_graph"]])
+      self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
+      invisible(self)
     },
     
     loadProcess = function(parsedJson) {
@@ -49,7 +63,7 @@ Job <- R6Class(
       #TODO: add cases for udfs
       if (!is.null(processId) && processId %in% names(openeo$processes)) {
         process = openeo$processes[[processId]]
-        return(process$as.executable(parsedJson),self)
+        return(process$as.executable(parsedJson,self))
       } else {
         stop(paste("Cannot load process",processId))
       }
@@ -89,6 +103,13 @@ Job <- R6Class(
     delete = function() {
       unlink(self$filePath, recursive = TRUE,force=TRUE)
       self$deregister()
+    },
+    
+    run = function() {
+      if (is.na(self$process_graph) || is.null(self$process_graph) || class(self$process_graph) == "list") {
+          self$loadProcessGraph()
+      }
+      self$process_graph$execute()
     }
     
   )

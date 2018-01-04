@@ -2,6 +2,7 @@
 #' @include Product-class.R
 #' @include Band-class.R
 #' @import raster
+#' @importFrom GDALinfo rgdal
 loadLandsat7Dataset = function() {
 
   ls7.path = paste(openeo$data.path,"/landsat7/",sep="")
@@ -39,12 +40,12 @@ loadLandsat7Dataset = function() {
   
   firstGranule = ls7.product$getCollection()$granules[[1]]
   filePath = attr(attr(firstGranule$data,"file"),"name")
-  
+
   md = GDALinfo(filePath,silent=TRUE)
   scale = attr(md,"ScaleOffset")[,"scale"]
   offset = attr(md,"ScaleOffset")[,"offset"]
   type = tolower(attr(md,"df")[1,"GDType"])
-  nodata=attr(info,"df")[1,"NoDataValue"]
+  nodata=attr(md,"df")[1,"NoDataValue"]
   resolution = list(x=md["res.x"],y=md["res.y"])
   
   # add band and finalize information on landsat7 series

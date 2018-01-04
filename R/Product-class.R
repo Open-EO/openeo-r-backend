@@ -2,7 +2,8 @@
 #' @include Band-class.R
 #' @importFrom R6 R6Class
 #' @export
-Product <- R6Class("Product",
+Product <- R6Class(
+        "Product",
         public = list(
           product_id = NULL,
           description = NULL,

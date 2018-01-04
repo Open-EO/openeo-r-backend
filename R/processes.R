@@ -34,6 +34,8 @@ registerProcesses = function() {
         collection = imagery
       } else if (class(imagery) == "character") {
         #load image or create process
+      } else if ("Process" %in% class(imagery)) {
+          collection = imagery$execute()
       } else if (class(imagery) == "list") {
         if ("product_id" %in% names(imagery)) {
           collection = openeo$data[[imagery$product_id]]$getCollection()
@@ -56,6 +58,20 @@ registerProcesses = function() {
     }
   )
   filter_daterange$register()
+  
+  
+  #filter_sp_extent = Process$new()
+  #filter_sp_extent$register()
+  
+  #crop_extent = Process$new()
+  #crop_extent$register()
+  
+  #find_min = Process$new()
+  #find_min$register()
+  
+  #calculate_ndvi = Process$new()
+  #calculate_ndvi$register()
+  
   
 }
 

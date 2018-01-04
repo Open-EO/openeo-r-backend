@@ -11,6 +11,7 @@
 #' @include processes.R
 #' @include jobs.R
 #' @include data.R
+#' @import raster
 library(jsonlite)
 openeo$api.version <- "0.0.1"
 
@@ -154,6 +155,40 @@ function(req,res,job_id) {
 
 ############################
 #
+# download endpoint
+#
+############################
+
+# those are not openeo specification, it is merely a test to execute the job and return data
+
+#* @serializer contentType list(type="image/GTiff")
+#* @get /api/download/<job_id>
+function(req,res,job_id,format) {
+  listedJobs = names(openeo$jobs)
+  if (!job_id %in% listedJobs) {
+    error(res, 404, paste("Cannot find job with id:",job_id))
+  } else {
+    job = openeo$jobs[[job_id]]
+    result = job$run()
+    
+    rasterdata = result$granules[[1]]$data
+    tmp = tempfile(fileext=".tif")
+    writeRaster(x=rasterdata,filename=tmp,format="GTiff")
+    
+    
+    sendFile(res, 
+             status=200, 
+             job_id, 
+             file.ext=".tif", 
+             contentType=format,
+             data=readBin(tmp, "raw", n=file.info(tmp)$size))
+  }
+  
+  
+}
+
+############################
+#
 # utility functions
 #
 ############################
@@ -169,4 +204,12 @@ error = function(res, status,msg) {
     status=status,
     message=msg)
     )
+}
+
+sendFile = function(res, status, job_id,file.ext, contentType, data) {
+  res$status = status
+  res$body = data
+  res$setHeader("Content-Type", contentType)
+  res$setHeader("Content-Disposition", paste("attachment;filename=",job_id,file.ext,sep=""))
+  return(res)
 }
