@@ -58,7 +58,7 @@ filter_daterange = Process$new(
 
 find_min = Process$new(
   process_id = "find_min",
-  description = "calculates the minimum value of a single valued band collection",
+  description = "calculates the minimum value per pixel of a single valued band collection",
   args = list(
     Argument$new(
       name = "imagery",
@@ -91,6 +91,54 @@ find_min = Process$new(
   }
 )
 
+calculate_ndvi = Process$new(
+  process_id = "calculate_ndvi",
+  description = "Calculates the ndvi per pixel and scene in a given collection",
+  arg = list(Argument$new(
+               name = "imagery",
+               description = "the spatio-temporal dataset/collection",
+               required = TRUE
+             ),
+             Argument$new(
+               name = "nir",
+               description = "The band id of the Near Infrared (NIR) band",
+               required = TRUE
+             ),
+             Argument$new(
+               name = "red",
+               description = "The band id of the visible red band",
+               required = TRUE
+             )),
+  operation=function(imagery,nir,red) {
+    collection = getCollectionFromImageryStatement(imagery)
+    nir.index = collection$getBandIndex(nir)
+    red.index = collection$getBandIndex(red)
+    
+    # fetch the data elements and simultanously calculate ndvi
+    rasters = lapply(collection$granules, function(obj){
+      data = obj$data
+      ndvi = calc(data, fun= function(x) {
+        (x[nir.index] - x[red.index])/(x[nir.index] + x[red.index])
+      })
+      
+      granule = Granule$new(time = obj$time,
+                            data = ndvi,
+                            bands = list(
+                              ndvi = Band$new(
+                                band_id = "ndvi"
+                              )
+                            ))
+      return(granule)
+    })
+    
+    result.collection = Collection$new()
+    result.collection$granules = rasters
+    result.collection$sortGranulesByTime()
+    
+    return(result.collection)
+  }
+)
+
 registerProcesses = function() {
   openeo$processes = list()
   
@@ -104,21 +152,15 @@ registerProcesses = function() {
   #crop_extent = Process$new()
   #crop_extent$register()
   
-  
-  
   find_min$register()
-  
-  #calculate_ndvi = Process$new()
-  #calculate_ndvi$register()
-  
-  
+  calculate_ndvi$register()
 }
 
-#' Resolves imagery statement
-#' 
-#' This function resolves the imagery statement defined in a process. It can be
-#' either a product or an intermediate calculation. In any case the result shall
-#' be a collection on which the calculations shall be performed.
+# Resolves imagery statement
+# 
+# This function resolves the imagery statement defined in a process. It can be
+# either a product or an intermediate calculation. In any case the result shall
+# be a collection on which the calculations shall be performed.
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
   

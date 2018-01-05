@@ -1,3 +1,14 @@
+#' Granule
+#' 
+#' Smalles unit of an image collection in openEO sense. The granule is the snapshot of a part of the Earth at a given 
+#' point in time.
+#' 
+#' @field time The POSIXt object when the image was created
+#' @field extent The spatial extent
+#' @field srs Spatial Reference System as defined by the crs() function in the raster package
+#' @field data Raster* object which holds the data
+#' @field bands Named List of Band objects
+#' 
 #' @include Band-class.R
 #' @importFrom R6 R6Class
 #' @export

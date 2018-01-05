@@ -58,6 +58,13 @@ Collection <- R6Class(
         return(NULL)
       }
       
+    },
+    getBandNames = function() {
+      firstGranule = self$granules[[1]]
+      return(names(firstGranule$bands))
+    },
+    getBandIndex = function(band_id) {
+      return(which(band_id == self$getBandNames()))
     }
   )
   

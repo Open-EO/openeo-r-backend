@@ -13,7 +13,6 @@
 #' @field operation A function that executes the operation in R described by this process
 #' @field executable A flag whether or not this process is a template or is executable
 #' 
-#' @name Process-class
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export

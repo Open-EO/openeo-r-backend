@@ -1,3 +1,7 @@
+#' Band
+#' 
+#' This class holds the metadata information of bands for Granules and Products
+#' 
 #' @importFrom R6 R6Class
 #' @export
 Band <- R6Class(
