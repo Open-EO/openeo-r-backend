@@ -50,9 +50,16 @@ Product <- R6Class(
             self$extent = private$collection$calculateExtent()
             self$srs = private$collection$getGlobalSRS()
             
+            firstGranule = self$getCollection()$granules[[1]]
+            if (is.null(self$bands) || length(self$bands) == 0) {
+              self$bands = firstGranule$bands
+            }
+            
           },
           getBandList = function() {
-            lapply(self$bands, function(b) {
+            bands = self$bands
+            names(bands) <- NULL
+            lapply(bands, function(b) {
               b$toList()
             })
           },
