@@ -86,25 +86,6 @@ Job <- R6Class(
       }
     },
     
-    register = function() {
-      if (is.null(openeo$jobs)) {
-        openeo$jobs = list()
-      }
-      newJob = list(self)
-      names(newJob) = c(self$job_id)
-      
-      openeo$jobs = append(openeo$jobs,newJob)
-    },
-    
-    deregister = function() {
-      openeo$jobs[[self$job_id]] <- NULL
-    },
-    
-    delete = function() {
-      unlink(self$filePath, recursive = TRUE,force=TRUE)
-      self$deregister()
-    },
-    
     run = function() {
       if (is.na(self$process_graph) || is.null(self$process_graph) || class(self$process_graph) == "list") {
           self$loadProcessGraph()
@@ -114,3 +95,7 @@ Job <- R6Class(
     
   )
 )
+
+isJob = function(obj) {
+  return("Job" %in% class(obj))
+}

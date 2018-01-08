@@ -1,3 +1,9 @@
+#' Collection
+#' 
+#' This class represents the collections, which contain a set of Granules. Collections are also used to transfer
+#' intermediate results from one process to an other (the result of a process is a Collection).
+#' 
+#' @field granules A list of Granules that shall be sorted by time ascending
 #' @include Granule-class.R
 #' @importFrom R6 R6Class
 #' @export
@@ -70,7 +76,6 @@ Collection <- R6Class(
   
 )
 
-
 .collection.filterbytime = function (granules,from,to) {
   minpos = -1
   maxpos = -1
@@ -99,4 +104,8 @@ Collection <- R6Class(
     }
   }
   return(list(min = minpos, max = maxpos))
+}
+
+isCollection = function(obj) {
+  return("Collection" %in% class(obj))
 }

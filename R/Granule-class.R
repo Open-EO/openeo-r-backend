@@ -57,3 +57,7 @@ Granule <- R6Class(
       self$bands = append(self$bands,bands)
     })
 )
+
+isGranule = function(obj) {
+  return("Granule" %in% class(obj))
+}

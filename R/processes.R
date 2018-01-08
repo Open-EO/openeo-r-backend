@@ -1,4 +1,4 @@
-#' @include config.R
+#' @include Server-class.R
 #' @include Process-class.R
 
 filter_daterange = Process$new(
@@ -138,23 +138,6 @@ calculate_ndvi = Process$new(
     return(result.collection)
   }
 )
-
-registerProcesses = function() {
-  openeo$processes = list()
-  
-  
-  filter_daterange$register()
-  
-  
-  #filter_sp_extent = Process$new()
-  #filter_sp_extent$register()
-  
-  #crop_extent = Process$new()
-  #crop_extent$register()
-  
-  find_min$register()
-  calculate_ndvi$register()
-}
 
 # Resolves imagery statement
 # 

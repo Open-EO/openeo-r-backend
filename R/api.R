@@ -7,9 +7,7 @@
 #' @include Collection-class.R
 #' @include Product-class.R
 #' @include Job-class.R
-#' @include config.R
 #' @include processes.R
-#' @include jobs.R
 #' @include data.R
 #' @import raster
 library(jsonlite)

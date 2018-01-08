@@ -54,17 +54,6 @@ Process <- R6Class(
       return(res)
     },
     
-    register = function () {
-      name = self$process_id
-      process = self
-      
-      addable = list(process)
-      
-      names(addable) = c(name)
-      
-      openeo$processes = append(openeo$processes, addable)
-    },
-    
     execute = function() {
       if (self$executable) {
         #build a list of parameter (key=value) for operation
@@ -118,6 +107,11 @@ Process <- R6Class(
   )
 )
 
+isProcess = function(obj) {
+  return("Process" %in% class(obj))
+}
+
+
 #' Argument
 #' 
 #' This class represent the arguments of an openeo backend process. It serves two purposes:
@@ -157,9 +151,6 @@ Argument <- R6Class(
   )
 )
 
-#' Constructor
-#' 
-#' The constructor for this Argument class
-#' 
-#' @name Argument$new
-#' 
+isArgument = function(obj) {
+  return("Argument" %in% class(obj))
+}
