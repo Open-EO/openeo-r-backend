@@ -1,6 +1,8 @@
 #' Job
 #' 
-#' This class represents an openEO job. Which is submitted by an user, containing an executable process graph.
+#' This class represents an openEO job. Which is submitted by an user, containing an executable process graph. It is strongly bound
+#' to the backend, since the OpenEOServer class needs to be accessible, when it comes to loading related process for the process 
+#' graph.
 #' 
 #' @field job_id The unique identifier of the job
 #' @field status The current status in the job lifecycle
@@ -30,7 +32,8 @@ Job <- R6Class(
     
     initialize = function(job_id=NA,filePath=NA,process_graph=NA) {
       if (is.na(job_id) || is.null(job_id)) {
-        self$job_id = self$randomJobId()
+        
+        stop("Cannot create new Job. There is no job_id specified")
         # check if exists, repeate randomJobId until free
       } else {
         self$job_id = job_id
@@ -45,11 +48,6 @@ Job <- R6Class(
       
       
       self$process_graph = process_graph
-    },
-    
-    store = function(json=NA) {
-      dir.create(self$filePath)
-      write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
     },
     
     loadProcessGraph = function() {
@@ -69,25 +67,8 @@ Job <- R6Class(
       }
     },
     
-    randomJobId = function(n=1, length=15) {
-      # cudos to https://ryouready.wordpress.com/2008/12/18/generate-random-string-name/
-      randomString <- c(1:n)                  
-      for (i in 1:n) {
-        randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                        length, replace=TRUE),
-                                 collapse="")
-      }
-      
-      if (randomString %in% list.files(openeo$jobs.path)) {
-        # if id exists get a new one (recursive)
-        return(self$randomJobId())
-      } else {
-        return(randomString)
-      }
-    },
-    
     run = function() {
-      if (is.na(self$process_graph) || is.null(self$process_graph) || class(self$process_graph) == "list") {
+      if (!isProcess(self$process_graph)) {
           self$loadProcessGraph()
       }
       self$process_graph$execute()

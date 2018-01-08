@@ -104,8 +104,10 @@ function(req,res,evaluate) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   
-  job = Job$new()
-  job$register()
+  job_id = openeo$newJobId()
+  job = Job$new(job_id = job_id)
+  
+  openeo$register(job)
   
   data=list()
   
@@ -119,8 +121,7 @@ function(req,res,evaluate) {
   job$submitted = submit_time
   
   
-  
-  job$store(json=toJSON(data,pretty=TRUE,auto_unbox = TRUE))
+  openeo$storeJob(job=job,json = toJSON(data,pretty=TRUE,auto_unbox = TRUE))
   
   if (evaluate == "batch") {
     #TODO load processgraph and execute
@@ -138,7 +139,7 @@ function(req,res,job_id) {
     job = openeo$jobs[[job_id]]
     tryCatch(
       {
-        job$delete()
+        openeo$delete(job)
         ok(res)
       }, 
       error = function(err) {
