@@ -36,4 +36,5 @@ Collate:
     'data.R'
     'processes.R'
     'Server-class.R'
+    'User-class.R'
     'api.R'
