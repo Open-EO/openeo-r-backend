@@ -10,6 +10,7 @@ User <- R6Class(
     jobs = NULL,
     user_name = NULL,
     password = NULL,
+    token = NULL,
     
     initialize = function(user_id) {
       self$user_id = user_id

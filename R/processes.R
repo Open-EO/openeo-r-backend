@@ -147,13 +147,13 @@ calculate_ndvi = Process$new(
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
   
-  if ("Product" %in% class(imagery)) {
+  if (isProduct(imagery)) {
     collection = imagery$getCollection()
-  } else if ("Collection" %in% class(imagery)) {
+  } else if (isCollection(imagery)) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
-  } else if ("Process" %in% class(imagery)) {
+  } else if (isProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
     if ("product_id" %in% names(imagery)) {

@@ -30,7 +30,7 @@ Job <- R6Class(
     
     filePath = NULL,
     
-    initialize = function(job_id=NA,filePath=NA,process_graph=NA) {
+    initialize = function(job_id=NA,filePath=NA,process_graph=NA,user_id = NA) {
       if (is.na(job_id) || is.null(job_id)) {
         
         stop("Cannot create new Job. There is no job_id specified")
@@ -44,6 +44,10 @@ Job <- R6Class(
         self$filePath = paste(openeo$jobs.path,"/",self$job_id,sep="")
       } else {
         self$filePath = filePath
+      }
+      
+      if (!is.na(user_id)) {
+        self$user_id = user_id
       }
       
       
