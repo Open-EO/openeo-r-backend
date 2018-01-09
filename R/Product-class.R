@@ -65,15 +65,6 @@ Product <- R6Class(
           },
           getCollection = function() {
             return(private$collection)
-          },
-          register = function() {
-            if (is.null(openeo$data)) {
-              openeo$data = list()
-            }
-            newProduct = list(self)
-            names(newProduct) = c(self$product_id)
-            
-            openeo$data = append(openeo$data,newProduct)
           }
           
         ),
@@ -81,3 +72,7 @@ Product <- R6Class(
           collection=NULL
         )
 )
+
+isProduct = function(obj) {
+  return("Product" %in% class(obj))
+}

@@ -1,4 +1,4 @@
-#' @include config.R
+#' @include Server-class.R
 #' @include Product-class.R
 #' @include Band-class.R
 #' @import raster
@@ -63,7 +63,7 @@ loadLandsat7Dataset = function() {
   })
   
   ls7.product$finalize()
-  ls7.product$register()
+  openeo$register(ls7.product)
 }
 
 loadSentinel2Data = function() {
@@ -171,16 +171,8 @@ loadSentinel2Data = function() {
   }
   
   sentinel2.product$finalize()
-  sentinel2.product$register()
+  openeo$register(sentinel2.product)
   
-}
-
-
-loadData = function() {
-  openeo$data = list()
-  
-  loadLandsat7Dataset()
-  loadSentinel2Data()
 }
 
 

@@ -25,15 +25,15 @@ Suggests:
     raster,
     rgdal
 Collate: 
+    'Argument-class.R'
     'Band-class.R'
     'Granule-class.R'
     'Collection-class.R'
     'Process-class.R'
+    'ExecutableProcess-class.R'
     'Job-class.R'
     'Product-class.R'
-    'config.R'
     'data.R'
-    'jobs.R'
     'processes.R'
+    'Server-class.R'
     'api.R'
-    'server.R'
