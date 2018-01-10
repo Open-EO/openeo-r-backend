@@ -116,7 +116,9 @@ OpenEOServer <- R6Class(
       deregister = function(obj) {
         
         if (isJob(obj)) {
-          self$jobs[[obj$job_id]] <- NULL
+          self$jobs[[paste(obj$job_id)]] <- NULL
+        } else if (isUser(obj)) {
+          self$users[[paste(obj$user_id)]] <- NULL
         }
         
       },
@@ -125,77 +127,34 @@ OpenEOServer <- R6Class(
         if (isJob(obj)) {
           unlink(obj$filePath, recursive = TRUE,force=TRUE)
           self$deregister(obj)
+        } else if (isUser(obj)) {
+          unlink(obj$workspace,recursive = TRUE)
+          self$deregister(obj)
         }
         
       },
       
-      newJobId = function(n=1, length=15) {
-        # cudos to https://ryouready.wordpress.com/2008/12/18/generate-random-string-name/
-        randomString <- c(1:n)                  
-        for (i in 1:n) {
-          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                          length, replace=TRUE),
-                                   collapse="")
+      createJob = function(job_id = NULL) {
+        if (is.null(job_id)) {
+          job_id = private$newJobId()
         }
         
-        if (randomString %in% list.files(self$jobs.path)) {
-          # if id exists get a new one (recursive)
-          return(self$newJobId())
-        } else {
-          return(randomString)
-        }
-      },
-      
-      storeJob = function(job,json=NA) {
-        dir.create(job$filePath)
-        write(x=json,file=paste(job$filePath,"/process_graph.json",sep=""))
-      },
-      
-      newUserId = function() {
-        id = runif(1, 10^11, (10^12-1))
-        if (id %in% list.files(self$users.path)) {
-          return(self$newUserId())
-        } else {
-          return(floor(id))
-        }
+        path=paste(openeo$jobs.path,"/",job_id,sep="")
         
+        job = Job$new(job_id = job_id, filePath = path)
+        
+        return(job)
       },
-      
+
       createUser = function(user_name, password) {
-        id = self$newUserId()
+        id = private$newUserId()
         
         user = User$new(user_id = id)
         user$user_name = user_name
         user$password = password
         user$workspace = paste(self$users.path,id,sep="/")
         
-        self$storeUser(user)
-        
-        return(user)
-        
-      },
-      
-      storeUser = function(user) {
-        dir.create(user$workspace, showWarnings = FALSE)
-        
-        json = toJSON(user$toList(),auto_unbox = TRUE,pretty=TRUE)
-        write(x=json,file=paste(user$workspace,"user.json",sep="/"))
-      },
-      
-      loadUser = function(id) {
-        ids = list.files(self$users.path)
-        if(! id %in% ids) {
-          return()
-        }
-        
-        workspace.path = paste(self$users.path, id,sep="/")
-        parsedJson = fromJSON(paste(workspace.path,"user.json",sep="/"))
-        user = User$new(id)
-        user$user_name = parsedJson[["user_name"]]
-        user$password = parsedJson[["password"]]
-        user$jobs = parsedJson[["jobs"]]
-        
-        self$register(user)
+        user$store()
         
         return(user)
         
@@ -211,11 +170,31 @@ OpenEOServer <- R6Class(
         loadSentinel2Data()
       },
       
+      loadUser = function(id) {
+        ids = list.files(self$users.path)
+        if(! id %in% ids) {
+          return()
+        }
+        
+        workspace.path = paste(self$users.path, id,sep="/")
+        parsedJson = fromJSON(paste(workspace.path,"user.json",sep="/"))
+        user = User$new(id)
+        user$user_name = parsedJson[["user_name"]]
+        user$password = parsedJson[["password"]]
+        user$jobs = parsedJson[["jobs"]]
+        user$workspace = workspace.path
+        
+        self$register(user)
+        
+        return(user)
+        
+      },
+      
       loadUsers = function() {
         self$users = list()
         
         for (user_id in list.files(self$users.path)) {
-          self$loadUser(user_id)
+          private$loadUser(user_id)
         }
       },
       
@@ -249,6 +228,33 @@ OpenEOServer <- R6Class(
           
           self$register(job)
         }
+      },
+      
+      newJobId = function(n=1, length=15) {
+        # cudos to https://ryouready.wordpress.com/2008/12/18/generate-random-string-name/
+        randomString <- c(1:n)                  
+        for (i in 1:n) {
+          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                          length, replace=TRUE),
+                                   collapse="")
+        }
+        
+        if (randomString %in% list.files(self$jobs.path)) {
+          # if id exists get a new one (recursive)
+          return(self$newJobId())
+        } else {
+          return(randomString)
+        }
+      },
+      
+      newUserId = function() {
+        id = runif(1, 10^11, (10^12-1))
+        if (id %in% list.files(self$users.path)) {
+          return(self$newUserId())
+        } else {
+          return(floor(id))
+        }
+        
       },
       
       initEnvironmentDefault = function() {

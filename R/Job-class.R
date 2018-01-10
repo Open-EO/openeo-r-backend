@@ -55,6 +55,11 @@ Job <- R6Class(
       self$process_graph = process_graph
     },
     
+    store = function(json=NA) {
+      dir.create(self$filePath)
+      write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
+    },
+    
     loadProcessGraph = function() {
       parsedJson = fromJSON(paste(self$filePath,"/process_graph.json",sep=""))
       self$process_graph = self$loadProcess(parsedJson[["process_graph"]])

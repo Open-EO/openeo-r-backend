@@ -33,7 +33,8 @@ function() {
     "/api/data/{product_id}",
     "/api/processes",
     "/api/processes/{process_id}",
-    "/api/jobs"
+    "/api/jobs",
+    "/api/download",
   )
 }
 
@@ -116,8 +117,7 @@ function(req,res,evaluate) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   
-  job_id = openeo$newJobId()
-  job = Job$new(job_id = job_id)
+  job = openeo$createJob()
   
   openeo$register(job)
   
@@ -133,7 +133,7 @@ function(req,res,evaluate) {
   job$submitted = submit_time
   
   
-  openeo$storeJob(job=job,json = toJSON(data,pretty=TRUE,auto_unbox = TRUE))
+  job$store(json = toJSON(data,pretty=TRUE,auto_unbox = TRUE))
   
   if (evaluate == "batch") {
     #TODO load processgraph and execute
@@ -162,6 +162,22 @@ function(req,res,job_id) {
     error(res,404,paste("Job with id:",job_id,"cannot been found"))
   }
   
+}
+
+############################
+#
+# user data
+#
+############################
+
+#* @get /api/users/<userid>/files
+#* @serializer unboxedJSON
+function(req,res,userid) {
+  if (! userid %in% names(openeo$users)) {
+    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+  } else {
+    openeo$users[[userid]]$fileList()    
+  }
 }
 
 ############################

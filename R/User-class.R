@@ -6,7 +6,6 @@ User <- R6Class(
   public = list(
     user_id = NULL,
     workspace = NULL,
-    files = NULL,
     jobs = NULL,
     user_name = NULL,
     password = NULL,
@@ -14,6 +13,7 @@ User <- R6Class(
     
     initialize = function(user_id) {
       self$user_id = user_id
+      self$jobs = list()
     },
     
     toList = function() {
@@ -25,6 +25,41 @@ User <- R6Class(
           jobs = self$jobs
         )
       )
+    },
+    
+    fileList = function() {
+      files.df = self$files
+      rownames(files.df) <- NULL
+      
+      return(apply(files.df,1,function(row) {
+       return(list(
+         name = row["link"],
+         size = row["size"]
+       )) 
+      }))
+    },
+    
+    store = function() {
+      if (is.null(self$workspace)) {
+        stop("Cannot store user, because there was no workspace assigned.")
+      }
+      
+      dir.create(self$workspace, showWarnings = FALSE)
+      dir.create(paste(self$workspace,"files",sep="/"), showWarnings = FALSE)
+      
+      json = toJSON(self$toList(),auto_unbox = TRUE,pretty=TRUE)
+      write(x=json,file=paste(self$workspace,"user.json",sep="/"))
+    }
+  ),
+  active = list(
+    files = function() {
+      workspace = paste(self$workspace,"files",sep="/")
+      
+      relPath=list.files(workspace,recursive = TRUE)
+      fileInfos=file.info(list.files(workspace,recursive = TRUE,full.names = TRUE))
+      fileInfos$link = relPath
+      
+      return(fileInfos[,c("link","size")])
     }
   )
 )
