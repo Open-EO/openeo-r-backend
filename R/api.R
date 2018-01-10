@@ -206,6 +206,32 @@ function(req,res,userid,path) {
   }
 }
 
+### this creates corrupted files, something along the line read file / write postbody is off
+
+# @put /api/users/<userid>/files/<path>
+# @serializer unboxedJSON
+# function(req,res,userid,path) {
+#   if (! userid %in% names(openeo$users)) {
+#     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+#   } else {
+#     user = openeo$users[[userid]]
+#     path = URLdecode(path)
+# 
+#     storedFilePath = paste(user$workspace,"files",path,sep="/")
+#     dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
+# 
+#     # binaryPost = readLines(con=req$rook.input,skipNul=FALSE)
+#     binaryPost = req$postBody
+#     dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
+#     file.create(storedFilePath,showWarnings = FALSE)
+# 
+#     writeChar(object=binaryPost,con=file(storedFilePath))
+# 
+#     ok(res)
+#   }
+# 
+# }
+
 ############################
 #
 # download endpoint

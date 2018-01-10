@@ -69,7 +69,6 @@ OpenEOServer <- R6Class(
           print("Bye bye!")
         })
         
-        
         root$run(port = self$api.port)
       },
       
