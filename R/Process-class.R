@@ -65,7 +65,14 @@ Process <- R6Class(
       
       runner = self$clone(deep=TRUE)
       
-      for (key in names(args)) {
+      clonedArguments = list()
+      #deep copy also the arguments
+      for (arg in self$args) {
+        clonedArguments=append(clonedArguments,arg$clone(deep=TRUE))
+      }
+      runner$args = clonedArguments
+      
+      for (key in 1:length(args)) {
         value = args[[key]]
         
         #TODO maybe add a handling for UDF or in the UDF class 

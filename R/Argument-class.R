@@ -33,6 +33,23 @@ Argument <- R6Class(
       
       res[[self$name]] = list(description = self$description)
       return(res)
+    },
+    
+    valueInfo = function() {
+      arg = list()
+      value = NULL
+      
+      if (isExecutableProcess(self$value)) {
+        value = self$value$detailedInfo()
+      } else if (class(self$value) == "list" && names(self$value)[1] == "product_id") {
+        value = list(product_id = self$value[[1]])
+      } else {
+        value = self$value
+      }
+      
+      arg[[self$name]] = value
+      
+      return(arg)
     }
   )
 )

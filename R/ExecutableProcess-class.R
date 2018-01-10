@@ -39,7 +39,7 @@ ExecutableProcess <- R6Class(
         for (key in names(self$args)) {
           value = self$args[[key]]$value
           
-          if (class(value)[1] == "ExecutableProcess") {
+          if (isExecutableProcess(value)) {
             parameter[[key]] = value$execute()
           } else {
             parameter[[key]] = value
@@ -49,6 +49,17 @@ ExecutableProcess <- R6Class(
         }
         
         return(do.call(self$operation,parameter))
+    },
+    
+    detailedInfo = function() {
+      args = list()
+      
+      args=lapply(self$args, function(argument) {argument$valueInfo()})
+      
+      return(list(
+        process_id = self$process_id,
+        args = args
+      ))
     }
   )
 )

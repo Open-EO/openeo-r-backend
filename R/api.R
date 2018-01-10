@@ -97,6 +97,18 @@ function(req,res,pid) {
 #
 ############################
 
+#* @get /api/jobs/<jobid>
+function(req,res,jobid) {
+  if (!jobid %in% names(openeo$jobs)) {
+    error(res,404,paste("Job with job_id",jobid," was not found"))
+  } else {
+    res$body = toJSON(openeo$jobs[[jobid]]$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
+    res$setHeader("Content-Type","application/json")
+    # return(openeo$jobs[[jobid]]$detailedInfo())
+  }
+  return(res)
+}
+
 #* @post /api/jobs
 #* @serializer unboxedJSON
 function(req,res,evaluate) {
