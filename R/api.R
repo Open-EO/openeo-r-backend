@@ -166,7 +166,7 @@ function(req,res,job_id) {
 
 ############################
 #
-# user data
+# user data and functions
 #
 ############################
 
@@ -255,6 +255,28 @@ function(req,res,userid,path) {
     }
   }
   
+}
+
+#* @get /api/users/<userid>/jobs
+#* @serializer unboxedJSON
+function(req,res,userid) {
+  if (! userid %in% names(openeo$users)) {
+    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+  } else {
+    user = openeo$users[[userid]]
+    
+    possibleUserJobs = user$jobs
+    foundIndices = which(possibleUserJobs %in% names(openeo$jobs))
+    userJobsIds = possibleUserJobs[foundIndices]
+    
+    userJobs = openeo$jobs[userJobsIds]
+    jobRepresentation = lapply(userJobs, function(job){
+      return(job$detailedInfo())
+    })
+    names(jobRepresentation) <- NULL
+    return(jobRepresentation)
+    
+  }
 }
 
 ############################
