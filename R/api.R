@@ -214,8 +214,8 @@ function(req,res,userid,path) {
 #   if (! userid %in% names(openeo$users)) {
 #     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
 #   } else {
-#     user = openeo$users[[userid]]
-#     path = URLdecode(path)
+    # user = openeo$users[[userid]]
+    # path = URLdecode(path)
 # 
 #     storedFilePath = paste(user$workspace,"files",path,sep="/")
 #     dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
@@ -231,6 +231,31 @@ function(req,res,userid,path) {
 #   }
 # 
 # }
+
+#* @delete /api/users/<userid>/files/<path>
+#* @serializer unboxedJSON
+function(req,res,userid,path) {
+  if (! userid %in% names(openeo$users)) {
+    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+  } else {
+    user = openeo$users[[userid]]
+    path = URLdecode(path)
+    
+    storedFilePath = paste(user$workspace,"files",path,sep="/")
+    
+    files = openeo$users[[paste(userid)]]$files
+    selection = files[files[,"link"]==path,]
+    if (nrow(selection) == 0) {
+      error(res, 404,paste("User has no file under path:",path))
+    } else {
+      file = rownames(selection)
+      
+      unlink(file, recursive = TRUE,force=TRUE)
+      ok(res)
+    }
+  }
+  
+}
 
 ############################
 #
