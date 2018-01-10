@@ -65,6 +65,11 @@ OpenEOServer <- R6Class(
         
         root <- plumb(self$api.path)
         
+        root$registerHook("exit", function(){
+          print("Bye bye!")
+        })
+        
+        
         root$run(port = self$api.port)
       },
       

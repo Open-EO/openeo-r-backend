@@ -180,6 +180,32 @@ function(req,res,userid) {
   }
 }
 
+#* @get /api/users/<userid>/files/<path>
+#* @serializer unboxedJSON
+function(req,res,userid,path) {
+  path = URLdecode(path)
+  
+  if (! userid %in% names(openeo$users)) {
+    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+  } else {
+    files = openeo$users[[paste(userid)]]$files
+    selection = files[files[,"link"]==path,]
+    if (nrow(selection) == 0) {
+      error(res, 404,paste("User has no file under path:",path))
+    } else {
+      path.ext = unlist(strsplit(selection[,"link"], "\\.(?=[^\\.]+$)", perl=TRUE))
+      
+      sendFile(
+        res,
+        200,
+        file.name = path.ext[1],
+        file.ext = paste(".",path.ext[2],sep=""),
+        data = readBin(rownames(selection),"raw", n=selection$size)
+      )
+    }
+  }
+}
+
 ############################
 #
 # download endpoint
@@ -205,7 +231,7 @@ function(req,res,job_id,format) {
     
     sendFile(res, 
              status=200, 
-             job_id, 
+             file.name=job_id, 
              file.ext=".tif", 
              contentType=format,
              data=readBin(tmp, "raw", n=file.info(tmp)$size))
@@ -233,10 +259,14 @@ error = function(res, status,msg) {
     )
 }
 
-sendFile = function(res, status, job_id,file.ext, contentType, data) {
+sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, data) {
   res$status = status
   res$body = data
-  res$setHeader("Content-Type", contentType)
-  res$setHeader("Content-Disposition", paste("attachment;filename=",job_id,file.ext,sep=""))
+  if (! is.na(contentType)) {
+    res$setHeader("Content-Type", contentType)
+  }
+  if (! is.na(file.name) && !is.na(file.ext)) {
+    res$setHeader("Content-Disposition", paste("attachment;filename=",file.name,file.ext,sep=""))
+  }
   return(res)
 }
