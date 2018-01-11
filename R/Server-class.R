@@ -4,7 +4,6 @@
 #' jobs.
 #' 
 #' @field api.version The current api version used
-#' @field project.path The filesystem path where to find the plumber api file
 #' @field data.path The filesystem path where to find the datasets
 #' @field jobs.path The filesystem path where the jobs are stored
 #' @field api.port The port where the plumber webservice is working under
@@ -27,7 +26,6 @@ OpenEOServer <- R6Class(
       api.version = NULL,
       secret.key = NULL,
       
-      project.path = NULL,
       data.path = NULL,
       jobs.path = NULL,
       users.path = NULL,
@@ -62,8 +60,6 @@ OpenEOServer <- R6Class(
         private$loadExistingJobs()
         
         private$loadUsers()
-        
-        setwd(self$project.path)
         
         root = createAPI()
         
@@ -279,11 +275,8 @@ OpenEOServer <- R6Class(
       
       initEnvironmentDefault = function() {
         
-        if (is.null(self$project.path)) {
-          self$project.path <- "C:/code/openeo.r.backend"
-        }
         if (is.null(self$data.path)) {
-          self$data.path <- "C:/code/openeo.r.backend/data"
+          self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
         }
         if (is.null(self$job.path)) {
           self$jobs.path <- "C:/code/openeo-files/jobs"
