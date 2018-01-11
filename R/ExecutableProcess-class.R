@@ -36,16 +36,16 @@ ExecutableProcess <- R6Class(
     execute = function() {
         #build a list of parameter (key=value) for operation
         parameter = list()
-        for (key in names(self$args)) {
+        for (key in 1:length(self$args)) {
+          name = self$args[[key]]$name
           value = self$args[[key]]$value
-          
+      
           if (isExecutableProcess(value)) {
-            parameter[[key]] = value$execute()
+            parameter[[name]] = value$execute()
           } else {
-            parameter[[key]] = value
+            parameter[[name]] = value
           }
-          
-          
+
         }
         
         return(do.call(self$operation,parameter))
