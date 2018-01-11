@@ -19,17 +19,19 @@
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
 #' @importFrom jsonlite toJSON
+#' @importFrom sodium sha256
 #' @export
 OpenEOServer <- R6Class(
     "OpenEOServer",
     public = list(
       api.version = NULL,
+      secret.key = NULL,
+      
       project.path = NULL,
       data.path = NULL,
       jobs.path = NULL,
       users.path = NULL,
       api.port = NULL,
-      api.path = NULL,
       
       jobs = NULL,
       processes = NULL,
@@ -63,7 +65,7 @@ OpenEOServer <- R6Class(
         
         setwd(self$project.path)
         
-        root <- plumb(self$api.path)
+        root = createAPI()
         
         root$registerHook("exit", function(){
           print("Bye bye!")
@@ -162,6 +164,20 @@ OpenEOServer <- R6Class(
         
         return(user)
         
+      },
+      
+      getUserByName = function(user_name) {
+        user_names = sapply(self$users, function(user) {
+          return(user$user_name)
+        })
+        index = which(user_name %in% user_names)
+        
+        if (length(index) == 1) {
+          return(openeo$users[[index]])
+        } else {
+          stop(paste("Cannot find user by user_name: ",user_names,sep=""))
+          return()
+        }
       }
       
       
@@ -263,10 +279,6 @@ OpenEOServer <- R6Class(
       
       initEnvironmentDefault = function() {
         
-        if (is.null(self$api.path)) {
-          self$api.path <- "C:/code/openeo.r.backend/R/api.R"
-        }
-        
         if (is.null(self$project.path)) {
           self$project.path <- "C:/code/openeo.r.backend"
         }
@@ -278,6 +290,9 @@ OpenEOServer <- R6Class(
         }
         if (is.null(self$users.path)) {
           self$users.path <- "C:/code/openeo-files/users"
+        }
+        if (is.null(self$secret.key)) {
+          self$secret.key <- sha256(charToRaw("openEO-R"))
         }
         
         if (is.null(self$api.port)) {

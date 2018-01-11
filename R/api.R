@@ -9,8 +9,14 @@
 #' @include Job-class.R
 #' @include processes.R
 #' @include data.R
+#' @include Server-class.R
 #' @import raster
-library(jsonlite)
+#' @importFrom sodium data_encrypt
+#' @importFrom sodium bin2hex
+#' @importFrom sodium data_decrypt
+#' @importFrom sodium hex2bin
+#' @importFrom plumber forward
+
 openeo$api.version <- "0.0.1"
 
 ############################
@@ -19,22 +25,18 @@ openeo$api.version <- "0.0.1"
 #
 ############################
 
-#* @get /api/version
-#* @serializer unboxedJSON
-function() {
+.version = function() {
   list(version=openeo$api.version)
 }
 
-#* @get /api/capabilities
-#* @serializer unboxedJSON
-function() {
+.capabilities = function() {
   list(
     "/api/data",
     "/api/data/{product_id}",
     "/api/processes",
     "/api/processes/{process_id}",
     "/api/jobs",
-    "/api/download",
+    "/api/download"
   )
 }
 
@@ -47,7 +49,7 @@ function() {
 # creates an overview on products available
 #* @get /api/data
 #* @serializer unboxedJSON
-function() {
+.listData = function() {
   datalist = openeo$data
   unname(lapply(datalist, function(l){
     return(l$shortInfo())
@@ -57,7 +59,7 @@ function() {
 # returns details of a certain product
 #* @get /api/data/<pid>
 #* @serializer unboxedJSON
-function(req,res,pid) {
+.describeData = function(req,res,pid) {
   if (pid %in% names(openeo$data) == FALSE) {
     return(error(res,404,"Product not found"))
   } else {
@@ -74,7 +76,7 @@ function(req,res,pid) {
 # creates an overview on available processes
 #* @get /api/processes
 #* @serializer unboxedJSON
-function() {
+.listProcesses = function() {
   processeslist = openeo$processes
   unname(lapply(processeslist, function(l){
     return(l$shortInfo())
@@ -84,7 +86,7 @@ function() {
 # returns details of a certain product
 #* @get /api/processes/<pid>
 #* @serializer unboxedJSON
-function(req,res,pid) {
+.describeProcess = function(req,res,pid) {
   if (pid %in% names(openeo$processes) == FALSE) {
     return(error(res,404,"Product not found"))
   } else {
@@ -99,7 +101,7 @@ function(req,res,pid) {
 ############################
 
 #* @get /api/jobs/<jobid>
-function(req,res,jobid) {
+.describeJob = function(req,res,jobid) {
   if (!jobid %in% names(openeo$jobs)) {
     error(res,404,paste("Job with job_id",jobid," was not found"))
   } else {
@@ -112,7 +114,7 @@ function(req,res,jobid) {
 
 #* @post /api/jobs
 #* @serializer unboxedJSON
-function(req,res,evaluate) {
+.createNewJob = function(req,res,evaluate) {
   if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
@@ -146,7 +148,7 @@ function(req,res,evaluate) {
 
 #* @delete /api/jobs/<job_id>
 #* @serializer unboxedJSON
-function(req,res,job_id) {
+.deleteJob = function(req,res,job_id) {
   if (job_id %in% names(openeo$jobs)) {
     job = openeo$jobs[[job_id]]
     tryCatch(
@@ -161,7 +163,6 @@ function(req,res,job_id) {
   } else {
     error(res,404,paste("Job with id:",job_id,"cannot been found"))
   }
-  
 }
 
 ############################
@@ -172,7 +173,7 @@ function(req,res,job_id) {
 
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
-function(req,res,userid) {
+.listUserFiles = function(req,res,userid) {
   if (! userid %in% names(openeo$users)) {
     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
   } else {
@@ -182,7 +183,7 @@ function(req,res,userid) {
 
 #* @get /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
-function(req,res,userid,path) {
+.downloadUserFile = function(req,res,userid,path) {
   path = URLdecode(path)
   
   if (! userid %in% names(openeo$users)) {
@@ -214,8 +215,8 @@ function(req,res,userid,path) {
 #   if (! userid %in% names(openeo$users)) {
 #     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
 #   } else {
-    # user = openeo$users[[userid]]
-    # path = URLdecode(path)
+# user = openeo$users[[userid]]
+# path = URLdecode(path)
 # 
 #     storedFilePath = paste(user$workspace,"files",path,sep="/")
 #     dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
@@ -234,7 +235,7 @@ function(req,res,userid,path) {
 
 #* @delete /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
-function(req,res,userid,path) {
+.deleteUserData = function(req,res,userid,path) {
   if (! userid %in% names(openeo$users)) {
     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
   } else {
@@ -254,12 +255,11 @@ function(req,res,userid,path) {
       ok(res)
     }
   }
-  
 }
 
 #* @get /api/users/<userid>/jobs
 #* @serializer unboxedJSON
-function(req,res,userid) {
+.listUserJobs = function(req,res,userid) {
   if (! userid %in% names(openeo$users)) {
     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
   } else {
@@ -279,6 +279,34 @@ function(req,res,userid) {
   }
 }
 
+#* @get /api/auth/login
+#* @serializer unboxedJSON
+.login = function(req,res) {
+  auth = req$HTTP_AUTHORIZATION
+  encoded=substr(auth,7,nchar(auth))
+  
+  decoded = rawToChar(base64_dec(encoded))
+  user_pwd = unlist(strsplit(decoded,":"))
+  
+  tryCatch(
+    {  
+      user = openeo$getUserByName(user_pwd[1])
+      if (user$password == user_pwd[2]) {
+        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo$secret.key)
+        
+        token = bin2hex(append(encryption, attr(encryption,"nonce")))
+        
+        list(token=token)
+      } else {
+        stop("Wrong password")
+      }
+    },
+    error=function(e) {
+      error(res,404,"Login failed.")
+    }
+  )
+}
+
 ############################
 #
 # download endpoint
@@ -289,7 +317,7 @@ function(req,res,userid) {
 
 #* @serializer contentType list(type="image/GTiff")
 #* @get /api/download/<job_id>
-function(req,res,job_id,format) {
+.downloadSimple = function(req,res,job_id,format) {
   listedJobs = names(openeo$jobs)
   if (!job_id %in% listedJobs) {
     error(res, 404, paste("Cannot find job with id:",job_id))
@@ -309,8 +337,45 @@ function(req,res,job_id,format) {
              contentType=format,
              data=readBin(tmp, "raw", n=file.info(tmp)$size))
   }
-  
-  
+}
+
+############################
+#
+# pipeline filter
+#
+############################
+
+#* @filter checkAuth
+.authorized = function(req, res){
+  tryCatch({
+    message(req$HTTP_AUTHORIZATION)
+    auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
+    message(auth[1])
+    message(auth[2])
+    if (auth[1] == "Bearer") {
+      token = auth[2]
+      message(token)
+      hextoken = hex2bin(token)
+      nonce.length = 24
+      msg = hextoken[1:(length(hextoken)-nonce.length)]
+      nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
+      
+      user_id = rawToChar(data_decrypt(msg,openeo$secret.key,nonce))
+      message(user_id)
+      if (user_id %in% names(openeo$users)) {
+        req$user = openeo$users[[user_id]]
+        forward()
+      } else {
+        stop("Incorrect token")
+      }
+    } else {
+      stop("Incorrect authentication method.")
+    }
+  },
+  error = function(e) {
+    error(res,401,"Unauthorized")
+  }
+  )
 }
 
 ############################
@@ -329,7 +394,7 @@ error = function(res, status,msg) {
   return(list(
     status=status,
     message=msg)
-    )
+  )
 }
 
 sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, data) {
@@ -342,4 +407,118 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
     res$setHeader("Content-Disposition", paste("attachment;filename=",file.name,file.ext,sep=""))
   }
   return(res)
+}
+
+############################
+#
+# setup the routes
+#
+############################
+
+createAPI = function() {
+  root = plumber$new()
+  
+  root$handle("GET",
+              "/api/version",
+              handler = .version,
+              serializer = serializer_unboxed_json())
+  
+  root$handle("GET",
+              "/api/capabilities",
+              handler = .capabilities,
+              serializer = serializer_unboxed_json())
+  
+  data = plumber$new()
+  
+  data$handle("GET",
+              "/",
+              handler = .listData,
+              serializer = serializer_unboxed_json())
+  
+  data$handle("GET",
+              "/<pid>",
+              handler = .describeData,
+              serializer = serializer_unboxed_json())
+  
+  root$mount("/api/data",data)
+  
+  process = plumber$new()
+  
+  process$handle("GET",
+                 "/",
+                 handler = .listProcesses,
+                 serializer = serializer_unboxed_json())
+  
+  process$handle("GET",
+                 "/<userid>/files/<path>",
+                 handler = .describeProcess,
+                 serializer = serializer_unboxed_json())
+  
+  root$mount("/api/processes",process)
+  
+  jobs = plumber$new()
+  
+  jobs$handle("GET",
+              "/<jobid>",
+              handler = .describeJob,
+              serializer = serializer_unboxed_json())
+  
+  jobs$handle("POST",
+              "/",
+              handler = .createNewJob,
+              serializer = serializer_unboxed_json())
+  
+  jobs$handle("DELETE",
+              "/<job_id>",
+              handler = .deleteJob,
+              serializer = serializer_unboxed_json())
+  
+  root$mount("/api/jobs",jobs)
+  
+  users = plumber$new()
+  
+  users$handle("GET",
+               "/<userid>/files",
+               handler = .listUserFiles,
+               serializer = serializer_unboxed_json())
+  
+  users$handle("GET",
+               "/<userid>/files/<path>",
+               handler = .downloadUserFile,
+               serializer = serializer_unboxed_json())
+  
+  users$handle("DELETE",
+               "/<userid>/files/<path>",
+               handler = .deleteUserData,
+               serializer = serializer_unboxed_json())
+  
+  users$handle("GET",
+               "/<userid>/jobs",
+               handler = .listUserJobs,
+               serializer = serializer_unboxed_json())
+  
+  users$filter("authorization",.authorized)
+  
+  root$mount("/api/users",users)
+  
+  authentication = plumber$new()
+  
+  authentication$handle(c("GET","POST"),
+                        "/login",
+                        handler = .login,
+                        serializer = serializer_unboxed_json())
+  
+  root$mount("/api/auth",authentication)
+  
+  download = plumber$new()
+  
+  download$handle(
+    "GET",
+    "/<job_id>",
+    handler = .downloadSimple,
+    serializer = serializer_unboxed_json())
+  
+  root$mount("/api/download",download)
+  
+  return(root)
 }

@@ -8,7 +8,8 @@ Depends:
     R (>= 3.4.3),
     rgdal (>= 1.2-16),
     gdalUtils (>= 2.0.1.7),
-    raster (>= 2.6-7)
+    raster (>= 2.6-7),
+    sodium (>= 1.1)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -20,7 +21,8 @@ Imports:
     R6,
     raster,
     rgdal,
-    gdalUtils
+    gdalUtils,
+    sodium
 Suggests:
     raster,
     rgdal
