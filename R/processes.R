@@ -26,19 +26,8 @@ filter_daterange = Process$new(
     # udf or a collection we need to specify that
     collection = NULL
     
-    if ("Product" %in% class(imagery)) {
-      collection = imagery$getCollection()
-    } else if ("Collection" %in% class(imagery)) {
-      collection = imagery
-    } else if (class(imagery) == "character") {
-      #load image or create process
-    } else if ("Process" %in% class(imagery)) {
-      collection = imagery$execute()
-    } else if (class(imagery) == "list") {
-      if ("product_id" %in% names(imagery)) {
-        collection = openeo$data[[imagery$product_id]]$getCollection()
-      }
-    }
+    collection = getCollectionFromImageryStatement(imagery)
+    
     if (is.null(collection)) {
       stop("no collection element found in function call")
     }
@@ -52,7 +41,7 @@ filter_daterange = Process$new(
     }
     
     # collection is at this point a Collection
-    collection$filterByTime(from=from, to=to)
+    return(collection$filterByTime(from=from, to=to))
   }
 )
 
@@ -145,15 +134,16 @@ calculate_ndvi = Process$new(
 # either a product or an intermediate calculation. In any case the result shall
 # be a collection on which the calculations shall be performed.
 getCollectionFromImageryStatement = function (imagery) {
+
   collection = NULL
   
-  if ("Product" %in% class(imagery)) {
+  if (isProduct(imagery)) {
     collection = imagery$getCollection()
-  } else if ("Collection" %in% class(imagery)) {
+  } else if (isCollection(imagery)) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
-  } else if ("Process" %in% class(imagery)) {
+  } else if (isExecutableProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
     if ("product_id" %in% names(imagery)) {

@@ -15,6 +15,7 @@
 #' 
 #' @include Process-class.R
 #' @importFrom R6 R6Class
+#' @importFrom jsonlite fromJSON
 #' @export
 Job <- R6Class(
   "Job",
@@ -30,8 +31,8 @@ Job <- R6Class(
     
     filePath = NULL,
     
-    initialize = function(job_id=NA,filePath=NA,process_graph=NA) {
-      if (is.na(job_id) || is.null(job_id)) {
+    initialize = function(job_id=NULL,filePath=NULL,process_graph=NULL,user_id = NULL) {
+      if (is.null(job_id)) {
         
         stop("Cannot create new Job. There is no job_id specified")
         # check if exists, repeate randomJobId until free
@@ -40,20 +41,28 @@ Job <- R6Class(
       }
       
       
-      if (is.na(filePath) || is.null(filePath)) {
+      if (is.null(filePath)) {
         self$filePath = paste(openeo$jobs.path,"/",self$job_id,sep="")
       } else {
         self$filePath = filePath
+      }
+      
+      if (!is.null(user_id)) {
+        self$user_id = user_id
       }
       
       
       self$process_graph = process_graph
     },
     
+    store = function(json=NA) {
+      dir.create(self$filePath)
+      write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
+    },
+    
     loadProcessGraph = function() {
-      parsedJson = read_json(paste(self$filePath,"/process_graph.json",sep=""))
+      parsedJson = fromJSON(paste(self$filePath,"/process_graph.json",sep=""))
       self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
-      invisible(self)
     },
     
     loadProcess = function(parsedJson) {
@@ -61,10 +70,30 @@ Job <- R6Class(
       #TODO: add cases for udfs
       if (!is.null(processId) && processId %in% names(openeo$processes)) {
         process = openeo$processes[[processId]]
+        
         return(process$as.executable(parsedJson,self))
       } else {
         stop(paste("Cannot load process",processId))
       }
+    },
+    
+    detailedInfo = function() {
+      if (is.null(self$process_graph) || ! isProcess(self$process_graph)) {
+        self$loadProcessGraph()
+      }
+      
+      #process_graph and the nested processes are always ExecutableProcess
+      processGraphList = self$process_graph$detailedInfo()
+      
+      info = list(
+        job_id = self$job_id,
+        user_id = self$user_id,
+        status = self$status,
+        process_graph = processGraphList,
+        submitted = self$submitted,
+        last_update = self$last_update,
+        consumed_credits = self$consumed_credits
+      )
     },
     
     run = function() {
