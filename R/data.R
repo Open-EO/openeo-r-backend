@@ -5,7 +5,7 @@
 #' @importFrom rgdal GDALinfo
 loadLandsat7Dataset = function() {
 
-  data.path = openeo$data.path
+  data.path = openeo.server$data.path
   
   if (endsWith(data.path,"/")) {
     ls7.path = paste(data.path,"landsat7/",sep="")
@@ -63,11 +63,11 @@ loadLandsat7Dataset = function() {
   })
   
   ls7.product$finalize()
-  openeo$register(ls7.product)
+  openeo.server$register(ls7.product)
 }
 
 loadSentinel2Data = function() {
-  sentinel2.folder = openeo$data.path
+  sentinel2.folder = openeo.server$data.path
   if (endsWith(sentinel2.folder,"/")) {
     sentinel2.folder = paste(sentinel2.folder,"sentinel2",sep="")
   } else {
@@ -171,7 +171,7 @@ loadSentinel2Data = function() {
   }
   
   sentinel2.product$finalize()
-  openeo$register(sentinel2.product)
+  openeo.server$register(sentinel2.product)
   
 }
 

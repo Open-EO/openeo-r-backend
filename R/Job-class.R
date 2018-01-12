@@ -66,8 +66,8 @@ Job <- R6Class(
     loadProcess = function(parsedJson) {
       processId = parsedJson[["process_id"]]
       #TODO: add cases for udfs
-      if (!is.null(processId) && processId %in% names(openeo$processes)) {
-        process = openeo$processes[[processId]]
+      if (!is.null(processId) && processId %in% names(openeo.server$processes)) {
+        process = openeo.server$processes[[processId]]
         
         return(process$as.executable(parsedJson,self))
       } else {

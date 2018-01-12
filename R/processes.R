@@ -147,7 +147,7 @@ getCollectionFromImageryStatement = function (imagery) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
     if ("product_id" %in% names(imagery)) {
-      collection = openeo$data[[imagery$product_id]]$getCollection()
+      collection = openeo.server$data[[imagery$product_id]]$getCollection()
     }
   }
   if (is.null(collection)) {

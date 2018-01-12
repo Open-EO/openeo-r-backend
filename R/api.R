@@ -17,7 +17,7 @@
 #' @importFrom sodium data_decrypt
 #' @importFrom sodium hex2bin
 
-openeo$api.version <- "0.0.1"
+openeo.server$api.version <- "0.0.1"
 
 ############################
 #
@@ -26,7 +26,7 @@ openeo$api.version <- "0.0.1"
 ############################
 
 .version = function() {
-  list(version=openeo$api.version)
+  list(version=openeo.server$api.version)
 }
 
 .capabilities = function() {
@@ -53,7 +53,7 @@ openeo$api.version <- "0.0.1"
 #* @get /api/data
 #* @serializer unboxedJSON
 .listData = function() {
-  datalist = openeo$data
+  datalist = openeo.server$data
   unname(lapply(datalist, function(l){
     return(l$shortInfo())
   }))
@@ -63,10 +63,10 @@ openeo$api.version <- "0.0.1"
 #* @get /api/data/<pid>
 #* @serializer unboxedJSON
 .describeData = function(req,res,pid) {
-  if (pid %in% names(openeo$data) == FALSE) {
+  if (pid %in% names(openeo.server$data) == FALSE) {
     return(error(res,404,"Product not found"))
   } else {
-    return(openeo$data[[pid]]$detailedInfo())
+    return(openeo.server$data[[pid]]$detailedInfo())
   }
 }
 
@@ -80,7 +80,7 @@ openeo$api.version <- "0.0.1"
 #* @get /api/processes
 #* @serializer unboxedJSON
 .listProcesses = function() {
-  processeslist = openeo$processes
+  processeslist = openeo.server$processes
   unname(lapply(processeslist, function(l){
     return(l$shortInfo())
   }))
@@ -90,10 +90,10 @@ openeo$api.version <- "0.0.1"
 #* @get /api/processes/<pid>
 #* @serializer unboxedJSON
 .describeProcess = function(req,res,pid) {
-  if (pid %in% names(openeo$processes) == FALSE) {
+  if (pid %in% names(openeo.server$processes) == FALSE) {
     return(error(res,404,"Product not found"))
   } else {
-    return(openeo$processes[[pid]]$detailedInfo())
+    return(openeo.server$processes[[pid]]$detailedInfo())
   }
 }
 
@@ -105,12 +105,11 @@ openeo$api.version <- "0.0.1"
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {
-  if (!jobid %in% names(openeo$jobs)) {
+  if (!jobid %in% names(openeo.server$jobs)) {
     error(res,404,paste("Job with job_id",jobid," was not found"))
   } else {
-    res$body = toJSON(openeo$jobs[[jobid]]$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
+    res$body = toJSON(openeo.server$jobs[[jobid]]$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
     res$setHeader("Content-Type","application/json")
-    # return(openeo$jobs[[jobid]]$detailedInfo())
   }
   return(res)
 }
@@ -122,9 +121,9 @@ openeo$api.version <- "0.0.1"
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   
-  job = openeo$createJob(user = req$user)
+  job = openeo.server$createJob(user = req$user)
   
-  openeo$register(job)
+  openeo.server$register(job)
   
   data=list()
   
@@ -152,11 +151,11 @@ openeo$api.version <- "0.0.1"
 #* @delete /api/jobs/<job_id>
 #* @serializer unboxedJSON
 .deleteJob = function(req,res,job_id) {
-  if (job_id %in% names(openeo$jobs)) {
-    job = openeo$jobs[[job_id]]
+  if (job_id %in% names(openeo.server$jobs)) {
+    job = openeo.server$jobs[[job_id]]
     tryCatch(
       {
-        openeo$delete(job)
+        openeo.server$delete(job)
         ok(res)
       }, 
       error = function(err) {
@@ -216,10 +215,10 @@ openeo$api.version <- "0.0.1"
 # @put /api/users/<userid>/files/<path>
 # @serializer unboxedJSON
 # .uploadFile = function(req,res,userid,path) {
-#     if (! userid %in% names(openeo$users)) {
+#     if (! userid %in% names(openeo.server$users)) {
 #       error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
 #     } else {
-#       user = openeo$users[[userid]]
+#       user = openeo.server$users[[userid]]
 #       path = URLdecode(path)
 #   
 #       storedFilePath = paste(user$workspace,"files",path,sep="/")
@@ -252,7 +251,7 @@ openeo$api.version <- "0.0.1"
     
     storedFilePath = paste(user$workspace,"files",path,sep="/")
     
-    files = openeo$users[[paste(userid)]]$files
+    files = openeo.server$users[[paste(userid)]]$files
     selection = files[files[,"link"]==path,]
     if (nrow(selection) == 0) {
       error(res, 404,paste("User has no file under path:",path))
@@ -275,10 +274,10 @@ openeo$api.version <- "0.0.1"
       user = req$user
       
       possibleUserJobs = user$jobs
-      foundIndices = which(possibleUserJobs %in% names(openeo$jobs))
+      foundIndices = which(possibleUserJobs %in% names(openeo.server$jobs))
       userJobsIds = possibleUserJobs[foundIndices]
       
-      userJobs = openeo$jobs[userJobsIds]
+      userJobs = openeo.server$jobs[userJobsIds]
       jobRepresentation = lapply(userJobs, function(job){
         return(job$detailedInfo())
       })
@@ -301,9 +300,9 @@ openeo$api.version <- "0.0.1"
   
   tryCatch(
     {  
-      user = openeo$getUserByName(user_pwd[1])
+      user = openeo.server$getUserByName(user_pwd[1])
       if (user$password == user_pwd[2]) {
-        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo$secret.key)
+        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$secret.key)
         
         token = bin2hex(append(encryption, attr(encryption,"nonce")))
         
@@ -329,11 +328,11 @@ openeo$api.version <- "0.0.1"
 #* @serializer contentType list(type="image/GTiff")
 #* @get /api/download/<job_id>
 .downloadSimple = function(req,res,job_id,format) {
-  listedJobs = names(openeo$jobs)
+  listedJobs = names(openeo.server$jobs)
   if (!job_id %in% listedJobs) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
-    job = openeo$jobs[[job_id]]
+    job = openeo.server$jobs[[job_id]]
     result = job$run()
     
     rasterdata = result$granules[[1]]$data
@@ -367,9 +366,9 @@ openeo$api.version <- "0.0.1"
       msg = hextoken[1:(length(hextoken)-nonce.length)]
       nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
       
-      user_id = rawToChar(data_decrypt(msg,openeo$secret.key,nonce))
-      if (user_id %in% names(openeo$users)) {
-        req$user = openeo$users[[user_id]]
+      user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
+      if (user_id %in% names(openeo.server$users)) {
+        req$user = openeo.server$users[[user_id]]
         forward()
       } else {
         stop("Incorrect token")

@@ -168,7 +168,7 @@ OpenEOServer <- R6Class(
         index = which(user_name %in% user_names)
         
         if (length(index) == 1) {
-          return(openeo$users[[index]])
+          return(openeo.server$users[[index]])
         } else {
           stop(paste("Cannot find user by user_name: ",user_names,sep=""))
           return()
@@ -298,4 +298,4 @@ OpenEOServer <- R6Class(
 )
 
 #' @export
-openeo = OpenEOServer$new()
+openeo.server = OpenEOServer$new()
