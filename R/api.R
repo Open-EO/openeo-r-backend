@@ -31,12 +31,12 @@ openeo.server$api.version <- "0.0.1"
 
 .capabilities = function() {
   list(
-    "/api/data",
+    "/api/data/",
     "/api/data/{product_id}",
-    "/api/processes",
+    "/api/processes/",
     "/api/processes/{process_id}",
-    "/api/jobs",
-    "/api/download",
+    "/api/jobs/",
+    "/api/download/",
     "/api/users/{user_id}/files",
     "/api/users/{user_id}/files/{rel_path}",
     "/api/users/{user_id}/jobs",
