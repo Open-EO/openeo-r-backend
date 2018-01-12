@@ -40,8 +40,6 @@ OpenEOServer <- R6Class(
         self$processes = list()
         self$data = list()
         self$users = list()
-        
-        private$initEnvironmentDefault()
       },
       
       startup = function (port=NA) {
@@ -50,10 +48,10 @@ OpenEOServer <- R6Class(
         }
         
         # load descriptions, meta data and file links for provided data sets
-        private$loadData()
+        # private$loadData()
         
         # register the processes provided by the server provider
-        private$loadProcesses()
+        # private$loadProcesses()
         
         private$loadUsers()
         
@@ -173,12 +171,19 @@ OpenEOServer <- R6Class(
           stop(paste("Cannot find user by user_name: ",user_names,sep=""))
           return()
         }
+      },
+      
+      loadDemo = function() {
+        private$initEnvironmentDefault()
+        
+        private$loadDemoData()
+        private$loadDemoProcesses()
       }
       
       
     ),
     private = list(
-      loadData = function() {
+      loadDemoData = function() {
         self$data = list()
         
         loadLandsat7Dataset()
@@ -213,7 +218,7 @@ OpenEOServer <- R6Class(
         }
       },
       
-      loadProcesses = function() {
+      loadDemoProcesses = function() {
         self$processes = list()
         
         self$register(filter_daterange)
@@ -284,7 +289,7 @@ OpenEOServer <- R6Class(
           self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
         }
         if (is.null(self$workspaces.path)) {
-          self$workspaces.path <- "C:/code/openeo-files/users"
+          self$workspaces.path <- getwd()
         }
         if (is.null(self$secret.key)) {
           self$secret.key <- sha256(charToRaw("openEO-R"))
