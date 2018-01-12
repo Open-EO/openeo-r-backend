@@ -11,11 +11,11 @@
 #' @include data.R
 #' @include Server-class.R
 #' @import raster
+#' @import plumber
 #' @importFrom sodium data_encrypt
 #' @importFrom sodium bin2hex
 #' @importFrom sodium data_decrypt
 #' @importFrom sodium hex2bin
-#' @importFrom plumber forward
 
 openeo$api.version <- "0.0.1"
 
@@ -211,26 +211,32 @@ openeo$api.version <- "0.0.1"
 
 # @put /api/users/<userid>/files/<path>
 # @serializer unboxedJSON
-# function(req,res,userid,path) {
-#   if (! userid %in% names(openeo$users)) {
-#     error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-#   } else {
-# user = openeo$users[[userid]]
-# path = URLdecode(path)
+# .uploadFile = function(req,res,userid,path) {
+#     if (! userid %in% names(openeo$users)) {
+#       error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+#     } else {
+#       user = openeo$users[[userid]]
+#       path = URLdecode(path)
+#   
+#       storedFilePath = paste(user$workspace,"files",path,sep="/")
+#       
+#       if (file.exists(storedFilePath)) {
+#         file.remove(storedFilePath)
+#       }
+#       
+#       dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
+#   
+#       message(names(req$rook.input))
+#       # binaryPost = readBin(con=req$rook.input,what="character")
+#       binaryPost = req$postBody
+#       dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
+#       file.create(storedFilePath,showWarnings = FALSE)
 # 
-#     storedFilePath = paste(user$workspace,"files",path,sep="/")
-#     dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
+#       #TODO we should check if the input is binary or text
+#       writeBin(object=binaryPost,con=file(storedFilePath,"wb"))
 # 
-#     # binaryPost = readLines(con=req$rook.input,skipNul=FALSE)
-#     binaryPost = req$postBody
-#     dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
-#     file.create(storedFilePath,showWarnings = FALSE)
-# 
-#     writeChar(object=binaryPost,con=file(storedFilePath))
-# 
-#     ok(res)
-#   }
-# 
+#       ok(res)
+#     }
 # }
 
 #* @delete /api/users/<userid>/files/<path>
@@ -348,20 +354,15 @@ openeo$api.version <- "0.0.1"
 #* @filter checkAuth
 .authorized = function(req, res){
   tryCatch({
-    message(req$HTTP_AUTHORIZATION)
     auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
-    message(auth[1])
-    message(auth[2])
     if (auth[1] == "Bearer") {
       token = auth[2]
-      message(token)
       hextoken = hex2bin(token)
       nonce.length = 24
       msg = hextoken[1:(length(hextoken)-nonce.length)]
       nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
       
       user_id = rawToChar(data_decrypt(msg,openeo$secret.key,nonce))
-      message(user_id)
       if (user_id %in% names(openeo$users)) {
         req$user = openeo$users[[user_id]]
         forward()
@@ -486,6 +487,11 @@ createAPI = function() {
                "/<userid>/files/<path>",
                handler = .downloadUserFile,
                serializer = serializer_unboxed_json())
+  
+  # users$handle("PUT",
+  #              "/<userid>/files/<path>",
+  #              handler = .uploadFile,
+  #              serializer = serializer_unboxed_json())
   
   users$handle("DELETE",
                "/<userid>/files/<path>",

@@ -17,8 +17,6 @@ jobs.
 \describe{
 \item{\code{api.version}}{The current api version used}
 
-\item{\code{project.path}}{The filesystem path where to find the plumber api file}
-
 \item{\code{data.path}}{The filesystem path where to find the datasets}
 
 \item{\code{jobs.path}}{The filesystem path where the jobs are stored}
