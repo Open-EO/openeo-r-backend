@@ -244,13 +244,32 @@ OpenEOServer <- R6Class(
           job.workspace = paste(user$workspace,"jobs",jobid,sep="/")
           
           parsedJson = fromJSON(file(paste(job.workspace,"process_graph.json",sep="/")))
+          
+          fields = names(parsedJson)
+          
           owner = user$user_id
           
           job = Job$new(job_id=jobid, filePath = job.workspace)
           job$user_id = owner
-          job$submitted = parsedJson[["submitted"]]
-          job$status = parsedJson[["status"]]
-          job$loadProcessGraph()
+          
+          if ("submitted" %in% fields) {
+            job$submitted = parsedJson[["submitted"]]
+          }
+          
+          if ("status" %in% fields) {
+            job$status = parsedJson[["status"]]
+          }
+          
+          if ("evaluation" %in% fields) {
+            job$evaluation = parsedJson[["evaluation"]]
+          }
+          
+          if ("process_graph" %in% fields) {
+            job$loadProcessGraph()
+          } else {
+            warning(paste("job '",jobid,"' is corrupt. process_graph is missing. Please delete.",sep=""),immediate. = TRUE)
+            next()
+          }
           
           self$register(job)
         }

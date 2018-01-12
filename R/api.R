@@ -131,6 +131,7 @@ openeo.server$api.version <- "0.0.1"
   data[["process_graph"]] = process_graph
   
   data[["status"]] = "submitted"
+  data[["evaluation"]] = evaluate
   
   submit_time = Sys.time()
   data[["submitted"]] = submit_time

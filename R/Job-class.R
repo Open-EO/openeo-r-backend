@@ -22,6 +22,7 @@ Job <- R6Class(
   public = list(
     job_id = NULL,
     status=NULL,
+    evaluation=NULL,
     process_graph = NULL,
     view=NULL,
     submitted=NULL,
