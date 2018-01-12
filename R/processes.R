@@ -21,7 +21,7 @@ filter_daterange = Process$new(
       required = FALSE
     )
   ),
-  operation = function(imagery, from=NA, to=NA) {
+  operation = function(imagery, from=NULL, to=NULL) {
     cat("Starting filter_daterange\n")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
@@ -42,6 +42,30 @@ filter_daterange = Process$new(
     
     # collection is at this point a Collection
     return(collection$filterByTime(from=from, to=to))
+  }
+)
+
+filter_bands = Process$new(
+  process_id = "filter_bands",
+  description = "filters by single and multiple band ids",
+  args = list(
+    Argument$new(
+      name = "imagery",
+      description = "the temporal dataset/collection",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "bands",
+      description = "one or more band ids",
+      required = TRUE
+    )
+  ),
+  operation = function(imagery,bands) {
+    collection = NULL
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    
+    return(collection$filterByBands(bands))
   }
 )
 

@@ -329,11 +329,10 @@ OpenEOServer <- R6Class(
         self$register(filter_daterange)
         self$register(find_min)
         self$register(calculate_ndvi)
+        self$register(filter_bands)
         
-        #filter_sp_extent = Process$new()
         #filter_sp_extent$register()
         
-        #crop_extent = Process$new()
         #crop_extent$register()
 
       },
