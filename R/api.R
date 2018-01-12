@@ -177,25 +177,23 @@ openeo$api.version <- "0.0.1"
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
 .listUserFiles = function(req,res,userid) {
-  if (! userid %in% names(openeo$users)) {
-    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-  } else {
-    openeo$users[[userid]]$fileList()    
-  }
+    if (paste(userid) == paste(req$user$user_id)) {
+      req$user$fileList()
+    } else {
+      error(res,401,"Not authorized to access other workspaces")
+    }
 }
 
 #* @get /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
 .downloadUserFile = function(req,res,userid,path) {
-  path = URLdecode(path)
-  
-  if (! userid %in% names(openeo$users)) {
-    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-  } else {
-    files = openeo$users[[paste(userid)]]$files
+  if (paste(userid) == paste(req$user$user_id)) {
+    path = URLdecode(path)
+    
+    files = req$user$files
     selection = files[files[,"link"]==path,]
     if (nrow(selection) == 0) {
-      error(res, 404,paste("User has no file under path:",path))
+      error(res, 404,paste("File not found under path:",path))
     } else {
       path.ext = unlist(strsplit(selection[,"link"], "\\.(?=[^\\.]+$)", perl=TRUE))
       
@@ -207,7 +205,10 @@ openeo$api.version <- "0.0.1"
         data = readBin(rownames(selection),"raw", n=selection$size)
       )
     }
+  } else {
+    error(res,401,"Not authorized to access others files")
   }
+  
 }
 
 ### this creates corrupted files, something along the line read file / write postbody is off
@@ -245,10 +246,8 @@ openeo$api.version <- "0.0.1"
 #* @delete /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
 .deleteUserData = function(req,res,userid,path) {
-  if (! userid %in% names(openeo$users)) {
-    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-  } else {
-    user = openeo$users[[userid]]
+  if (paste(userid) == paste(req$user$user_id)) {
+    user = req$user
     path = URLdecode(path)
     
     storedFilePath = paste(user$workspace,"files",path,sep="/")
@@ -263,29 +262,32 @@ openeo$api.version <- "0.0.1"
       unlink(file, recursive = TRUE,force=TRUE)
       ok(res)
     }
+  } else {
+    error(res,401,"Not authorized to delete data of others")
   }
+  
 }
 
 #* @get /api/users/<userid>/jobs
 #* @serializer unboxedJSON
 .listUserJobs = function(req,res,userid) {
-  if (! userid %in% names(openeo$users)) {
-    error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-  } else {
-    user = openeo$users[[userid]]
-    
-    possibleUserJobs = user$jobs
-    foundIndices = which(possibleUserJobs %in% names(openeo$jobs))
-    userJobsIds = possibleUserJobs[foundIndices]
-    
-    userJobs = openeo$jobs[userJobsIds]
-    jobRepresentation = lapply(userJobs, function(job){
-      return(job$detailedInfo())
-    })
-    names(jobRepresentation) <- NULL
-    return(jobRepresentation)
-    
-  }
+    if (paste(userid) == paste(req$user$user_id)) {
+      user = req$user
+      
+      possibleUserJobs = user$jobs
+      foundIndices = which(possibleUserJobs %in% names(openeo$jobs))
+      userJobsIds = possibleUserJobs[foundIndices]
+      
+      userJobs = openeo$jobs[userJobsIds]
+      jobRepresentation = lapply(userJobs, function(job){
+        return(job$detailedInfo())
+      })
+      names(jobRepresentation) <- NULL
+      return(jobRepresentation)
+    } else {
+      error(res,401,"Not authorized to view jobs of others")
+    }
+
 }
 
 #* @get /api/auth/login
