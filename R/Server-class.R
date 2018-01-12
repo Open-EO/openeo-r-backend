@@ -5,6 +5,7 @@
 #' 
 #' @field api.version The current api version used
 #' @field data.path The filesystem path where to find the datasets
+#' @field workspaces.path The filesystem path where user data and jobs are stored
 #' @field api.port The port where the plumber webservice is working under
 #' @field jobs This will be managed during startup. Here all the users submitted jobs are registered
 #' @field processes This field is also managed during runtime. Here all template processes are listed
@@ -26,7 +27,7 @@ OpenEOServer <- R6Class(
       secret.key = NULL,
       
       data.path = NULL,
-      users.path = NULL,
+      workspaces.path = NULL,
       api.port = NULL,
       
       jobs = NULL,
@@ -152,7 +153,7 @@ OpenEOServer <- R6Class(
         user = User$new(user_id = id)
         user$user_name = user_name
         user$password = password
-        user$workspace = paste(self$users.path,id,sep="/")
+        user$workspace = paste(self$workspaces.path,id,sep="/")
         
         user$store()
         
@@ -185,12 +186,12 @@ OpenEOServer <- R6Class(
       },
       
       loadUser = function(id) {
-        ids = list.files(self$users.path)
+        ids = list.files(self$workspaces.path)
         if(! id %in% ids) {
           return()
         }
         
-        workspace.path = paste(self$users.path, id,sep="/")
+        workspace.path = paste(self$workspaces.path, id,sep="/")
         parsedJson = fromJSON(paste(workspace.path,"user.json",sep="/"))
         user = User$new(id)
         user$user_name = parsedJson[["user_name"]]
@@ -206,7 +207,7 @@ OpenEOServer <- R6Class(
       loadUsers = function() {
         self$users = list()
         
-        for (user_id in list.files(self$users.path)) {
+        for (user_id in list.files(self$workspaces.path)) {
           user = private$loadUser(user_id)
           private$loadExistingJobs(user)
         }
@@ -269,7 +270,7 @@ OpenEOServer <- R6Class(
       
       newUserId = function() {
         id = runif(1, 10^11, (10^12-1))
-        if (id %in% list.files(self$users.path)) {
+        if (id %in% list.files(self$workspaces.path)) {
           return(self$newUserId())
         } else {
           return(floor(id))
@@ -282,8 +283,8 @@ OpenEOServer <- R6Class(
         if (is.null(self$data.path)) {
           self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
         }
-        if (is.null(self$users.path)) {
-          self$users.path <- "C:/code/openeo-files/users"
+        if (is.null(self$workspaces.path)) {
+          self$workspaces.path <- "C:/code/openeo-files/users"
         }
         if (is.null(self$secret.key)) {
           self$secret.key <- sha256(charToRaw("openEO-R"))

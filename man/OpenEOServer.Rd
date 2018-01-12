@@ -19,6 +19,8 @@ jobs.
 
 \item{\code{data.path}}{The filesystem path where to find the datasets}
 
+\item{\code{workspaces.path}}{The filesystem path where user data and jobs are stored}
+
 \item{\code{api.port}}{The port where the plumber webservice is working under}
 
 \item{\code{jobs}}{This will be managed during startup. Here all the users submitted jobs are registered}
