@@ -32,17 +32,15 @@ Job <- R6Class(
     filePath = NULL,
     
     initialize = function(job_id=NULL,filePath=NULL,process_graph=NULL,user_id = NULL) {
-      if (is.null(job_id)) {
-        
+      if (is.null(job_id)||missing(job_id)) {
         stop("Cannot create new Job. There is no job_id specified")
-        # check if exists, repeate randomJobId until free
       } else {
         self$job_id = job_id
       }
       
       
-      if (is.null(filePath)) {
-        self$filePath = paste(openeo$jobs.path,"/",self$job_id,sep="")
+      if (is.null(filePath) || missing(filePath)) {
+        stop("Cannot initialize Job without the job workspace")
       } else {
         self$filePath = filePath
       }

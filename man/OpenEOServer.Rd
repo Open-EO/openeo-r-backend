@@ -19,11 +19,9 @@ jobs.
 
 \item{\code{data.path}}{The filesystem path where to find the datasets}
 
-\item{\code{jobs.path}}{The filesystem path where the jobs are stored}
-
 \item{\code{api.port}}{The port where the plumber webservice is working under}
 
-\item{\code{jobs}}{This will be managed during startup. Here all stored jobs under jobs.path are loaded into memory and stored here}
+\item{\code{jobs}}{This will be managed during startup. Here all the users submitted jobs are registered}
 
 \item{\code{processes}}{This field is also managed during runtime. Here all template processes are listed}
 

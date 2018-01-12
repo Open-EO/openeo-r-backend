@@ -36,7 +36,10 @@ openeo$api.version <- "0.0.1"
     "/api/processes",
     "/api/processes/{process_id}",
     "/api/jobs",
-    "/api/download"
+    "/api/download",
+    "/api/users/{user_id}/files",
+    "/api/users/{user_id}/files/{rel_path}",
+    "/api/users/{user_id}/jobs",
   )
 }
 
@@ -119,7 +122,7 @@ openeo$api.version <- "0.0.1"
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   
-  job = openeo$createJob()
+  job = openeo$createJob(user = req$user)
   
   openeo$register(job)
   
@@ -474,6 +477,8 @@ createAPI = function() {
               handler = .deleteJob,
               serializer = serializer_unboxed_json())
   
+  jobs$filter("authorization",.authorized)
+  
   root$mount("/api/jobs",jobs)
   
   users = plumber$new()
@@ -523,6 +528,8 @@ createAPI = function() {
     "/<job_id>",
     handler = .downloadSimple,
     serializer = serializer_unboxed_json())
+  
+  download$filter("authorization", .authorized)
   
   root$mount("/api/download",download)
   

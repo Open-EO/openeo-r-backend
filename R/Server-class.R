@@ -5,9 +5,8 @@
 #' 
 #' @field api.version The current api version used
 #' @field data.path The filesystem path where to find the datasets
-#' @field jobs.path The filesystem path where the jobs are stored
 #' @field api.port The port where the plumber webservice is working under
-#' @field jobs This will be managed during startup. Here all stored jobs under jobs.path are loaded into memory and stored here
+#' @field jobs This will be managed during startup. Here all the users submitted jobs are registered
 #' @field processes This field is also managed during runtime. Here all template processes are listed
 #' @field data A list of products offered by the service which is managed at runtime.
 #' @field users The registered user on this server
@@ -27,7 +26,6 @@ OpenEOServer <- R6Class(
       secret.key = NULL,
       
       data.path = NULL,
-      jobs.path = NULL,
       users.path = NULL,
       api.port = NULL,
       
@@ -56,10 +54,10 @@ OpenEOServer <- R6Class(
         # register the processes provided by the server provider
         private$loadProcesses()
         
-        # if there have been previous job postings load those jobs into the system
-        private$loadExistingJobs()
-        
         private$loadUsers()
+        
+        # if there have been previous job postings load those jobs into the system
+        # private$loadExistingJobs()
         
         root = createAPI()
         
@@ -136,12 +134,12 @@ OpenEOServer <- R6Class(
         
       },
       
-      createJob = function(job_id = NULL) {
+      createJob = function(user,job_id = NULL) {
         if (is.null(job_id)) {
           job_id = private$newJobId()
         }
         
-        path=paste(openeo$jobs.path,"/",job_id,sep="")
+        path=paste(user$workspace,"jobs",job_id,sep="/")
         
         job = Job$new(job_id = job_id, filePath = path)
         
@@ -197,7 +195,6 @@ OpenEOServer <- R6Class(
         user = User$new(id)
         user$user_name = parsedJson[["user_name"]]
         user$password = parsedJson[["password"]]
-        user$jobs = parsedJson[["jobs"]]
         user$workspace = workspace.path
         
         self$register(user)
@@ -210,7 +207,8 @@ OpenEOServer <- R6Class(
         self$users = list()
         
         for (user_id in list.files(self$users.path)) {
-          private$loadUser(user_id)
+          user = private$loadUser(user_id)
+          private$loadExistingJobs(user)
         }
       },
       
@@ -229,14 +227,20 @@ OpenEOServer <- R6Class(
 
       },
       
-      loadExistingJobs = function() {
+      loadExistingJobs = function(user) {
+        if (missing(user) || is.null(user) || !isUser(user)) {
+          stop("Illegal argument for 'user'. A openeo User object is required")
+        }
+        
         self$jobs = list()
         
-        for (jobid in list.files(self$jobs.path)) {
-          parsedJson = fromJSON(paste(self$jobs.path,jobid,"process_graph.json",sep="/"))
-          owner = parsedJson[["user_id"]]
+        for (jobid in user$jobs) {
+          job.workspace = paste(user$workspace,"jobs",jobid,sep="/")
           
-          job = Job$new(job_id=jobid)
+          parsedJson = fromJSON(file(paste(job.workspace,"process_graph.json",sep="/")))
+          owner = user$user_id
+          
+          job = Job$new(job_id=jobid, filePath = job.workspace)
           job$user_id = owner
           job$submitted = parsedJson[["submitted"]]
           job$status = parsedJson[["status"]]
@@ -255,7 +259,7 @@ OpenEOServer <- R6Class(
                                    collapse="")
         }
         
-        if (randomString %in% list.files(self$jobs.path)) {
+        if (randomString %in% names(self$jobs)) {
           # if id exists get a new one (recursive)
           return(self$newJobId())
         } else {
@@ -277,9 +281,6 @@ OpenEOServer <- R6Class(
         
         if (is.null(self$data.path)) {
           self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
-        }
-        if (is.null(self$job.path)) {
-          self$jobs.path <- "C:/code/openeo-files/jobs"
         }
         if (is.null(self$users.path)) {
           self$users.path <- "C:/code/openeo-files/users"

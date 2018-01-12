@@ -6,14 +6,12 @@ User <- R6Class(
   public = list(
     user_id = NULL,
     workspace = NULL,
-    jobs = NULL,
     user_name = NULL,
     password = NULL,
     token = NULL,
     
     initialize = function(user_id) {
       self$user_id = user_id
-      self$jobs = list()
     },
     
     toList = function() {
@@ -60,6 +58,11 @@ User <- R6Class(
       fileInfos$link = relPath
       
       return(fileInfos[,c("link","size")])
+    },
+    
+    jobs = function() {
+      user.jobs = paste(self$workspace,"jobs",sep="/")
+      return(list.files(user.jobs))
     }
   )
 )
