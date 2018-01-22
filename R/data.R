@@ -62,7 +62,7 @@ loadLandsat7Dataset = function() {
     createGranuleFromLS7NDVIFile(file)
   })
   
-  ls7.product$finalize()
+  ls7.product$deriveMetadata()
   openeo.server$register(ls7.product)
 }
 
@@ -170,7 +170,7 @@ loadSentinel2Data = function() {
     sentinel2.product$addGranule(granule)
   }
   
-  sentinel2.product$finalize()
+  sentinel2.product$deriveMetadata()
   openeo.server$register(sentinel2.product)
   
 }

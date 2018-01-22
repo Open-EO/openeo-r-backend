@@ -41,7 +41,7 @@ Product <- R6Class(
           addGranule = function(granule) {
             private$collection$addGranule(granule=granule)
           },
-          finalize = function() {
+          deriveMetadata = function() {
             private$collection$sortGranulesByTime()
             
             self$time = list(from = private$collection$getMinTime(),
