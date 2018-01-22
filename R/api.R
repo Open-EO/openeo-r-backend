@@ -16,6 +16,8 @@
 #' @importFrom sodium bin2hex
 #' @importFrom sodium data_decrypt
 #' @importFrom sodium hex2bin
+#' @importFrom jsonlite base64_dec
+#' @importFrom jsonlite base64_enc
 
 openeo.server$api.version <- "0.0.1"
 
