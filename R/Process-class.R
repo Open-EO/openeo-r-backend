@@ -89,6 +89,7 @@ Process <- R6Class(
   )
 )
 
+#' @export
 isProcess = function(obj) {
   return("Process" %in% class(obj))
 }

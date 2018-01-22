@@ -73,6 +73,7 @@ Product <- R6Class(
         )
 )
 
+#' @export
 isProduct = function(obj) {
   return("Product" %in% class(obj))
 }
