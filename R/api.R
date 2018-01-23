@@ -459,7 +459,7 @@ createAPI = function() {
                  serializer = serializer_unboxed_json())
   
   process$handle("GET",
-                 "/<userid>/files/<path>",
+                 "/<pid>",
                  handler = .describeProcess,
                  serializer = serializer_unboxed_json())
   
