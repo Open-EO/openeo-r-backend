@@ -94,7 +94,7 @@ openeo.server$api.version <- "0.0.1"
 #* @serializer unboxedJSON
 .describeProcess = function(req,res,pid) {
   if (pid %in% names(openeo.server$processes) == FALSE) {
-    return(error(res,404,"Product not found"))
+    return(error(res,404,"Process not found"))
   } else {
     return(openeo.server$processes[[pid]]$detailedInfo())
   }
@@ -387,6 +387,11 @@ openeo.server$api.version <- "0.0.1"
   )
 }
 
+.cors_filter = function(res) {
+  res$setHeader("Access-Control-Allow-Origin", "*")
+  plumber::forward()
+}
+
 ############################
 #
 # utility functions
@@ -436,6 +441,8 @@ createAPI = function() {
               "/api/capabilities",
               handler = .capabilities,
               serializer = serializer_unboxed_json())
+  
+  root$registerHook("postroute",.cors_filter)
   
   data = plumber$new()
   
