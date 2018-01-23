@@ -42,6 +42,7 @@ openeo.server$api.version <- "0.0.1"
     "/api/users/{user_id}/files",
     "/api/users/{user_id}/files/{rel_path}",
     "/api/users/{user_id}/jobs",
+    "/api/auth/login"
   )
 }
 
