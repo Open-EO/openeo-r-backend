@@ -5,7 +5,7 @@ Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", rol
 Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
     the file backend solution is the local file system containing some raster data collections.
 Depends: 
-    R (>= 3.4.3),
+    R (>= 3.3),
     rgdal (>= 1.2-16),
     gdalUtils (>= 2.0.1.7),
     raster (>= 2.6-7),
