@@ -389,6 +389,9 @@ openeo.server$api.version <- "0.0.1"
 
 .cors_filter = function(res) {
   res$setHeader("Access-Control-Allow-Origin", "*")
+  res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
+  res$setHeader("Access-Control-Allow-Credentials", TRUE)
+  res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   plumber::forward()
 }
 
