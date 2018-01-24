@@ -43,7 +43,8 @@ User <- R6Class(
       }
       
       dir.create(self$workspace, showWarnings = FALSE)
-      dir.create(paste(self$workspace,"files",sep="/"), showWarnings = FALSE)
+      dir.create(paste(self$workspace,private$files.folder,sep="/"), showWarnings = FALSE)
+      dir.create(paste(self$workspace,private$jobs.folder,sep="/"), showWarnings = FALSE)
       
       json = toJSON(self$toList(),auto_unbox = TRUE,pretty=TRUE)
       write(x=json,file=paste(self$workspace,"user.json",sep="/"))
@@ -51,7 +52,7 @@ User <- R6Class(
   ),
   active = list(
     files = function() {
-      workspace = paste(self$workspace,"files",sep="/")
+      workspace = paste(self$workspace,private$files.folder,sep="/")
       
       relPath=list.files(workspace,recursive = TRUE)
       fileInfos=file.info(list.files(workspace,recursive = TRUE,full.names = TRUE))
@@ -61,9 +62,13 @@ User <- R6Class(
     },
     
     jobs = function() {
-      user.jobs = paste(self$workspace,"jobs",sep="/")
+      user.jobs = paste(self$workspace,private$jobs.folder,sep="/")
       return(list.files(user.jobs))
     }
+  ),
+  private = list(
+    jobs.folder = "jobs",
+    files.folder = "files"
   )
 )
 
