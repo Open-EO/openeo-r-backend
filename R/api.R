@@ -316,7 +316,7 @@ openeo.server$api.version <- "0.0.1"
       }
     },
     error=function(e) {
-      error(res,404,"Login failed.")
+      error(res,403,"Login failed.")
     }
   )
 }
