@@ -309,7 +309,7 @@ openeo.server$api.version <- "0.0.1"
         
         token = bin2hex(append(encryption, attr(encryption,"nonce")))
         
-        list(token=token)
+        list(user_id = user$user_id, token=token)
       } else {
         stop("Wrong password")
       }
