@@ -218,33 +218,31 @@ openeo.server$api.version <- "0.0.1"
 
 # @put /api/users/<userid>/files/<path>
 # @serializer unboxedJSON
-# .uploadFile = function(req,res,userid,path) {
-#     if (! userid %in% names(openeo.server$users)) {
-#       error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-#     } else {
-#       user = openeo.server$users[[userid]]
-#       path = URLdecode(path)
-#   
-#       storedFilePath = paste(user$workspace,"files",path,sep="/")
-#       
-#       if (file.exists(storedFilePath)) {
-#         file.remove(storedFilePath)
-#       }
-#       
-#       dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
-#   
-#       message(names(req$rook.input))
-#       # binaryPost = readBin(con=req$rook.input,what="character")
-#       binaryPost = req$postBody
-#       dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
-#       file.create(storedFilePath,showWarnings = FALSE)
-# 
-#       #TODO we should check if the input is binary or text
-#       writeBin(object=binaryPost,con=file(storedFilePath,"wb"))
-# 
-#       ok(res)
-#     }
-# }
+.uploadFile = function(req,res,userid,path) {
+    if (! userid %in% names(openeo.server$users)) {
+      error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
+    } else {
+      user = openeo.server$users[[userid]]
+      path = URLdecode(path)
+
+      storedFilePath = paste(user$workspace,"files",path,sep="/")
+
+      if (file.exists(storedFilePath)) {
+        file.remove(storedFilePath)
+      }
+
+      dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
+      
+      req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
+      
+      dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
+      file.create(storedFilePath,showWarnings = FALSE)
+      
+      writeBin(req$rook.input$read(req$rook.input$.length),con=file(storedFilePath,"wb"),useBytes = TRUE)
+
+      ok(res)
+    }
+}
 
 #* @delete /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
@@ -508,10 +506,10 @@ createAPI = function() {
                handler = .downloadUserFile,
                serializer = serializer_unboxed_json())
   
-  # users$handle("PUT",
-  #              "/<userid>/files/<path>",
-  #              handler = .uploadFile,
-  #              serializer = serializer_unboxed_json())
+  users$handle("PUT",
+               "/<userid>/files/<path>",
+               handler = .uploadFile,
+               serializer = serializer_unboxed_json())
   
   users$handle("DELETE",
                "/<userid>/files/<path>",
