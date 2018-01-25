@@ -238,8 +238,9 @@ openeo.server$api.version <- "0.0.1"
       dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
       file.create(storedFilePath,showWarnings = FALSE)
       
-      writeBin(req$rook.input$read(req$rook.input$.length),con=file(storedFilePath,"wb"),useBytes = TRUE)
-
+      outputFile = file(storedFilePath,"wb")
+      writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
+      close(outputFile,type="wb")
       ok(res)
     }
 }
