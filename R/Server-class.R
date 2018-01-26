@@ -19,6 +19,7 @@
 #' @importFrom jsonlite fromJSON
 #' @importFrom jsonlite toJSON
 #' @importFrom sodium sha256
+#' @import DBI
 #' @export
 OpenEOServer <- R6Class(
     "OpenEOServer",
@@ -28,12 +29,16 @@ OpenEOServer <- R6Class(
       
       data.path = NULL,
       workspaces.path = NULL,
+      sqlite.path = NULL,
+      
       api.port = NULL,
       
       jobs = NULL,
       processes = NULL,
       data = NULL,
       users = NULL,
+      
+      database = NULL,
       
       initialize = function() {
         self$jobs = list()
@@ -46,6 +51,9 @@ OpenEOServer <- R6Class(
         if (! is.na(port)) {
           self$api.port = port
         }
+        
+        private$initEnvironmentDefault()
+        
         
         # load descriptions, meta data and file links for provided data sets
         # private$loadData()
@@ -61,6 +69,7 @@ OpenEOServer <- R6Class(
         root = createAPI()
         
         root$registerHook("exit", function(){
+          dbDisconnect(self$database)
           print("Bye bye!")
         })
         
@@ -153,7 +162,11 @@ OpenEOServer <- R6Class(
         user$password = password
         user$workspace = paste(self$workspaces.path,id,sep="/")
         
-        user$store()
+        user_info = data.frame(user_id = id, user_name=user_name, password = password, login_secret = "")
+        if (dbGetQuery(self$database, "select count(*) from user where user_id=:id",
+                       param=list(id = id)) == 0) {
+          dbWriteTable(db,"user",as.data.frame(user_info),append=TRUE)
+        }
         
         return(user)
         
@@ -175,12 +188,29 @@ OpenEOServer <- R6Class(
       
       loadDemo = function() {
         private$initEnvironmentDefault()
+        self$initializeDatabase()
         
         private$loadDemoData()
         private$loadDemoProcesses()
+      }, 
+      
+      initializeDatabase = function() {
+        self$database = dbConnect(RSQLite::SQLite(),self$sqlite.path)
+        
+        if (!dbExistsTable(self$database,"user")) {
+          dbExecute(self$database, "create table user (user_id integer, 
+                    user_name text, 
+                    password text, 
+                    login_secret text)")
+        }
+        if (!dbExistsTable(self$database,"job")) {
+          dbExecute(self$database, "create table job (job_id text, 
+                    user_id integer, 
+                    status text, 
+                    submitted text, 
+                    process_graph text)")
+        }
       }
-      
-      
     ),
     private = list(
       loadDemoData = function() {
@@ -201,7 +231,7 @@ OpenEOServer <- R6Class(
         user = User$new(id)
         user$user_name = parsedJson[["user_name"]]
         user$password = parsedJson[["password"]]
-        user$workspace = workspace.path
+        # user$workspace = workspace.path
         
         self$register(user)
         
@@ -211,8 +241,9 @@ OpenEOServer <- R6Class(
       
       loadUsers = function() {
         self$users = list()
+        user_folders = list.dirs(self$workspaces.path,recursive = FALSE,full.names = FALSE)
         
-        for (user_id in list.files(self$workspaces.path)) {
+        for (user_id in user_folders) {
           user = private$loadUser(user_id)
           private$loadExistingJobs(user)
         }
@@ -313,13 +344,72 @@ OpenEOServer <- R6Class(
         if (is.null(self$secret.key)) {
           self$secret.key <- sha256(charToRaw("openEO-R"))
         }
+        if (is.null(self$sqlite.path)) {
+          self$sqlite.path <- paste(self$workspaces.path,"openeo.sqlite",sep="/")
+        }
         
         if (is.null(self$api.port)) {
           self$api.port <- 8000
         }
       }
+      
+
     )
 )
 
 #' @export
 openeo.server = OpenEOServer$new()
+
+#' Migration tool
+#' 
+#' This functions migrates the old file based information storage into the sqlite solution.
+#' 
+#' @param db sqlite database connection
+#' @param workspace the user workspace, where to find the user folders
+#' 
+#' @export
+migrateFilesToDB = function(db, workspace) {
+  df = data.frame(user_id=list.files(workspace),workspace=list.files(workspace,full.names = TRUE))
+  df$jobs_workspace = paste(df$workspace,"jobs",sep="/")
+  df$files_workspace = paste(df$workspace,"files",sep="/")
+  df$user_file = paste(df$workspace, "user.json",sep="/")
+  
+  for (row_no in 1:nrow(df)) {
+    row = df[row_no,]
+    # read user.json
+    if (file.exists(row$user_file)) {
+      user_info = fromJSON(row$user_file)
+      user_info$jobs = NULL
+      user_info$login_secret = ""
+      if (dbGetQuery(db,"select count(*) from user where user_id=:id",param=list(id=user_info$user_id))==0) {
+        dbWriteTable(db,"user",as.data.frame(user_info),append=TRUE)
+      }
+    }
+    
+    # make job list
+    if (dir.exists(row$jobs_workspace)) {
+      jobs = data.frame(job_id = paste(list.files(row$jobs_workspace)), 
+                        job_path = paste(list.files(row$jobs_workspace, full.names=TRUE),"process_graph.json",sep="/"),
+                        stringsAsFactors=FALSE)
+      for(job_row_no in 1:nrow(jobs)) {
+        job_row = jobs[job_row_no,]
+        
+        if (file.exists(job_row$job_path)) {
+          
+          if (dbExistsTable(db,"job") && 
+              dbGetQuery(db, "select count(*) from job where job_id = :id",param=list(id=job_row$job_id)) == 0) {
+            job = fromJSON(paste(job_row$job_path))
+            job$job_id = job_row$job_id
+            process_graph = job$process_graph
+            job$submitted = job$submitted
+            job$process_graph = as.character(toJSON(process_graph,auto_unbox = TRUE))
+            
+            
+            columns = dbListFields(db,"job")
+            dbWriteTable(db,"job",as.data.frame(job)[,columns],append=TRUE)
+          }  
+        }
+      }
+    }
+  }
+}

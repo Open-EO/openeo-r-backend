@@ -370,8 +370,18 @@ openeo.server$api.version <- "0.0.1"
       nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
       
       user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
-      if (user_id %in% names(openeo.server$users)) {
-        req$user = openeo.server$users[[user_id]]
+      if (dbGetQuery(openeo.server$database, "select count(*) from user where user_id = :id"
+                     ,param = list(id=user_id)) == 1
+                     ) {
+        
+        user_info = dbGetQuery(openeo.server$database, "select * from user where user_id = :id"
+                    ,param = list(id=user_id))
+        
+        user = User$new(user_id)
+        user$user_name = user_info$user_name
+        
+        req$user = user
+        
         forward()
       } else {
         stop("Incorrect token")

@@ -5,7 +5,6 @@ User <- R6Class(
   "User",
   public = list(
     user_id = NULL,
-    workspace = NULL,
     user_name = NULL,
     password = NULL,
     token = NULL,
@@ -35,22 +34,12 @@ User <- R6Class(
          size = row["size"]
        )) 
       }))
-    },
-    
-    store = function() {
-      if (is.null(self$workspace)) {
-        stop("Cannot store user, because there was no workspace assigned.")
-      }
-      
-      dir.create(self$workspace, showWarnings = FALSE)
-      dir.create(paste(self$workspace,private$files.folder,sep="/"), showWarnings = FALSE)
-      dir.create(paste(self$workspace,private$jobs.folder,sep="/"), showWarnings = FALSE)
-      
-      json = toJSON(self$toList(),auto_unbox = TRUE,pretty=TRUE)
-      write(x=json,file=paste(self$workspace,"user.json",sep="/"))
     }
   ),
   active = list(
+    workspace = function() {
+      return(paste(openeo.server$workspaces.path,self$user_id,sep="/"))
+    },
     files = function() {
       workspace = paste(self$workspace,private$files.folder,sep="/")
       
