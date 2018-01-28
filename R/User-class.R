@@ -51,8 +51,9 @@ User <- R6Class(
     },
     
     jobs = function() {
-      user.jobs = paste(self$workspace,private$jobs.folder,sep="/")
-      return(list.files(user.jobs))
+      result = dbGetQuery(openeo.server$database, "select job_id from job where user_id = :id",param(id = self$user_id))
+      
+      return(as.list(result)[[1]])
     }
   ),
   private = list(

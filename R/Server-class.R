@@ -52,7 +52,7 @@ OpenEOServer <- R6Class(
           self$api.port = port
         }
         
-        private$initEnvironmentDefault()
+        self$initEnvironmentDefault()
         
         
         # load descriptions, meta data and file links for provided data sets
@@ -61,7 +61,7 @@ OpenEOServer <- R6Class(
         # register the processes provided by the server provider
         # private$loadProcesses()
         
-        private$loadUsers()
+        # private$loadUsers()
         
         # if there have been previous job postings load those jobs into the system
         # private$loadExistingJobs()
@@ -155,18 +155,22 @@ OpenEOServer <- R6Class(
       },
 
       createUser = function(user_name, password) {
+        files.folder = "files"
         id = private$newUserId()
         
         user = User$new(user_id = id)
         user$user_name = user_name
         user$password = password
-        user$workspace = paste(self$workspaces.path,id,sep="/")
         
         user_info = data.frame(user_id = id, user_name=user_name, password = password, login_secret = "")
         if (dbGetQuery(self$database, "select count(*) from user where user_id=:id",
                        param=list(id = id)) == 0) {
-          dbWriteTable(db,"user",as.data.frame(user_info),append=TRUE)
+          dbWriteTable(self$database,"user",as.data.frame(user_info),append=TRUE)
         }
+        
+        dir.create(user$workspace, showWarnings = FALSE)
+        dir.create(paste(user$workspace,files.folder,sep="/"), showWarnings = FALSE)
+        
         
         return(user)
         
@@ -187,7 +191,7 @@ OpenEOServer <- R6Class(
       },
       
       loadDemo = function() {
-        private$initEnvironmentDefault()
+        self$initEnvironmentDefault()
         self$initializeDatabase()
         
         private$loadDemoData()
@@ -209,6 +213,26 @@ OpenEOServer <- R6Class(
                     status text, 
                     submitted text, 
                     process_graph text)")
+        }
+      },
+      
+      initEnvironmentDefault = function() {
+        
+        if (is.null(self$data.path)) {
+          self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
+        }
+        if (is.null(self$workspaces.path)) {
+          self$workspaces.path <- getwd()
+        }
+        if (is.null(self$secret.key)) {
+          self$secret.key <- sha256(charToRaw("openEO-R"))
+        }
+        if (is.null(self$sqlite.path)) {
+          self$sqlite.path <- paste(self$workspaces.path,"openeo.sqlite",sep="/")
+        }
+        
+        if (is.null(self$api.port)) {
+          self$api.port <- 8000
         }
       }
     ),
@@ -331,29 +355,7 @@ OpenEOServer <- R6Class(
           return(floor(id))
         }
         
-      },
-      
-      initEnvironmentDefault = function() {
-        
-        if (is.null(self$data.path)) {
-          self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
-        }
-        if (is.null(self$workspaces.path)) {
-          self$workspaces.path <- getwd()
-        }
-        if (is.null(self$secret.key)) {
-          self$secret.key <- sha256(charToRaw("openEO-R"))
-        }
-        if (is.null(self$sqlite.path)) {
-          self$sqlite.path <- paste(self$workspaces.path,"openeo.sqlite",sep="/")
-        }
-        
-        if (is.null(self$api.port)) {
-          self$api.port <- 8000
-        }
       }
-      
-
     )
 )
 

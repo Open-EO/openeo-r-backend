@@ -219,30 +219,30 @@ openeo.server$api.version <- "0.0.1"
 # @put /api/users/<userid>/files/<path>
 # @serializer unboxedJSON
 .uploadFile = function(req,res,userid,path) {
-    if (! userid %in% names(openeo.server$users)) {
-      error(res,404,paste("User id with id \"",userid, "\" was not found", sep=""))
-    } else {
-      user = openeo.server$users[[userid]]
-      path = URLdecode(path)
+  if (paste(userid) == paste(req$user$user_id)) {
 
-      storedFilePath = paste(user$workspace,"files",path,sep="/")
+    path = URLdecode(path)
 
-      if (file.exists(storedFilePath)) {
-        file.remove(storedFilePath)
-      }
+    storedFilePath = paste(req$user$workspace,"files",path,sep="/")
 
-      dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
-      
-      req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
-      
-      dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
-      file.create(storedFilePath,showWarnings = FALSE)
-      
-      outputFile = file(storedFilePath,"wb")
-      writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
-      close(outputFile,type="wb")
-      ok(res)
+    if (file.exists(storedFilePath)) {
+      file.remove(storedFilePath)
     }
+
+    dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
+    
+    req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
+    
+    dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
+    file.create(storedFilePath,showWarnings = FALSE)
+    
+    outputFile = file(storedFilePath,"wb")
+    writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
+    close(outputFile,type="wb")
+    ok(res)
+  } else {
+    error(res,401,"Not authorized to upload data into other users workspaces")
+  }
 }
 
 #* @delete /api/users/<userid>/files/<path>
@@ -254,7 +254,7 @@ openeo.server$api.version <- "0.0.1"
     
     storedFilePath = paste(user$workspace,"files",path,sep="/")
     
-    files = openeo.server$users[[paste(userid)]]$files
+    files = req$user$files
     selection = files[files[,"link"]==path,]
     if (nrow(selection) == 0) {
       error(res, 404,paste("User has no file under path:",path))
@@ -299,12 +299,19 @@ openeo.server$api.version <- "0.0.1"
   encoded=substr(auth,7,nchar(auth))
   
   decoded = rawToChar(base64_dec(encoded))
-  user_pwd = unlist(strsplit(decoded,":"))
-  
+  user_name = unlist(strsplit(decoded,":"))[1]
+  user_pwd = unlist(strsplit(decoded,":"))[2]
+  browser()
   tryCatch(
     {  
-      user = openeo.server$getUserByName(user_pwd[1])
-      if (user$password == user_pwd[2]) {
+      result = dbGetQuery(openeo.server$database, "select * from user where user_name = :name limit 1",param=list(name=user_name))
+      if (nrow(result) == 0) {
+        stop("Invalid user")
+      }
+      
+      user = as.list(result)
+      
+      if (user$password == user_pwd) {
         encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$secret.key)
         
         token = bin2hex(append(encryption, attr(encryption,"nonce")))
