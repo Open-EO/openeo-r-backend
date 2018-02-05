@@ -51,7 +51,7 @@ User <- R6Class(
     },
     
     jobs = function() {
-      result = dbGetQuery(openeo.server$database, "select job_id from job where user_id = :id",param(id = self$user_id))
+      result = dbGetQuery(openeo.server$database, "select job_id from job where user_id = :id",param=list(id = self$user_id))
       
       return(as.list(result)[[1]])
     }

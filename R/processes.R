@@ -134,7 +134,6 @@ calculate_ndvi = Process$new(
 # either a product or an intermediate calculation. In any case the result shall
 # be a collection on which the calculations shall be performed.
 getCollectionFromImageryStatement = function (imagery) {
-
   collection = NULL
   
   if (isProduct(imagery)) {

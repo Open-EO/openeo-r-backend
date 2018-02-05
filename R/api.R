@@ -108,12 +108,21 @@ openeo.server$api.version <- "0.0.1"
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {
-  if (!jobid %in% names(openeo.server$jobs)) {
-    error(res,404,paste("Job with job_id",jobid," was not found"))
+  if (openeo.server$jobExists(jobid)) {
+    job = openeo.server$loadJob(jobid)
+    tryCatch(
+      {
+        res$body = toJSON(job$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
+        res$setHeader("Content-Type","application/json")
+      }, 
+      error = function(err) {
+        error(res,"500",err$message)
+      }
+    )
   } else {
-    res$body = toJSON(openeo.server$jobs[[jobid]]$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
-    res$setHeader("Content-Type","application/json")
+    error(res,404,paste("Job with id:",job_id,"cannot been found"))
   }
+
   return(res)
 }
 
@@ -123,25 +132,18 @@ openeo.server$api.version <- "0.0.1"
   if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
-  
-  job = openeo.server$createJob(user = req$user)
-  
-  openeo.server$register(job)
-  
-  data=list()
-  
+  # TODO check if postBody is valid
   process_graph = fromJSON(req$postBody)
-  data[["process_graph"]] = process_graph
   
-  data[["status"]] = "submitted"
-  data[["evaluation"]] = evaluate
-  
+  job = openeo.server$createJob(user = req$user, process_graph = process_graph)
   submit_time = Sys.time()
-  data[["submitted"]] = submit_time
+  job$status = "submitted"
+  job$evaluation = evaluate
   job$submitted = submit_time
+  job$last_update = submit_time
   
-  
-  job$store(json = toJSON(data,pretty=TRUE,auto_unbox = TRUE))
+  job$loadProcessGraph()
+  job$store(con=openeo.server$database)
   
   if (evaluate == "batch") {
     #TODO load processgraph and execute
@@ -155,8 +157,8 @@ openeo.server$api.version <- "0.0.1"
 #* @delete /api/jobs/<job_id>
 #* @serializer unboxedJSON
 .deleteJob = function(req,res,job_id) {
-  if (job_id %in% names(openeo.server$jobs)) {
-    job = openeo.server$jobs[[job_id]]
+  if (openeo.server$jobExists(job_id)) {
+    job = openeo.server$loadJob(job_id)
     tryCatch(
       {
         openeo.server$delete(job)
@@ -276,16 +278,14 @@ openeo.server$api.version <- "0.0.1"
     if (paste(userid) == paste(req$user$user_id)) {
       user = req$user
       
-      possibleUserJobs = user$jobs
-      foundIndices = which(possibleUserJobs %in% names(openeo.server$jobs))
-      userJobsIds = possibleUserJobs[foundIndices]
       
-      userJobs = openeo.server$jobs[userJobsIds]
-      jobRepresentation = lapply(userJobs, function(job){
+      possibleUserJobs = user$jobs
+      jobRepresentation = lapply(possibleUserJobs, function(job_id){
+        job = openeo.server$loadJob(job_id)
         return(job$detailedInfo())
       })
-      names(jobRepresentation) <- NULL
-      return(jobRepresentation)
+      
+      return(unname(jobRepresentation))
     } else {
       error(res,401,"Not authorized to view jobs of others")
     }
@@ -301,7 +301,6 @@ openeo.server$api.version <- "0.0.1"
   decoded = rawToChar(base64_dec(encoded))
   user_name = unlist(strsplit(decoded,":"))[1]
   user_pwd = unlist(strsplit(decoded,":"))[2]
-  browser()
   tryCatch(
     {  
       result = dbGetQuery(openeo.server$database, "select * from user where user_name = :name limit 1",param=list(name=user_name))
@@ -338,11 +337,10 @@ openeo.server$api.version <- "0.0.1"
 #* @serializer contentType list(type="image/GTiff")
 #* @get /api/download/<job_id>
 .downloadSimple = function(req,res,job_id,format) {
-  listedJobs = names(openeo.server$jobs)
-  if (!job_id %in% listedJobs) {
+  if (!openeo.server$jobExists(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
-    job = openeo.server$jobs[[job_id]]
+    job = openeo.server$loadJob(job_id)
     result = job$run()
     
     rasterdata = result$granules[[1]]$data
@@ -377,22 +375,13 @@ openeo.server$api.version <- "0.0.1"
       nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
       
       user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
-      if (dbGetQuery(openeo.server$database, "select count(*) from user where user_id = :id"
-                     ,param = list(id=user_id)) == 1
-                     ) {
-        
-        user_info = dbGetQuery(openeo.server$database, "select * from user where user_id = :id"
-                    ,param = list(id=user_id))
-        
-        user = User$new(user_id)
-        user$user_name = user_info$user_name
-        
-        req$user = user
-        
-        forward()
-      } else {
-        stop("Incorrect token")
-      }
+      
+  
+      user = openeo.server$loadUser(user_id)
+      req$user = user
+      
+      forward()
+
     } else {
       stop("Incorrect authentication method.")
     }
