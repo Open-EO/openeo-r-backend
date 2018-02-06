@@ -79,7 +79,6 @@ Collection <- R6Class(
 .collection.filterbytime = function (granules,from,to) {
   minpos = -1
   maxpos = -1
-  
   if (from > to) {
     old <- to
     to <- from

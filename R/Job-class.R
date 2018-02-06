@@ -30,40 +30,99 @@ Job <- R6Class(
     user_id=NULL,
     consumed_credits=NULL,
     
-    filePath = NULL,
-    
-    initialize = function(job_id=NULL,filePath=NULL,process_graph=NULL,user_id = NULL) {
+    initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
       if (is.null(job_id)||missing(job_id)) {
         stop("Cannot create new Job. There is no job_id specified")
       } else {
         self$job_id = job_id
       }
       
-      
-      if (is.null(filePath) || missing(filePath)) {
-        stop("Cannot initialize Job without the job workspace")
-      } else {
-        self$filePath = filePath
-      }
-      
       if (!is.null(user_id)) {
         self$user_id = user_id
       }
       
+      self$consumed_credits = 0
       
       self$process_graph = process_graph
+      return(self)
     },
     
-    store = function(json=NA) {
-      dir.create(self$filePath)
-      write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
+    store = function(con) {
+      exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
+      
+      if (!exists) {
+        insertIntoQuery = "insert into job (job_id, 
+        user_id, 
+        status, 
+        process_graph,
+        submitted,
+        last_update,
+        consumed_credits) values (
+        :job_id, :user_id, :status, :process_graph, :submitted, :last_update, :consumed_credits 
+        );"
+        dbExecute(con, insertIntoQuery, param = list(
+          job_id = self$job_id,
+          user_id = self$user_id,
+          status = self$status,
+          process_graph = encodeProcessGraph(toJSON(self$process_graph,auto_unbox = TRUE,pretty=TRUE)),
+          submitted=as.character(self$submitted),
+          last_update = as.character(self$last_update),
+          consumed_credits = self$consumed_credits
+        ))
+
+      } else {
+        updateQuery = "update job 
+                        set 
+                          user_id = :id, 
+                          status = :status,
+                          process_graph = :process_graph, 
+                          submitted = :submitted, 
+                          last_update = :last_update,
+                          consumed_credits = :consumed_credits 
+                        where job_id = :job_id;"
+        
+        dbExecute(con, updateQuery, param = list(
+          user_id = self$user_id,
+          status = self$status,
+          process_graph = encodeProcessGraph(toJSON(self$process_graph$detailedInfo(),auto_unbox = TRUE,pretty=TRUE)),
+          submitted = as.character(self$submitted),
+          last_update = as.character(self$last_update),
+          consumed_credits = self$consumed_credits,
+          job_id = self$job_id
+        ))
+      }
+      
+      # dir.create(self$filePath)
+      # write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
     },
     
     loadProcessGraph = function() {
-      parsedJson = fromJSON(paste(self$filePath,"/process_graph.json",sep=""))
-      self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
+      if (!isProcess(self$process_graph)) {
+        
+        if (is.character(self$process_graph)) {
+          parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
+          if (!"process_graph" %in% names(parsedJson)) {
+            parsedJson = list(process_graph=parsedJson)
+          }
+        } else if (is.list(self$process_graph)) {
+          if (!"process_graph" %in% names(self$process_graph)) {
+            parsedJson = list(process_graph=self$process_graph)
+          }
+        } else {
+          jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
+          parsedJson = fromJSON(jsonText, simplifyDataFrame = FALSE)
+          if (!"process_graph" %in% names(parsedJson)) {
+            parsedJson = list(process_graph=self$process_graph)
+          }
+        }
+        
+        
+        self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
+      } else {
+        # do nothing, we already have a process graph
+      }
     },
-    
+
     loadProcess = function(parsedJson) {
       processId = parsedJson[["process_id"]]
       #TODO: add cases for udfs
@@ -93,6 +152,8 @@ Job <- R6Class(
         last_update = self$last_update,
         consumed_credits = self$consumed_credits
       )
+      
+      return(info)
     },
     
     run = function() {
@@ -104,6 +165,14 @@ Job <- R6Class(
     
   )
 )
+
+encodeProcessGraph = function(text) {
+  return(bin2hex(charToRaw(text)))
+}
+
+decodeProcessGraph = function(hex) {
+  return(rawToChar(hex2bin(hex)))
+}
 
 isJob = function(obj) {
   return("Job" %in% class(obj))
