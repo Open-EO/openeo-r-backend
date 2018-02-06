@@ -64,7 +64,7 @@ Job <- R6Class(
           job_id = self$job_id,
           user_id = self$user_id,
           status = self$status,
-          process_graph = encodeProcessGraph(toJSON(self$process_graph$detailedInfo(),auto_unbox = TRUE,pretty=TRUE)),
+          process_graph = encodeProcessGraph(toJSON(self$process_graph,auto_unbox = TRUE,pretty=TRUE)),
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits
@@ -122,7 +122,7 @@ Job <- R6Class(
         # do nothing, we already have a process graph
       }
     },
-    
+
     loadProcess = function(parsedJson) {
       processId = parsedJson[["process_id"]]
       #TODO: add cases for udfs

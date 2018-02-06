@@ -22,12 +22,12 @@ filter_daterange = Process$new(
     )
   ),
   operation = function(imagery, from=NA, to=NA) {
+    cat("Starting filter_daterange\n")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
-    
     if (is.null(collection)) {
       stop("no collection element found in function call")
     }
@@ -56,25 +56,30 @@ find_min = Process$new(
     )
   ),
   operation = function(imagery) {
+    cat("Starting find_min\n")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
     #get a list of the data (raster objects)
     rasters = lapply(collection$granules, function(obj){obj$data})
-    
+    cat("Fetched related granules\n")
     #create a brick
     data = stack(rasters)
+    cat("Stacking data")
     
     #calculate
     minimum = calc(data,fun=min,na.rm=T)
+    cat("calculating the minimum\n")
     
     #create a granule
     aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
+    cat("creating single granule for minimum calculation\n")
     
     #create a collection
     collection = Collection$new()
     collection$addGranule(aggregation)
     collection$sortGranulesByTime
+    cat("Creating collection for single granule and setting meta data\n")
     
     return(collection)
   }
@@ -99,9 +104,11 @@ calculate_ndvi = Process$new(
                required = TRUE
              )),
   operation=function(imagery,nir,red) {
+    cat("Starting calculate_ndvi\n")
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
+    cat("Fetched indices for bands\n")
     
     # fetch the data elements and simultanously calculate ndvi
     rasters = lapply(collection$granules, function(obj){
@@ -119,10 +126,12 @@ calculate_ndvi = Process$new(
                             ))
       return(granule)
     })
+    cat("ndvi calculation applied on all granules\n")
     
     result.collection = Collection$new()
     result.collection$granules = rasters
     result.collection$sortGranulesByTime()
+    cat("set metadata for newly calculated collection\n")
     
     return(result.collection)
   }
@@ -135,7 +144,6 @@ calculate_ndvi = Process$new(
 # be a collection on which the calculations shall be performed.
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
-  
   if (isProduct(imagery)) {
     collection = imagery$getCollection()
   } else if (isCollection(imagery)) {

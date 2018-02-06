@@ -133,7 +133,7 @@ openeo.server$api.version <- "0.0.1"
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   # TODO check if postBody is valid
-  process_graph = fromJSON(req$postBody)
+  process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   
   job = openeo.server$createJob(user = req$user, process_graph = process_graph)
   submit_time = Sys.time()
@@ -141,8 +141,6 @@ openeo.server$api.version <- "0.0.1"
   job$evaluation = evaluate
   job$submitted = submit_time
   job$last_update = submit_time
-  
-  job$loadProcessGraph()
   
   job$store(con=openeo.server$database)
   

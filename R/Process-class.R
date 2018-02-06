@@ -71,7 +71,6 @@ Process <- R6Class(
       runner$args = clonedArguments
       
       for (key in 1:length(args)) {
-        #it should always be a single key: value pair per argument
         value = args[[key]]
         
         #TODO maybe add a handling for UDF or in the UDF class 
