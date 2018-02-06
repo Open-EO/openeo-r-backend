@@ -5,7 +5,6 @@ ExecutableProcess <- R6Class(
   "ExecutableProcess",
   inherit = Process,
   public = list(
-    executable=FALSE,
     
     initialize= function(process_id = NA,
                         description = NA,
@@ -54,8 +53,10 @@ ExecutableProcess <- R6Class(
     detailedInfo = function() {
       args = list()
       
-      args=lapply(self$args, function(argument) {argument$valueInfo()})
-      
+      args=lapply(self$args, function(argument) {
+        # this needs to be the unlisted version since valueInfo is also used to get a simplified represenation of processes
+        argument$valueInfo()
+      })
       return(list(
         process_id = self$process_id,
         args = args

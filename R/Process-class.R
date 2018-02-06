@@ -42,7 +42,6 @@ Process <- R6Class(
       for (arg in self$args) {
         arglist = append(arglist, arg$shortInfo())
       }
-      
       res = list(
         process_id = self$process_id,
         description = self$description,
@@ -56,9 +55,8 @@ Process <- R6Class(
       if (is.null(job)) {
         stop("No job defined for this executable process")
       }
-      
       #return a process where the arguments from the parsed json file are set for
-      #this "args". E.g. set a value for args[["from"]]$value and set Process$executable to TRUE
+      #this "args". E.g. set a value for args[["from"]]$value
       
       # json at this point is the named list of the process graph provided by the json stored under jobs
       args = json$args
