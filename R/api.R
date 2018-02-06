@@ -415,10 +415,15 @@ openeo.server$api.version <- "0.0.1"
 
 .cors_filter = function(res) {
   res$setHeader("Access-Control-Allow-Origin", "*")
-  res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Credentials", TRUE)
-  res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   plumber::forward()
+}
+
+.cors_option_bypass = function(req,res) {
+  res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
+  res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
+  
+  return(res)
 }
 
 ############################
@@ -465,11 +470,18 @@ createAPI = function() {
               "/api/version",
               handler = .version,
               serializer = serializer_unboxed_json())
+  root$handle("OPTIONS",
+              "/api/version",
+              handler = .cors_option_bypass)
   
   root$handle("GET",
               "/api/capabilities",
               handler = .capabilities,
               serializer = serializer_unboxed_json())
+  
+  root$handle("OPTIONS",
+              "/api/capabilities",
+              handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)
   
@@ -479,11 +491,17 @@ createAPI = function() {
               "/",
               handler = .listData,
               serializer = serializer_unboxed_json())
+  data$handle("OPTIONS",
+              "/",
+              handler = .cors_option_bypass)
   
   data$handle("GET",
               "/<pid>",
               handler = .describeData,
               serializer = serializer_unboxed_json())
+  data$handle("OPTIONS",
+              "/<pid>",
+              handler = .cors_option_bypass)
   
   root$mount("/api/data",data)
   
@@ -493,11 +511,17 @@ createAPI = function() {
                  "/",
                  handler = .listProcesses,
                  serializer = serializer_unboxed_json())
+  process$handle("OPTIONS",
+              "/",
+              handler = .cors_option_bypass)
   
   process$handle("GET",
                  "/<pid>",
                  handler = .describeProcess,
                  serializer = serializer_unboxed_json())
+  process$handle("OPTIONS",
+                 "/<pid>",
+                 handler = .cors_option_bypass)
   
   root$mount("/api/processes",process)
   
@@ -507,16 +531,23 @@ createAPI = function() {
               "/<jobid>",
               handler = .describeJob,
               serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+               "/<jobid>",
+               handler = .cors_option_bypass)
   
   jobs$handle("POST",
               "/",
               handler = .createNewJob,
               serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/",
+              handler = .cors_option_bypass)
   
   jobs$handle("DELETE",
               "/<job_id>",
               handler = .deleteJob,
               serializer = serializer_unboxed_json())
+
   
   jobs$filter("authorization",.authorized)
   
@@ -528,6 +559,9 @@ createAPI = function() {
                "/<userid>/files",
                handler = .listUserFiles,
                serializer = serializer_unboxed_json())
+  users$handle("OPTIONS",
+              "/<userid>/files",
+              handler = .cors_option_bypass)
   
   users$handle("GET",
                "/<userid>/files/<path>",
@@ -544,10 +578,18 @@ createAPI = function() {
                handler = .deleteUserData,
                serializer = serializer_unboxed_json())
   
+  users$handle("OPTIONS",
+               "/<userid>/files/<path>",
+               handler = .cors_option_bypass)
+  
   users$handle("GET",
                "/<userid>/jobs",
                handler = .listUserJobs,
                serializer = serializer_unboxed_json())
+  
+  users$handle("OPTIONS",
+               "/<userid>/jobs",
+               handler = .cors_option_bypass)
   
   users$filter("authorization",.authorized)
   
@@ -560,15 +602,22 @@ createAPI = function() {
                         handler = .login,
                         serializer = serializer_unboxed_json())
   
+  authentication$handle("OPTIONS",
+                       "/login",
+                       handler = .cors_option_bypass)
+  
   root$mount("/api/auth",authentication)
   
   download = plumber$new()
   
-  download$handle(
-    "GET",
-    "/<job_id>",
-    handler = .downloadSimple,
-    serializer = serializer_unboxed_json())
+  download$handle("GET",
+                  "/<job_id>",
+                  handler = .downloadSimple,
+                  serializer = serializer_unboxed_json())
+  
+  download$handle("OPTIONS",
+                  "/<job_id>",
+                  handler = .cors_option_bypass)
   
   download$filter("authorization", .authorized)
   
