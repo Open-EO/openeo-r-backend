@@ -134,6 +134,9 @@ openeo.server$api.version <- "0.0.1"
   }
   # TODO check if postBody is valid
   process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+  # TODO check if this is the simple representation or the complex (probably correct version)
+  # this means search for "args" lists if (names(...$args) == NULL) => unlist(...$args, recursive = FALSE)
+  process_graph = .createSimpleArgList(process_graph)
   
   job = openeo.server$createJob(user = req$user, process_graph = process_graph)
   submit_time = Sys.time()
@@ -151,6 +154,25 @@ openeo.server$api.version <- "0.0.1"
   return(list(
     job_id=job$job_id
   ))
+}
+
+.createSimpleArgList = function(graph) {
+  if ("args" %in% names(graph)) {
+    
+    if (is.null(names(graph$args))) {
+      args = unlist(graph$args,recursive = FALSE)
+      
+      #named list it should be
+      for (index in names(args)) {
+        elem = args[[index]]
+        if ("args" %in% names(elem)) {
+          args[[index]] = .createSimpleArgList(elem)
+        }
+      }
+      graph$args = args
+    }
+  }
+  return(graph)
 }
 
 #* @delete /api/jobs/<job_id>
