@@ -143,6 +143,7 @@ openeo.server$api.version <- "0.0.1"
   job$last_update = submit_time
   
   job$loadProcessGraph()
+  
   job$store(con=openeo.server$database)
   
   if (evaluate == "batch") {

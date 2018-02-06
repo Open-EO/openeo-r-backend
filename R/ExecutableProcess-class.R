@@ -54,8 +54,11 @@ ExecutableProcess <- R6Class(
     detailedInfo = function() {
       args = list()
       
-      args=lapply(self$args, function(argument) {argument$valueInfo()})
-      
+      args=lapply(self$args, function(argument) {
+        # this needs to be the unlisted version since valueInfo is also used to get a simplified represenation of processes
+        argument$valueInfo()[[1]]
+      })
+      browser()
       return(list(
         process_id = self$process_id,
         args = args

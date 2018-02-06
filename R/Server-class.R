@@ -220,14 +220,13 @@ OpenEOServer <- R6Class(
         if (self$jobExists(job_id)) {
           job_info = dbGetQuery(self$database, "select * from job where job_id = :id"
                                  ,param = list(id=job_id))
-          
           job = Job$new(job_id)
           job$user_id = job_info$user_id
           job$status = job_info$status
           job$submitted = job_info$submitted
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
-          job$process_graph = decodeProcessGraph(job_info$process_graph)
+          job$process_graph = fromJSON(decodeProcessGraph(job_info$process_graph),simplifyDataFrame = FALSE)
           
           job$loadProcessGraph()
           

@@ -42,7 +42,6 @@ Process <- R6Class(
       for (arg in self$args) {
         arglist = append(arglist, arg$shortInfo())
       }
-      
       res = list(
         process_id = self$process_id,
         description = self$description,
@@ -56,7 +55,6 @@ Process <- R6Class(
       if (is.null(job)) {
         stop("No job defined for this executable process")
       }
-      
       #return a process where the arguments from the parsed json file are set for
       #this "args". E.g. set a value for args[["from"]]$value and set Process$executable to TRUE
       
@@ -74,7 +72,7 @@ Process <- R6Class(
       
       for (key in 1:length(args)) {
         #it should always be a single key: value pair per argument
-        value = args[[key]][[1]]
+        value = args[[key]]
         
         #TODO maybe add a handling for UDF or in the UDF class 
         if (class(value) == "list" && "process_id" %in% names(value)) {

@@ -109,7 +109,7 @@ Job <- R6Class(
             parsedJson = list(process_graph=self$process_graph)
           }
         } else {
-          jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))
+          jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
           parsedJson = fromJSON(jsonText, simplifyDataFrame = FALSE)
           if (!"process_graph" %in% names(parsedJson)) {
             parsedJson = list(process_graph=self$process_graph)
@@ -152,6 +152,8 @@ Job <- R6Class(
         last_update = self$last_update,
         consumed_credits = self$consumed_credits
       )
+      
+      return(info)
     },
     
     run = function() {
