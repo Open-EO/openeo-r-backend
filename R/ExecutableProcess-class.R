@@ -5,7 +5,6 @@ ExecutableProcess <- R6Class(
   "ExecutableProcess",
   inherit = Process,
   public = list(
-    executable=FALSE,
     
     initialize= function(process_id = NA,
                         description = NA,
