@@ -7,10 +7,8 @@
 #' @field data.path The filesystem path where to find the datasets
 #' @field workspaces.path The filesystem path where user data and jobs are stored
 #' @field api.port The port where the plumber webservice is working under
-#' @field jobs This will be managed during startup. Here all the users submitted jobs are registered
 #' @field processes This field is also managed during runtime. Here all template processes are listed
 #' @field data A list of products offered by the service which is managed at runtime.
-#' @field users The registered user on this server
 #' 
 #' @include processes.R
 #' @include data.R
@@ -118,8 +116,10 @@ OpenEOServer <- R6Class(
         if (is.null(job_id)) {
           job_id = private$newJobId()
         }
+        graph_id = self$createProcessGraph(process_graph, user$user_id)
         
-        job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
+        
+        job = Job$new(job_id = job_id, process_graph = graph_id,user_id = user$user_id)
         
         return(job)
       },
@@ -145,6 +145,21 @@ OpenEOServer <- R6Class(
           return(user)
         }
         
+      },
+      
+      createProcessGraph = function(process_graph, user_id) {
+        pgid = private$newProcessGraphId()
+        
+        if (is.list(process_graph)) {
+          process_graph = toJSON(process_graph,auto_unbox=TRUE,pretty=TRUE)
+        } else {
+          stop("process_graph is no list object")
+        }
+        process_graph = encodeProcessGraph(process_graph)
+        dbExecute(self$database, "insert into process_graph (graph_id, user_id, process_graph) values (:graphId, :userId, :graph)",
+                  param = list(graphId = pgid, userId = user_id, graph = process_graph))
+        
+        return(pgid)
       },
 
       
@@ -176,6 +191,11 @@ OpenEOServer <- R6Class(
                     submitted text,
                     last_update text,
                     consumed_credits integer,
+                    process_graph text)")
+        }
+        if (!dbExistsTable(self$database,"process_graph")) {
+          dbExecute(self$database, "create table process_graph (graph_id text, 
+                    user_id integer, 
                     process_graph text)")
         }
       },
@@ -226,7 +246,7 @@ OpenEOServer <- R6Class(
           job$submitted = job_info$submitted
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
-          job$process_graph = fromJSON(decodeProcessGraph(job_info$process_graph),simplifyDataFrame = FALSE)
+          job$process_graph = self$loadProcessGraph(job_info$process_graph)
           
           job$loadProcessGraph()
           
@@ -234,9 +254,33 @@ OpenEOServer <- R6Class(
           return(job)
         }
       },
+      loadProcessGraph = function(graph_id) {
+        # note: this is a function to load the process graph from db; NOT the one where the process graph is created
+        if (self$graphExists(graph_id)) {
+          graph_binary = dbGetQuery(self$database, "select process_graph from process_graph where graph_id = :id",
+                                    param = list(id = graph_id))[1,]
+          graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
+          return(graph_list)
+        } else {
+          return(NULL)
+        }
+        
+      },
       jobExists = function(job_id) {
-        return(dbGetQuery(openeo.server$database, "select count(*) from job where job_id = :id"
-                  ,param = list(id=job_id)) == 1)
+        if (nchar(job_id) == 15) {
+          return(dbGetQuery(openeo.server$database, "select count(*) from job where job_id = :id"
+                    ,param = list(id=job_id)) == 1)
+        } else {
+          return(FALSE)
+        }
+      },
+      graphExists = function(graph_id) {
+        if (nchar(graph_id) == 18) {
+          return(dbGetQuery(openeo.server$database, "select count(*) from process_graph where graph_id = :id"
+                            ,param = list(id=graph_id)) == 1)
+        } else {
+          return(FALSE)
+        }
       }
     ),
     private = list(
@@ -262,20 +306,13 @@ OpenEOServer <- R6Class(
 
       },
       
-      newJobId = function(n=1, length=15) {
-        # cudos to https://ryouready.wordpress.com/2008/12/18/generate-random-string-name/
-        randomString <- c(1:n)                  
-        for (i in 1:n) {
-          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                          length, replace=TRUE),
-                                   collapse="")
-        }
+      newJobId = function() {
+        randomString = private$createAlphaNumericId(n=1,length=15)
         
-        jobIdExists = dbGetQuery(self$database, "select count(*) from job where job_id = :id", param=list(id=randomString)) == 1
         
-        if (jobIdExists) {
+        if (self$jobExists(randomString)) {
           # if id exists get a new one (recursive)
-          return(self$newJobId())
+          return(private$newJobId())
         } else {
           return(randomString)
         }
@@ -283,12 +320,35 @@ OpenEOServer <- R6Class(
       
       newUserId = function() {
         id = runif(1, 10^11, (10^12-1))
-        if (id %in% list.files(self$workspaces.path)) {
-          return(self$newUserId())
+        
+        userIdExists = dbGetQuery(self$database, "select count(*) from user where user_id = :id", param=list(id=id)) == 1
+        
+        if (userIdExists) {
+          return(private$newUserId())
         } else {
           return(floor(id))
         }
+      },
+      
+      newProcessGraphId = function() {
+        randomString = private$createAlphaNumericId(n=1,length=18)
         
+        userIdExists = dbGetQuery(self$database, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
+        
+        if (userIdExists) {
+          return(private$newProcessGraphId())
+        } else {
+          return(randomString)
+        }
+      },
+      createAlphaNumericId = function(n=1, length=15) {
+        randomString <- c(1:n)                  
+        for (i in 1:n) {
+          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                          length, replace=TRUE),
+                                   collapse="")
+        }
+        return(randomString)
       }
     )
 )

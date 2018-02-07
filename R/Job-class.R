@@ -49,7 +49,9 @@ Job <- R6Class(
     
     store = function(con) {
       exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
-      
+      if (isProcess(self$process_graph) || is.list(self$process_graph)) {
+        stop("Cannot store process_graph. For the databaseit has to be a key")
+      }
       if (!exists) {
         insertIntoQuery = "insert into job (job_id, 
         user_id, 
@@ -64,7 +66,7 @@ Job <- R6Class(
           job_id = self$job_id,
           user_id = self$user_id,
           status = self$status,
-          process_graph = encodeProcessGraph(toJSON(self$process_graph,auto_unbox = TRUE,pretty=TRUE)),
+          process_graph = self$process_graph,
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits
@@ -84,7 +86,7 @@ Job <- R6Class(
         dbExecute(con, updateQuery, param = list(
           user_id = self$user_id,
           status = self$status,
-          process_graph = encodeProcessGraph(toJSON(self$process_graph$detailedInfo(),auto_unbox = TRUE,pretty=TRUE)),
+          process_graph = self$process_graph,
           submitted = as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits,

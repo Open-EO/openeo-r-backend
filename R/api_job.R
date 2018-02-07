@@ -2,7 +2,7 @@
 #
 # jobs endpoint
 #
-############################
+
 
 createJobsEndpoint = function() {
   jobs = plumber$new()
@@ -78,6 +78,10 @@ createJobsEndpoint = function() {
   return(jobs)
 }
 
+############################
+#
+# Request handling functions
+#
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {

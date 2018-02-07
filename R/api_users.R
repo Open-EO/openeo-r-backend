@@ -1,8 +1,10 @@
+#' @importFrom jsonlite validate
+NULL
 ############################
 #
 # user data and functions
 #
-############################
+
 
 createUsersEndpoint = function() {
   users = plumber$new()
@@ -44,7 +46,7 @@ createUsersEndpoint = function() {
   
   users$handle("POST",
                "/<userid>/processes",
-               handler = .not_implemented_yet,
+               handler = .createUserProcessGraph,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/processes",
@@ -85,6 +87,11 @@ createUsersEndpoint = function() {
   return(users)
   
 }
+
+############################
+#
+# Request handling functions
+#
 
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
@@ -197,4 +204,23 @@ createUsersEndpoint = function() {
     error(res,401,"Not authorized to view jobs of others")
   }
   
+}
+
+# POST /api/users/<userid>/processes
+#
+.createUserProcessGraph = function(req,res,userid) {
+  if (paste(userid) == paste(req$user$user_id)) {
+    if (!is.null(req$postBody) && validate(req$postBody)) {
+      process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+      process_graph = .createSimpleArgList(process_graph)
+      graph_id = openeo.server$createProcessGraph(process_graph, req$user$user_id)
+      
+      res$status = 200
+      return(list(process_graph_id=graph_id))
+    } else {
+      return(error(res,400,"No data or malformed json was send"))
+    }
+  } else {
+    error(res,401,"Not authorized to view jobs of others")
+  }
 }
