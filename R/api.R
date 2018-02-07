@@ -10,6 +10,12 @@
 #' @include processes.R
 #' @include data.R
 #' @include Server-class.R
+#' @include api_data.R
+#' @include api_job.R
+#' @include api_users.R
+#' @include api_services.R
+#' @include api_udf_runtimes.R
+#' @include api_processes.R
 #' @import raster
 #' @import plumber
 #' @importFrom sodium data_encrypt
@@ -19,7 +25,7 @@
 #' @importFrom jsonlite base64_dec
 #' @importFrom jsonlite base64_enc
 
-openeo.server$api.version <- "0.0.1"
+openeo.server$api.version <- "0.0.2"
 
 ############################
 #
@@ -46,272 +52,6 @@ openeo.server$api.version <- "0.0.1"
   )
 }
 
-############################
-#
-# data endpoint
-#
-############################
-
-# creates an overview on products available
-#* @get /api/data
-#* @serializer unboxedJSON
-.listData = function() {
-  datalist = openeo.server$data
-  unname(lapply(datalist, function(l){
-    return(l$shortInfo())
-  }))
-}
-
-# returns details of a certain product
-#* @get /api/data/<pid>
-#* @serializer unboxedJSON
-.describeData = function(req,res,pid) {
-  if (pid %in% names(openeo.server$data) == FALSE) {
-    return(error(res,404,"Product not found"))
-  } else {
-    return(openeo.server$data[[pid]]$detailedInfo())
-  }
-}
-
-############################
-#
-# processes endpoint
-#
-############################
-
-# creates an overview on available processes
-#* @get /api/processes
-#* @serializer unboxedJSON
-.listProcesses = function() {
-  processeslist = openeo.server$processes
-  unname(lapply(processeslist, function(l){
-    return(l$shortInfo())
-  }))
-}
-
-# returns details of a certain product
-#* @get /api/processes/<pid>
-#* @serializer unboxedJSON
-.describeProcess = function(req,res,pid) {
-  if (pid %in% names(openeo.server$processes) == FALSE) {
-    return(error(res,404,"Process not found"))
-  } else {
-    return(openeo.server$processes[[pid]]$detailedInfo())
-  }
-}
-
-############################
-#
-# jobs endpoint
-#
-############################
-
-#* @get /api/jobs/<jobid>
-.describeJob = function(req,res,jobid) {
-  if (openeo.server$jobExists(jobid)) {
-    job = openeo.server$loadJob(jobid)
-    tryCatch(
-      {
-        res$body = toJSON(job$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
-        res$setHeader("Content-Type","application/json")
-      }, 
-      error = function(err) {
-        error(res,"500",err$message)
-      }
-    )
-  } else {
-    error(res,404,paste("Job with id:",job_id,"cannot been found"))
-  }
-
-  return(res)
-}
-
-#* @post /api/jobs
-#* @serializer unboxedJSON
-.createNewJob = function(req,res,evaluate) {
-  if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
-    return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
-  }
-  # TODO check if postBody is valid
-  process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-  # TODO check if this is the simple representation or the complex (probably correct version)
-  # this means search for "args" lists if (names(...$args) == NULL) => unlist(...$args, recursive = FALSE)
-  process_graph = .createSimpleArgList(process_graph)
-  
-  job = openeo.server$createJob(user = req$user, process_graph = process_graph)
-  submit_time = Sys.time()
-  job$status = "submitted"
-  job$evaluation = evaluate
-  job$submitted = submit_time
-  job$last_update = submit_time
-  
-  job$store(con=openeo.server$database)
-  
-  if (evaluate == "batch") {
-    #TODO load processgraph and execute
-  }
-  
-  return(list(
-    job_id=job$job_id
-  ))
-}
-
-.createSimpleArgList = function(graph) {
-  if ("args" %in% names(graph)) {
-    
-    if (is.null(names(graph$args))) {
-      args = unlist(graph$args,recursive = FALSE)
-      
-      #named list it should be
-      for (index in names(args)) {
-        elem = args[[index]]
-        if ("args" %in% names(elem)) {
-          args[[index]] = .createSimpleArgList(elem)
-        }
-      }
-      graph$args = args
-    }
-  }
-  return(graph)
-}
-
-#* @delete /api/jobs/<job_id>
-#* @serializer unboxedJSON
-.deleteJob = function(req,res,job_id) {
-  if (openeo.server$jobExists(job_id)) {
-    job = openeo.server$loadJob(job_id)
-    tryCatch(
-      {
-        openeo.server$delete(job)
-        ok(res)
-      }, 
-      error = function(err) {
-        error(res,"500",err$message)
-      }
-    )
-  } else {
-    error(res,404,paste("Job with id:",job_id,"cannot been found"))
-  }
-}
-
-############################
-#
-# user data and functions
-#
-############################
-
-#* @get /api/users/<userid>/files
-#* @serializer unboxedJSON
-.listUserFiles = function(req,res,userid) {
-    if (paste(userid) == paste(req$user$user_id)) {
-      req$user$fileList()
-    } else {
-      error(res,401,"Not authorized to access other workspaces")
-    }
-}
-
-#* @get /api/users/<userid>/files/<path>
-#* @serializer unboxedJSON
-.downloadUserFile = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
-    path = URLdecode(path)
-    
-    files = req$user$files
-    selection = files[files[,"link"]==path,]
-    if (nrow(selection) == 0) {
-      error(res, 404,paste("File not found under path:",path))
-    } else {
-      path.ext = unlist(strsplit(selection[,"link"], "\\.(?=[^\\.]+$)", perl=TRUE))
-      
-      sendFile(
-        res,
-        200,
-        file.name = path.ext[1],
-        file.ext = paste(".",path.ext[2],sep=""),
-        data = readBin(rownames(selection),"raw", n=selection$size)
-      )
-    }
-  } else {
-    error(res,401,"Not authorized to access others files")
-  }
-  
-}
-
-### this creates corrupted files, something along the line read file / write postbody is off
-
-# @put /api/users/<userid>/files/<path>
-# @serializer unboxedJSON
-.uploadFile = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
-
-    path = URLdecode(path)
-
-    storedFilePath = paste(req$user$workspace,"files",path,sep="/")
-
-    if (file.exists(storedFilePath)) {
-      file.remove(storedFilePath)
-    }
-
-    dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
-    
-    req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
-    
-    dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
-    file.create(storedFilePath,showWarnings = FALSE)
-    
-    outputFile = file(storedFilePath,"wb")
-    writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
-    close(outputFile,type="wb")
-    ok(res)
-  } else {
-    error(res,401,"Not authorized to upload data into other users workspaces")
-  }
-}
-
-#* @delete /api/users/<userid>/files/<path>
-#* @serializer unboxedJSON
-.deleteUserData = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
-    user = req$user
-    path = URLdecode(path)
-    
-    storedFilePath = paste(user$workspace,"files",path,sep="/")
-    
-    files = req$user$files
-    selection = files[files[,"link"]==path,]
-    if (nrow(selection) == 0) {
-      error(res, 404,paste("User has no file under path:",path))
-    } else {
-      file = rownames(selection)
-      
-      unlink(file, recursive = TRUE,force=TRUE)
-      ok(res)
-    }
-  } else {
-    error(res,401,"Not authorized to delete data of others")
-  }
-  
-}
-
-#* @get /api/users/<userid>/jobs
-#* @serializer unboxedJSON
-.listUserJobs = function(req,res,userid) {
-    if (paste(userid) == paste(req$user$user_id)) {
-      user = req$user
-      
-      
-      possibleUserJobs = user$jobs
-      jobRepresentation = lapply(possibleUserJobs, function(job_id){
-        job = openeo.server$loadJob(job_id)
-        return(job$detailedInfo())
-      })
-      
-      return(unname(jobRepresentation))
-    } else {
-      error(res,401,"Not authorized to view jobs of others")
-    }
-
-}
 
 #* @get /api/auth/login
 #* @serializer unboxedJSON
@@ -419,11 +159,15 @@ openeo.server$api.version <- "0.0.1"
   plumber::forward()
 }
 
-.cors_option_bypass = function(req,res) {
+.cors_option_bypass = function(req,res, ...) {
   res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   
   return(res)
+}
+
+.not_implemented_yet = function(req,res, ...) {
+  error(res,501, "Not implemented, yet")
 }
 
 ############################
@@ -485,114 +229,16 @@ createAPI = function() {
   
   root$registerHook("postroute",.cors_filter)
   
-  data = plumber$new()
-  
-  data$handle("GET",
-              "/",
-              handler = .listData,
-              serializer = serializer_unboxed_json())
-  data$handle("OPTIONS",
-              "/",
-              handler = .cors_option_bypass)
-  
-  data$handle("GET",
-              "/<pid>",
-              handler = .describeData,
-              serializer = serializer_unboxed_json())
-  data$handle("OPTIONS",
-              "/<pid>",
-              handler = .cors_option_bypass)
-  
+  data = createDataEndpoint()
   root$mount("/api/data",data)
   
-  process = plumber$new()
-  
-  process$handle("GET",
-                 "/",
-                 handler = .listProcesses,
-                 serializer = serializer_unboxed_json())
-  process$handle("OPTIONS",
-              "/",
-              handler = .cors_option_bypass)
-  
-  process$handle("GET",
-                 "/<pid>",
-                 handler = .describeProcess,
-                 serializer = serializer_unboxed_json())
-  process$handle("OPTIONS",
-                 "/<pid>",
-                 handler = .cors_option_bypass)
-  
+  process = createProcessesEndpoint()
   root$mount("/api/processes",process)
   
-  jobs = plumber$new()
-  
-  jobs$handle("GET",
-              "/<jobid>",
-              handler = .describeJob,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-               "/<jobid>",
-               handler = .cors_option_bypass)
-  
-  jobs$handle("POST",
-              "/",
-              handler = .createNewJob,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/",
-              handler = .cors_option_bypass)
-  
-  jobs$handle("DELETE",
-              "/<job_id>",
-              handler = .deleteJob,
-              serializer = serializer_unboxed_json())
-
-  
-  jobs$filter("authorization",.authorized)
-  
+  jobs = createJobsEndpoint()
   root$mount("/api/jobs",jobs)
   
-  users = plumber$new()
-  
-  users$handle("GET",
-               "/<userid>/files",
-               handler = .listUserFiles,
-               serializer = serializer_unboxed_json())
-  users$handle("OPTIONS",
-              "/<userid>/files",
-              handler = .cors_option_bypass)
-  
-  users$handle("GET",
-               "/<userid>/files/<path>",
-               handler = .downloadUserFile,
-               serializer = serializer_unboxed_json())
-  
-  users$handle("PUT",
-               "/<userid>/files/<path>",
-               handler = .uploadFile,
-               serializer = serializer_unboxed_json())
-  
-  users$handle("DELETE",
-               "/<userid>/files/<path>",
-               handler = .deleteUserData,
-               serializer = serializer_unboxed_json())
-  
-  users$handle("OPTIONS",
-               "/<userid>/files/<path>",
-               handler = .cors_option_bypass)
-  
-  users$handle("GET",
-               "/<userid>/jobs",
-               handler = .listUserJobs,
-               serializer = serializer_unboxed_json())
-  
-  users$handle("OPTIONS",
-               "/<userid>/jobs",
-               handler = .cors_option_bypass)
-  
-  users$filter("authorization",.authorized)
-  
+  users = createUsersEndpoint()
   root$mount("/api/users",users)
   
   authentication = plumber$new()
@@ -601,7 +247,6 @@ createAPI = function() {
                         "/login",
                         handler = .login,
                         serializer = serializer_unboxed_json())
-  
   authentication$handle("OPTIONS",
                        "/login",
                        handler = .cors_option_bypass)
@@ -614,7 +259,6 @@ createAPI = function() {
                   "/<job_id>",
                   handler = .downloadSimple,
                   serializer = serializer_unboxed_json())
-  
   download$handle("OPTIONS",
                   "/<job_id>",
                   handler = .cors_option_bypass)
@@ -622,6 +266,23 @@ createAPI = function() {
   download$filter("authorization", .authorized)
   
   root$mount("/api/download",download)
+  
+  executeSynchronous = plumber$new()
+  executeSynchronous$handle("POST",
+                            "/",
+                            handler = .not_implemented_yet,
+                            serializer = serializer_unboxed_json())
+  executeSynchronous$handle("OPTIONS",
+                            "/",
+                            handler = .cors_option_bypass)
+  executeSynchronous$filter("authorization",.authorized)
+  root$mount("/api/execute",executeSynchronous)
+  
+  services = createServicesEndpoint()
+  root$mount("/api/services",services)
+  
+  udf_runtimes = createUDFRuntimesEndpoint()
+  root$mount("/api/udf_runtimes",udf_runtimes)
   
   return(root)
 }
