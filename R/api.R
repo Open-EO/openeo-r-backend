@@ -98,7 +98,7 @@ openeo.server$api.version <- "0.0.2"
 
 #* @serializer contentType list(type="image/GTiff")
 #* @get /api/download/<job_id>
-.downloadSimple = function(req,res,job_id,format) {
+.downloadSimple = function(req,res,job_id,format,graph) {
   if (!openeo.server$jobExists(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
@@ -117,6 +117,53 @@ openeo.server$api.version <- "0.0.2"
              contentType=format,
              data=readBin(tmp, "raw", n=file.info(tmp)$size))
   }
+}
+
+.executeSynchronous = function(req,res,format,graph) {
+  drivers = gdalDrivers()
+  allowedGDALFormats = drivers[drivers$create,"name"]
+  if (is.null(format) || !format %in% allowedGDALFormats) {
+    return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL",sep="")))
+  }
+  
+  if (!is.null(req$postBody)) {
+    process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+    process_graph = .createSimpleArgList(process_graph)
+  } else {
+    if (is.null(graph)) {
+      return(error(res,400,"No process graph specified. Provide POST body or the 'graph' query parameter."))
+    } else if (.isURL(graph)) {
+      return(error(res,501,"URL resolving of grap?h is not yet supported"))
+    } else if (openeo.server$graphExists(graph)) {
+      process_graph = openeo.server$loadProcessGraph(graph)
+    } else {
+      return(error(res,400,"Cannot find process graph"))
+    }
+  }
+  
+  job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
+
+  job$loadProcessGraph()
+  result = job$run()
+  
+  #store the job? even though it is completed?
+
+  rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+  tmp = tempfile(fileext=".tif")
+  writeRaster(x=rasterdata,filename=tmp,format="GTiff")
+  
+  tryCatch({
+    
+  
+    sendFile(res, 
+               status=200, 
+               file.name="output", 
+               file.ext=".tif", 
+               contentType=paste("application/gdal-",format,sep=""),
+               data=readBin(tmp, "raw", n=file.info(tmp)$size))
+  },finally = function(tmp) {
+    unlink(tmp)
+  })
 }
 
 ############################
@@ -197,9 +244,14 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
     res$setHeader("Content-Type", contentType)
   }
   if (! is.na(file.name) && !is.na(file.ext)) {
-    res$setHeader("Content-Disposition", paste("attachment;filename=",file.name,file.ext,sep=""))
+    res$setHeader("Content-Disposition", paste("attachment; filename=",file.name,file.ext,sep=""))
   }
   return(res)
+}
+
+.isURL = function(url) {
+  pattern= "^(?:(?:http(?:s)?|ftp)://)(?:\\S+(?::(?:\\S)*)?@)?(?:(?:[a-z0-9\u00a1-\uffff](?:-)*)*(?:[a-z0-9\u00a1-\uffff])+)(?:\\.(?:[a-z0-9\u00a1-\uffff](?:-)*)*(?:[a-z0-9\u00a1-\uffff])+)*(?:\\.(?:[a-z0-9\u00a1-\uffff]){2,})(?::(?:\\d){2,5})?(?:/(?:\\S)*)?$"
+  return(grepl(pattern,url))
 }
 
 ############################
@@ -271,7 +323,7 @@ createAPI = function() {
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",
                             "/",
-                            handler = .not_implemented_yet,
+                            handler = .executeSynchronous,
                             serializer = serializer_unboxed_json())
   executeSynchronous$handle("OPTIONS",
                             "/",

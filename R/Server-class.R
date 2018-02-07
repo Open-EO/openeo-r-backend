@@ -112,14 +112,17 @@ OpenEOServer <- R6Class(
         
       },
       
-      createJob = function(user,job_id = NULL, process_graph = process_graph) {
+      createJob = function(user,job_id = NULL, process_graph = process_graph, storeProcessGraph = TRUE) {
         if (is.null(job_id)) {
           job_id = private$newJobId()
         }
-        graph_id = self$createProcessGraph(process_graph, user$user_id)
+        if (!is.null(process_graph) && is.list(process_graph) && storeProcessGraph) {
+          # get graph_id
+          process_graph = self$createProcessGraph(process_graph, user$user_id)
+        }
         
+        job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
         
-        job = Job$new(job_id = job_id, process_graph = graph_id,user_id = user$user_id)
         
         return(job)
       },

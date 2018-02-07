@@ -43,15 +43,21 @@ Job <- R6Class(
       
       self$consumed_credits = 0
       
-      self$process_graph = process_graph
+      if (!is.null(process_graph)) {
+        self$process_graph = process_graph
+      }
       return(self)
     },
     
     store = function(con) {
       exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
-      if (isProcess(self$process_graph) || is.list(self$process_graph)) {
-        stop("Cannot store process_graph. For the databaseit has to be a key")
+      if (isProcess(self$process_graph)) {
+        stop("Cannot store process_graph. For the database it has to be a key")
+      } else if (is.list(self$process_graph)) {
+        graph_id = openeo.server$createProcessGraph(process_graph = self$process_graph,user_id = self$user_id)
+        self$process_graph = graph_id
       }
+      
       if (!exists) {
         insertIntoQuery = "insert into job (job_id, 
         user_id, 
@@ -102,9 +108,13 @@ Job <- R6Class(
       if (!isProcess(self$process_graph)) {
         
         if (is.character(self$process_graph)) {
-          parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
-          if (!"process_graph" %in% names(parsedJson)) {
-            parsedJson = list(process_graph=parsedJson)
+          if (validate(self$process_graph) == TRUE) {
+            parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
+            if (!"process_graph" %in% names(parsedJson)) {
+              parsedJson = list(process_graph=parsedJson)
+            }
+          } else {
+            #should be a process_graph id
           }
         } else if (is.list(self$process_graph)) {
           if (!"process_graph" %in% names(self$process_graph)) {
