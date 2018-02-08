@@ -41,7 +41,7 @@ OpenEOServer <- R6Class(
         self$data = list()
       },
       
-      startup = function (port=NA) {
+      startup = function (port=NA,host="127.0.0.1") {
         if (! is.na(port)) {
           self$api.port = port
         }
@@ -67,7 +67,7 @@ OpenEOServer <- R6Class(
           print("Bye bye!")
         })
         
-        root$run(port = self$api.port)
+        root$run(port = self$api.port,host = host)
       },
       
       register = function(obj) {
@@ -129,6 +129,8 @@ OpenEOServer <- R6Class(
 
       createUser = function(user_name, password, silent=FALSE) {
         files.folder = "files"
+        
+        if (!self$userExists(user_name=user_name)) {
         id = private$newUserId()
         
         user = User$new(user_id = id)
@@ -144,8 +146,15 @@ OpenEOServer <- R6Class(
         dir.create(user$workspace, showWarnings = FALSE)
         dir.create(paste(user$workspace,files.folder,sep="/"), showWarnings = FALSE)
         
-        if (!silent) {
-          return(user)
+          if (!silent) {
+            return(user)
+          }
+        } else {
+          user = self$loadUser(user_name=user_name)
+          
+          if (!silent) {
+            return(user)
+          }
         }
         
       },
@@ -223,15 +232,21 @@ OpenEOServer <- R6Class(
         }
       },
       
-      loadUser = function(user_id) {
+      loadUser = function(user_id=NULL,user_name=NULL) {
+        userExists = self$userExists(user_id=user_id, user_name = user_name)
         
-        if (dbGetQuery(openeo.server$database, "select count(*) from user where user_id = :id"
-                       ,param = list(id=user_id)) == 1
-        ) {
-          user_info = dbGetQuery(openeo.server$database, "select * from user where user_id = :id"
-                                 ,param = list(id=user_id))
+        if (userExists) {
+          if (!is.null(user_id)) {
+            user_info = dbGetQuery(openeo.server$database, "select * from user where user_id = :id"
+                                   ,param = list(id=user_id))
+            
+            
+          } else if (!is.null(user_name)){
+            user_info = dbGetQuery(openeo.server$database, "select * from user where user_name = :name"
+                                   ,param = list(name=user_name))
+          } 
           
-          user = User$new(user_id)
+          user = User$new(user_info$user_id)
           user$user_name = user_info$user_name
           return(user)
         } else {
@@ -284,7 +299,21 @@ OpenEOServer <- R6Class(
         } else {
           return(FALSE)
         }
+      },
+      userExists = function(user_id = NULL, user_name=NULL) {
+        if (is.null(user_id) && is.null(user_name)) {
+          stop("Cannot search for user without any information.")
+        }
+        if (is.null(user_id)) {
+          #search by name
+          exists = dbGetQuery(self$database,"select count(user_id) from user where user_name = :name",param=list(name=user_name)) == 1
+        } else {
+          #search by id
+          exists = dbGetQuery(self$database,"select count(user_id) from user where user_id = :id",param=list(id = user_id)) == 1
+        }
+        return(exists)
       }
+        
     ),
     private = list(
       loadDemoData = function() {
