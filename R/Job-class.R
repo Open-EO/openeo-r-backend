@@ -19,7 +19,9 @@
 #' @export
 Job <- R6Class(
   "Job",
+  # public ====
   public = list(
+    # attributes ----
     job_id = NULL,
     status=NULL,
     evaluation=NULL,
@@ -30,6 +32,7 @@ Job <- R6Class(
     user_id=NULL,
     consumed_credits=NULL,
     
+    # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
       if (is.null(job_id)||missing(job_id)) {
         stop("Cannot create new Job. There is no job_id specified")
@@ -177,6 +180,8 @@ Job <- R6Class(
     
   )
 )
+
+# statics ====
 
 encodeProcessGraph = function(text) {
   return(bin2hex(charToRaw(text)))

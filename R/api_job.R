@@ -1,8 +1,4 @@
-############################
-#
-# jobs endpoint
-#
-
+# jobs endpoint ====
 
 createJobsEndpoint = function() {
   jobs = plumber$new()
@@ -78,10 +74,7 @@ createJobsEndpoint = function() {
   return(jobs)
 }
 
-############################
-#
-# Request handling functions
-#
+# handler functions ====
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {
@@ -128,9 +121,15 @@ createJobsEndpoint = function() {
     #TODO load processgraph and execute
   }
   
-  return(list(
-    job_id=job$job_id
-  ))
+  result = list(
+    job_id=job$job_id,
+    status = job$status,
+    updated = job$last_update,
+    user_id = job$user_id,
+    consumed_credits = job$consumed_credits
+  )
+  
+  return()
 }
 
 .createSimpleArgList = function(graph) {
