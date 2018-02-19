@@ -5,5 +5,3 @@ library(devtools)
 
 install_deps("/opt/dockerfiles",repos=cran.mirror)
 install("/opt/dockerfiles")
-
-cat("it worked")
