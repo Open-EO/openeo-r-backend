@@ -21,11 +21,11 @@
 
 openeo.server$api.version <- "0.0.1"
 
-############################
 #
-# serverinformation endpoint
 #
-############################
+# serverinformation endpoint ----
+#
+#
 
 .version = function() {
   list(version=openeo.server$api.version)
@@ -46,11 +46,11 @@ openeo.server$api.version <- "0.0.1"
   )
 }
 
-############################
 #
-# data endpoint
 #
-############################
+# data endpoint ----
+#
+#
 
 # creates an overview on products available
 #* @get /api/data
@@ -73,11 +73,11 @@ openeo.server$api.version <- "0.0.1"
   }
 }
 
-############################
 #
-# processes endpoint
 #
-############################
+# processes endpoint ----
+#
+#
 
 # creates an overview on available processes
 #* @get /api/processes
@@ -100,11 +100,11 @@ openeo.server$api.version <- "0.0.1"
   }
 }
 
-############################
 #
-# jobs endpoint
 #
-############################
+# jobs endpoint ----
+#
+#
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {
@@ -129,7 +129,7 @@ openeo.server$api.version <- "0.0.1"
 #* @post /api/jobs
 #* @serializer unboxedJSON
 .createNewJob = function(req,res,evaluate) {
-  if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
+  if (is.null(evaluate) || !evaluate %in% c("lazy","batch","sync")) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
   # TODO check if postBody is valid
@@ -194,11 +194,11 @@ openeo.server$api.version <- "0.0.1"
   }
 }
 
-############################
 #
-# user data and functions
 #
-############################
+# user data and functions ----
+#
+#
 
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
@@ -347,11 +347,11 @@ openeo.server$api.version <- "0.0.1"
   )
 }
 
-############################
 #
-# download endpoint
 #
-############################
+# download endpoint ----
+#
+#
 
 # those are not openeo specification, it is merely a test to execute the job and return data
 
@@ -378,11 +378,11 @@ openeo.server$api.version <- "0.0.1"
   }
 }
 
-############################
 #
-# pipeline filter
 #
-############################
+# pipeline filter ----
+#
+#
 
 #* @filter checkAuth
 .authorized = function(req, res){
@@ -426,11 +426,11 @@ openeo.server$api.version <- "0.0.1"
   return(res)
 }
 
-############################
 #
-# utility functions
 #
-############################
+# utility functions ----
+#
+#
 
 ok = function(res) {
   error(res,200,"OK")
@@ -457,11 +457,11 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
   return(res)
 }
 
-############################
 #
-# setup the routes
 #
-############################
+# setup the routes ----
+#
+#
 
 createAPI = function() {
   root = plumber$new()
