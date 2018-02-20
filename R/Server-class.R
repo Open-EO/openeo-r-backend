@@ -43,7 +43,7 @@ OpenEOServer <- R6Class(
         self$data = list()
       },
       
-      startup = function (port=NA) {
+      startup = function (port=NA,host="127.0.0.1") {
         if (! is.na(port)) {
           self$api.port = port
         }
@@ -69,7 +69,7 @@ OpenEOServer <- R6Class(
           print("Bye bye!")
         })
         
-        root$run(port = self$api.port)
+        root$run(port = self$api.port, host=host)
       },
       
       register = function(obj) {
