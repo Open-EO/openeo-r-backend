@@ -29,6 +29,9 @@ library(openEO.R.Backend)
 openeo.server$data.path =  paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
 openeo.server$workspaces.path = "somewhere/on/computer"
 
+openeo.server$initEnvironmentDefault()
+openeo.server$initializeDatabase()
+
 openeo.server$createUser(user_name="test", password="test")
 openeo.server$loadDemo()
 openeo.server$startup(port = 8000)
