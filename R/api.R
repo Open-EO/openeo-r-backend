@@ -128,10 +128,13 @@ openeo.server$api.version <- "0.0.1"
 
 #* @post /api/jobs
 #* @serializer unboxedJSON
-.createNewJob = function(req,res,evaluate) {
+.createNewJob = function(req,res,evaluate, format) {
   if (is.null(evaluate) || !evaluate %in% c("lazy","batch","sync")) {
     return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
   }
+  
+  
+  
   # TODO check if postBody is valid
   process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   # TODO check if this is the simple representation or the complex (probably correct version)
@@ -149,11 +152,16 @@ openeo.server$api.version <- "0.0.1"
   
   if (evaluate == "batch") {
     #TODO load processgraph and execute
+  } else if (evaluate == "sync") {
+    return(.downloadSimple(req,res,job$job_id,format))
+  } else {
+    #lazy
+    return(list(
+      job_id=job$job_id
+    ))
   }
   
-  return(list(
-    job_id=job$job_id
-  ))
+  
 }
 
 .createSimpleArgList = function(graph) {
@@ -361,22 +369,42 @@ openeo.server$api.version <- "0.0.1"
   if (!openeo.server$jobExists(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
+    drivers = gdalDrivers()
+    allowedGDALFormats = drivers[drivers$create,"name"]
+    if (is.null(format) || !format %in% allowedGDALFormats) {
+      return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL",sep="")))
+    }
+    
     job = openeo.server$loadJob(job_id)
     result = job$run()
     
-    rasterdata = result$granules[[1]]$data
-    tmp = tempfile(fileext=".tif")
-    writeRaster(x=rasterdata,filename=tmp,format="GTiff")
+    updated_at = as.character(Sys.time())
+    job_status = "finished"
+    #TODO consumed credits
+    
+    con = openeo.server$getConnection()
+    updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+    dbExecute(con, updateJobQuery ,param=list(time=updated_at,
+                                              status=job_status,
+                                              job_id=job_id))
+    
+    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+    
+    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
     
     
-    sendFile(res, 
-             status=200, 
-             file.name=job_id, 
-             file.ext=".tif", 
-             contentType=format,
-             data=readBin(tmp, "raw", n=file.info(tmp)$size))
+    tryCatch({
+      sendFile(res, 
+               status=200, 
+               file.name="output", 
+               contentType=paste("application/gdal-",format,sep=""),
+               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
+    },finally = function(rasterfile) {
+      unlink(rasterfile@file@name)
+    })
   }
 }
+
 
 #
 #
@@ -453,6 +481,8 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
   }
   if (! is.na(file.name) && !is.na(file.ext)) {
     res$setHeader("Content-Disposition", paste("attachment;filename=",file.name,file.ext,sep=""))
+  } else if (!is.na(file.name) && is.na(file.ext)) {
+    res$setHeader("Content-Disposition", paste("attachment;filename=",file.name,sep=""))
   }
   return(res)
 }
