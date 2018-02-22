@@ -443,7 +443,7 @@ openeo.server$api.version <- "0.0.1"
 
 .cors_filter = function(req,res) {
   res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
-  res$setHeader("Access-Control-Allow-Credentials", TRUE)
+  res$setHeader("Access-Control-Allow-Credentials", "true")
   plumber::forward()
 }
 
