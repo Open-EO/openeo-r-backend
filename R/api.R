@@ -414,6 +414,9 @@ openeo.server$api.version <- "0.0.1"
 
 #* @filter checkAuth
 .authorized = function(req, res){
+  if (req$REQUEST_METHOD == 'OPTIONS') {
+    return(forward())
+  }
   tryCatch({
     auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
     if (auth[1] == "Bearer") {
