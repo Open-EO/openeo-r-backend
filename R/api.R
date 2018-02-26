@@ -453,8 +453,7 @@ openeo.server$api.version <- "0.0.1"
 .cors_option_bypass = function(req,res) {
   res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
-  
-  return(res)
+  ok(res);
 }
 
 #
