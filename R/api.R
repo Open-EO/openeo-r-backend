@@ -39,17 +39,17 @@ openeo.server$api.version <- "0.0.2"
 
 .capabilities = function() {
   list(
-    "/api/data/",
-    "/api/data/{product_id}",
-    "/api/processes/",
-    "/api/processes/{process_id}",
-    "/api/jobs/",
-    "/api/download/",
-    "/api/users/{user_id}/files",
-    "/api/users/{user_id}/files/{rel_path}",
-    "/api/users/{user_id}/jobs",
-    "/api/auth/login",
-    "/api/users/{user_id}/processes"
+    "/data/",
+    "/data/{product_id}",
+    "/processes/",
+    "/processes/{process_id}",
+    "/jobs/",
+    "/download/",
+    "/users/{user_id}/files",
+    "/users/{user_id}/files/{path}",
+    "/users/{user_id}/jobs",
+    "/auth/login",
+    "/users/{user_id}/process_graphs"
   )
 }
 
@@ -174,6 +174,9 @@ openeo.server$api.version <- "0.0.2"
 
 #* @filter checkAuth
 .authorized = function(req, res){
+  if (req$REQUEST_METHOD == 'OPTIONS') {
+    return(forward())
+  }
   tryCatch({
     auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
     if (auth[1] == "Bearer") {
@@ -201,17 +204,16 @@ openeo.server$api.version <- "0.0.2"
   )
 }
 
-.cors_filter = function(res) {
-  res$setHeader("Access-Control-Allow-Origin", "*")
-  res$setHeader("Access-Control-Allow-Credentials", TRUE)
+.cors_filter = function(req,res) {
+  res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
+  res$setHeader("Access-Control-Allow-Credentials", "true")
   plumber::forward()
 }
 
 .cors_option_bypass = function(req,res, ...) {
   res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
-  
-  return(res)
+  ok(res);
 }
 
 .not_implemented_yet = function(req,res, ...) {

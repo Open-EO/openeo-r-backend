@@ -45,24 +45,24 @@ createUsersEndpoint = function() {
   
   
   users$handle("POST",
-               "/<userid>/processes",
+               "/<userid>/process_graphs",
                handler = .createUserProcessGraph,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
-               "/<userid>/processes",
+               "/<userid>/process_graphs",
                handler = .cors_option_bypass)
   
   
   users$handle("GET",
-               "/<userid>/processes/<graph_id>",
+               "/<userid>/process_graphs/<graph_id>",
                handler = .not_implemented_yet,
                serializer = serializer_unboxed_json())
   users$handle("DELETE",
-               "/<userid>/processes/<graph_id>",
+               "/<userid>/process_graphs/<graph_id>",
                handler = .not_implemented_yet,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
-               "/<userid>/processes/<graph_id>",
+               "/<userid>/process_graphs/<graph_id>",
                handler = .cors_option_bypass)
   
   
