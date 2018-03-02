@@ -49,7 +49,7 @@ openeo.server$api.version <- "0.0.2"
     "/users/{user_id}/files/{path}",
     "/users/{user_id}/jobs",
     "/auth/login",
-    "/users/{user_id}/processes"
+    "/users/{user_id}/process_graphs"
   )
 }
 
