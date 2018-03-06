@@ -91,26 +91,24 @@ openeo.server$api.version <- "0.0.2"
 # download endpoint ====
 #
 
-.executeSynchronous = function(req,res,format,graph) {
+.executeSynchronous = function(req,res) {
   drivers = gdalDrivers()
   allowedGDALFormats = drivers[drivers$create,"name"]
-  if (is.null(format) || !format %in% allowedGDALFormats) {
-    return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL",sep="")))
-  }
+  
   
   if (!is.null(req$postBody)) {
     process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-    process_graph = .createSimpleArgList(process_graph)
-  } else {
-    if (is.null(graph)) {
-      return(error(res,400,"No process graph specified. Provide POST body or the 'graph' query parameter."))
-    } else if (.isURL(graph)) {
-      return(error(res,501,"URL resolving of grap?h is not yet supported"))
-    } else if (openeo.server$graphExists(graph)) {
-      process_graph = openeo.server$loadProcessGraph(graph)
-    } else {
-      return(error(res,400,"Cannot find process graph"))
+    output = process_graph$output
+    
+    format = output$format
+    if (is.null(format) || !format %in% allowedGDALFormats) {
+      return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL",sep="")))
     }
+    
+    # process_graph = .createSimpleArgList(process_graph)
+  } else {
+    return(error(res,400,"No process graph specified."))
+    
   }
   
   job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
@@ -121,20 +119,18 @@ openeo.server$api.version <- "0.0.2"
   #store the job? even though it is completed?
 
   rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-  tmp = tempfile(fileext=".tif")
-  writeRaster(x=rasterdata,filename=tmp,format="GTiff")
+  
+  rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
+  
   
   tryCatch({
-    
-  
     sendFile(res, 
-               status=200, 
-               file.name="output", 
-               file.ext=".tif", 
-               contentType=paste("application/gdal-",format,sep=""),
-               data=readBin(tmp, "raw", n=file.info(tmp)$size))
-  },finally = function(tmp) {
-    unlink(tmp)
+             status=200, 
+             file.name="output", 
+             contentType=paste("application/gdal-",format,sep=""),
+             data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
+  },finally = function(rasterfile) {
+    unlink(rasterfile@file@name)
   })
 }
 

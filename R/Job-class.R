@@ -118,10 +118,13 @@ Job <- R6Class(
             }
           } else {
             #should be a process_graph id
+            # TODO load process_graph by id
           }
         } else if (is.list(self$process_graph)) {
           if (!"process_graph" %in% names(self$process_graph)) {
             parsedJson = list(process_graph=self$process_graph)
+          } else {
+            parsedJson = self$process_graph
           }
         } else {
           jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
