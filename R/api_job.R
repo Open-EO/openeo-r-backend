@@ -98,10 +98,8 @@ createJobsEndpoint = function() {
 
 #* @post /api/jobs
 #* @serializer unboxedJSON
-.createNewJob = function(req,res,evaluate) {
-  if (is.null(evaluate) || !evaluate %in% c("lazy","batch")) {
-    return(error(res,400, "Missing query parameter \"evaluate\" or it contains a value other then \"lazy\" or \"batch\""))
-  }
+.createNewJob = function(req,res) {
+
   # TODO check if postBody is valid
   process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   # TODO check if this is the simple representation or the complex (probably correct version)
@@ -117,14 +115,11 @@ createJobsEndpoint = function() {
   
   job$store(con=openeo.server$database)
   
-  if (evaluate == "batch") {
-    #TODO load processgraph and execute
-  }
-  
   result = list(
     job_id=job$job_id,
     status = job$status,
     updated = job$last_update,
+    submitted = job$submitted,
     user_id = job$user_id,
     consumed_credits = job$consumed_credits
   )

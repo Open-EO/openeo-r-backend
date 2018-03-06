@@ -27,11 +27,9 @@
 
 openeo.server$api.version <- "0.0.2"
 
-############################
 #
-# serverinformation endpoint
+# serverinformation endpoint ====
 #
-############################
 
 .version = function() {
   list(version=openeo.server$api.version)
@@ -88,11 +86,11 @@ openeo.server$api.version <- "0.0.2"
   )
 }
 
-############################
+
 #
-# download endpoint
+# download endpoint ====
 #
-############################
+
 
 # those are not openeo specification, it is merely a test to execute the job and return data
 
@@ -166,11 +164,11 @@ openeo.server$api.version <- "0.0.2"
   })
 }
 
-############################
+
 #
-# pipeline filter
+# pipeline filter ====
 #
-############################
+
 
 #* @filter checkAuth
 .authorized = function(req, res){
@@ -218,11 +216,10 @@ openeo.server$api.version <- "0.0.2"
   error(res,501, "Not implemented, yet")
 }
 
-############################
+
 #
-# utility functions
+# utility functions ====
 #
-############################
 
 ok = function(res) {
   error(res,200,"OK")
@@ -254,11 +251,10 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
   return(grepl(pattern,url))
 }
 
-############################
+
 #
-# setup the routes
+# setup the routes ====
 #
-############################
 
 createAPI = function() {
   root = plumber$new()
