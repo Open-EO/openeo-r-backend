@@ -1,5 +1,10 @@
 version: '3'
 services:
+    openeo-baseserver:
+        build: 
+            context: .
+            dockerfile: DOCKERFILE-base
+        image: openeo-baseserver:1.0
     openeo-rserver:
         build: 
             context: .
