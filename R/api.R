@@ -91,32 +91,6 @@ openeo.server$api.version <- "0.0.2"
 # download endpoint ====
 #
 
-
-# those are not openeo specification, it is merely a test to execute the job and return data
-
-#* @serializer contentType list(type="image/GTiff")
-#* @get /api/download/<job_id>
-.downloadSimple = function(req,res,job_id,format,graph) {
-  if (!openeo.server$jobExists(job_id)) {
-    error(res, 404, paste("Cannot find job with id:",job_id))
-  } else {
-    job = openeo.server$loadJob(job_id)
-    result = job$run()
-    
-    rasterdata = result$granules[[1]]$data
-    tmp = tempfile(fileext=".tif")
-    writeRaster(x=rasterdata,filename=tmp,format="GTiff")
-    
-    
-    sendFile(res, 
-             status=200, 
-             file.name=job_id, 
-             file.ext=".tif", 
-             contentType=format,
-             data=readBin(tmp, "raw", n=file.info(tmp)$size))
-  }
-}
-
 .executeSynchronous = function(req,res,format,graph) {
   drivers = gdalDrivers()
   allowedGDALFormats = drivers[drivers$create,"name"]

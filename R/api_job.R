@@ -7,10 +7,6 @@ createJobsEndpoint = function() {
               "/<jobid>",
               handler = .describeJob,
               serializer = serializer_unboxed_json())
-  jobs$handle("DELETE",
-              "/<job_id>",
-              handler = .deleteJob,
-              serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
               "/<jobid>",
               handler = .cors_option_bypass)
@@ -62,7 +58,7 @@ createJobsEndpoint = function() {
   
   jobs$handle("GET",
               "/<job_id>/download",
-              handler = .not_implemented_yet,
+              handler = .downloadSimple,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
               "/<job_id>/download",
@@ -146,21 +142,40 @@ createJobsEndpoint = function() {
   return(graph)
 }
 
-#* @delete /api/jobs/<job_id>
-#* @serializer unboxedJSON
-.deleteJob = function(req,res,job_id) {
-  if (openeo.server$jobExists(job_id)) {
-    job = openeo.server$loadJob(job_id)
-    tryCatch(
-      {
-        openeo.server$delete(job)
-        ok(res)
-      }, 
-      error = function(err) {
-        error(res,"500",err$message)
-      }
-    )
+# those are not openeo specification, it is merely a test to execute the job and return data
+
+#* @serializer contentType list(type="image/GTiff")
+#* @get /api/download/<job_id>
+.downloadSimple = function(req,res,job_id,format) {
+  if (!openeo.server$jobExists(job_id)) {
+    error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
-    error(res,404,paste("Job with id:",job_id,"cannot been found"))
+    job = openeo.server$loadJob(job_id)
+    result = job$run()
+    
+    updated_at = as.character(Sys.time())
+    job_status = "finished"
+    
+    con = openeo.server$getConnection()
+    updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+    dbExecute(con, updateJobQuery ,param=list(time=updated_at,
+                                              status=job_status,
+                                              job_id=job_id))
+    
+    
+    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+    
+    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
+    
+    
+    tryCatch({
+      sendFile(res, 
+               status=200, 
+               file.name="output", 
+               contentType=paste("application/gdal-",format,sep=""),
+               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
+    },finally = function(rasterfile) {
+      unlink(rasterfile@file@name)
+    })
   }
 }

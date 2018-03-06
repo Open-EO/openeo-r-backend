@@ -1,6 +1,7 @@
 #' @include Server-class.R
 #' @include Process-class.R
 
+# filter_daterange ====
 filter_daterange = Process$new(
   process_id = "filter_daterange",
   description = "filters a data set with a temporal dimension based on a stated start and end date",
@@ -45,6 +46,7 @@ filter_daterange = Process$new(
   }
 )
 
+# filter_bands ====
 filter_bands = Process$new(
   process_id = "filter_bands",
   description = "filters by single and multiple band ids",
@@ -69,6 +71,7 @@ filter_bands = Process$new(
   }
 )
 
+# find_min ====
 find_min = Process$new(
   process_id = "find_min",
   description = "calculates the minimum value per pixel of a single valued band collection",
@@ -109,6 +112,7 @@ find_min = Process$new(
   }
 )
 
+# calculate_ndvi ====
 calculate_ndvi = Process$new(
   process_id = "calculate_ndvi",
   description = "Calculates the ndvi per pixel and scene in a given collection",
