@@ -71,6 +71,7 @@ filter_bands = Process$new(
   }
 )
 
+# zonal_statistic ====
 zonal_statistics = Process$new(
   process_id = "zonal_statistics",
   description = "Calculates the zonal statistics from a given file containing polygons and returns a spatial polygon dataframe. It should not be nested in other calls which require imagery.",
@@ -165,11 +166,46 @@ find_min = Process$new(
   }
 )
 
+# filter_bbox ====
+filter_bbox = Process$new(
+  process_id="filter_bbox",
+  description="Subsets an imagery by a specific extent",
+  args = list(Argument$new(name = "imagery",
+                           description = "the spatio-temporal dataset/collection",
+                           required = TRUE),
+              Argument$new(name = "left",
+                           description = "The left value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "right",
+                           description = "The right value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "bottom",
+                           description = "The bottom value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "top",
+                           description = "The top value of a spatial extent",
+                           required = TRUE)),
+  operation = function(imagery, left, right, bottom, top) {
+    collection = getCollectionFromImageryStatement(imagery)
+    e = extent(left,right,bottom,top)
+    
+    cropped_granules = lapply(collection$granules, function(granule) {
+      granule$data = crop(granule$data,e)
+      granule$extent = extent(granule$data)
+      return(granule)
+    })
+    output = collection$clone(deep=TRUE)
+    
+    output$granules = cropped_granules
+    return(output)
+  }
+)
+
 # calculate_ndvi ====
 calculate_ndvi = Process$new(
   process_id = "calculate_ndvi",
   description = "Calculates the ndvi per pixel and scene in a given collection",
-  arg = list(Argument$new(
+  args = list(Argument$new(
                name = "imagery",
                description = "the spatio-temporal dataset/collection",
                required = TRUE

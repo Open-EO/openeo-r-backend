@@ -329,10 +329,7 @@ OpenEOServer <- R6Class(
         self$register(calculate_ndvi)
         self$register(filter_bands)
         self$register(zonal_statistics)
-        
-        #filter_sp_extent$register()
-        
-        #crop_extent$register()
+        self$register(filter_bbox)
 
       },
       
