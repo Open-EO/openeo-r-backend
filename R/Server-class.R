@@ -48,17 +48,15 @@ OpenEOServer <- R6Class(
         
         self$initEnvironmentDefault()
         
-        
-        # load descriptions, meta data and file links for provided data sets
-        # private$loadData()
-        
-        # register the processes provided by the server provider
-        # private$loadProcesses()
-        
-        # private$loadUsers()
-        
-        # if there have been previous job postings load those jobs into the system
-        # private$loadExistingJobs()
+        # migrate all user workspaces to /users/
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]")
+        if (length(user_ids) > 0) {
+          if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
+            dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
+          }
+          invisible(file.rename(from=folder.names,to=paste(openeo.server$workspaces.path,"users",user_ids,sep="/")))
+        }
         
         root = createAPI()
         
@@ -144,7 +142,7 @@ OpenEOServer <- R6Class(
         }
         
         dir.create(user$workspace, showWarnings = FALSE)
-        dir.create(paste(user$workspace,files.folder,sep="/"), showWarnings = FALSE)
+        dir.create(paste(user$workspace, files.folder, sep="/"), showWarnings = FALSE)
         
           if (!silent) {
             return(user)

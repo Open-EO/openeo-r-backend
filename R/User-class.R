@@ -38,7 +38,7 @@ User <- R6Class(
   ),
   active = list(
     workspace = function() {
-      return(paste(openeo.server$workspaces.path,self$user_id,sep="/"))
+      return(paste(openeo.server$workspaces.path,"users",self$user_id,sep="/"))
     },
     files = function() {
       workspace = paste(self$workspace,private$files.folder,sep="/")
