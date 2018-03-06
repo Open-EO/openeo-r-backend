@@ -328,6 +328,7 @@ OpenEOServer <- R6Class(
         self$register(find_min)
         self$register(calculate_ndvi)
         self$register(filter_bands)
+        self$register(zonal_statistics)
         
         #filter_sp_extent$register()
         

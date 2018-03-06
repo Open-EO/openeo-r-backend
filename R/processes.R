@@ -66,8 +66,61 @@ filter_bands = Process$new(
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
-    
+    cat("Filtering for bands")
     return(collection$filterByBands(bands))
+  }
+)
+
+zonal_statistics = Process$new(
+  process_id = "zonal_statistics",
+  description = "Calculates the zonal statistics from a given file containing polygons and returns a spatial polygon dataframe. It should not be nested in other calls which require imagery.",
+  args = list(
+    Argument$new(
+      name = "imagery",
+      description = "The imagery data set on which the zonal statistics shall be performed",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "regions",
+      description = "The relative link in the user workspace, where to find the geometries file",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "func",
+      description = "An aggregation function like 'mean', 'median' or 'sum'",
+      required = TRUE
+    )
+  ),
+  operation = function(imagery,regions,func) {
+    func = get(tolower(func))
+    
+    file.path = paste(openeo.server$workspaces.path,regions,sep="/")
+    layername = ogrListLayers(file.path)[1]
+    
+    regions = readOGR(dsn=file.path,layer = layername)
+    
+    polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    rasterList = lapply(collection$granules, function(granule) {
+      return(granule$data)
+    })
+    timestamps = sapply(collection$granules, function(granule) {
+      return(as.character(granule$time))
+    })
+    b = brick(rasterList)
+    
+    values = raster::extract(b,
+                             regions,
+                             na.rm=TRUE,
+                             fun=func,
+                             df=TRUE)
+    
+    colnames(values) = c(colnames(data@data),timestamps)
+    out = SpatialPolygonsDataFrame(polygonList,data=values)
+    
+    return(out)
+    
   }
 )
 
