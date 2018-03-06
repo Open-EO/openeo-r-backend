@@ -93,7 +93,10 @@ openeo.server$api.version <- "0.0.2"
 
 .executeSynchronous = function(req,res) {
   drivers = gdalDrivers()
+  ogr_drivers = ogrDrivers()
+  
   allowedGDALFormats = drivers[drivers$create,"name"]
+  allowedOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
   
   
   if (!is.null(req$postBody)) {
@@ -101,11 +104,11 @@ openeo.server$api.version <- "0.0.2"
     output = process_graph$output
     
     format = output$format
-    if (is.null(format) || !format %in% allowedGDALFormats) {
-      return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL",sep="")))
+    if (is.null(format) || !format %in% allowedGDALFormats || !format %in% allowedOGRFormats) {
+      return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     
-    # process_graph = .createSimpleArgList(process_graph)
+    process_graph = .createSimpleArgList(process_graph)
   } else {
     return(error(res,400,"No process graph specified."))
     
@@ -117,21 +120,40 @@ openeo.server$api.version <- "0.0.2"
   result = job$run()
   
   #store the job? even though it is completed?
+  if (format %in% allowedOGRFormats) {
+    # assuming that we don't have a collection as a result
+    layername = 1 # TODO change to something meaningful
+    filename = tempfile()
+    writeOGR(result,dsn=filename,layer=layername,driver=format)
+    
+    tryCatch({
+      sendFile(res, 
+               status=200, 
+               file.name="output", 
+               contentType=paste("application/gdal-",format,sep=""),
+               data=readBin(filename, "raw", n=file.info(filename)$size))
+    },finally = function(filename) {
+      unlink(filename)
+    })
+    
+  } else {
+    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+    
+    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
+    
+    
+    tryCatch({
+      sendFile(res, 
+               status=200, 
+               file.name="output", 
+               contentType=paste("application/gdal-",format,sep=""),
+               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
+    },finally = function(rasterfile) {
+      unlink(rasterfile@file@name)
+    })
+  }
 
-  rasterdata = result$granules[[1]]$data #TODO handle multi granules...
   
-  rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
-  
-  
-  tryCatch({
-    sendFile(res, 
-             status=200, 
-             file.name="output", 
-             contentType=paste("application/gdal-",format,sep=""),
-             data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
-  },finally = function(rasterfile) {
-    unlink(rasterfile@file@name)
-  })
 }
 
 
