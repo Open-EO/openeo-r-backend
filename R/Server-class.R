@@ -7,10 +7,8 @@
 #' @field data.path The filesystem path where to find the datasets
 #' @field workspaces.path The filesystem path where user data and jobs are stored
 #' @field api.port The port where the plumber webservice is working under
-#' @field jobs This will be managed during startup. Here all the users submitted jobs are registered
 #' @field processes This field is also managed during runtime. Here all template processes are listed
 #' @field data A list of products offered by the service which is managed at runtime.
-#' @field users The registered user on this server
 #' 
 #' @include processes.R
 #' @include data.R
@@ -24,6 +22,7 @@
 OpenEOServer <- R6Class(
     "OpenEOServer",
     public = list(
+      # attributes ====
       api.version = NULL,
       secret.key = NULL,
       
@@ -36,11 +35,18 @@ OpenEOServer <- R6Class(
       processes = NULL,
       data = NULL,
       
-      database = NULL,
+      outputGDALFormats = NULL,
+      outputOGRFormats = NULL,
       
+      # public ====
       initialize = function() {
         self$processes = list()
         self$data = list()
+        
+        drivers = gdalDrivers()
+        ogr_drivers = ogrDrivers()
+        self$outputGDALFormats = drivers[drivers$create,"name"]
+        self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
       },
       
       startup = function (port=NA,host="127.0.0.1") {
@@ -50,26 +56,23 @@ OpenEOServer <- R6Class(
         
         self$initEnvironmentDefault()
         
-        
-        # load descriptions, meta data and file links for provided data sets
-        # private$loadData()
-        
-        # register the processes provided by the server provider
-        # private$loadProcesses()
-        
-        # private$loadUsers()
-        
-        # if there have been previous job postings load those jobs into the system
-        # private$loadExistingJobs()
+        # migrate all user workspaces to /users/
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]")
+        if (length(user_ids) > 0) {
+          if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
+            dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
+          }
+          invisible(file.rename(from=folder.names,to=paste(openeo.server$workspaces.path,"users",user_ids,sep="/")))
+        }
         
         root = createAPI()
         
         root$registerHook("exit", function(){
-          dbDisconnect(self$database)
           print("Bye bye!")
         })
         
-        root$run(port = self$api.port, host=host)
+        root$run(port = self$api.port,host = host)
       },
       
       register = function(obj) {
@@ -104,28 +107,37 @@ OpenEOServer <- R6Class(
       },
       
       delete = function(obj) {
+        con = self$getConnection()
         if (isJob(obj)) {
           # unlink(obj$filePath, recursive = TRUE,force=TRUE)
-          dbExecute(openeo.server$database, "delete from job where job_id = :id",param=list(id=obj$job_id))
+          dbExecute(con, "delete from job where job_id = :id",param=list(id=obj$job_id))
         } else if (isUser(obj)) {
           unlink(obj$workspace,recursive = TRUE)
-          dbExecute(openeo.server$database, "delete from user where user_id = :id",param=list(id=obj$user_id))
+          dbExecute(con, "delete from user where user_id = :id",param=list(id=obj$user_id))
         }
+        dbDisconnect(con)
         
       },
       
-      createJob = function(user,job_id = NULL, process_graph = process_graph) {
+      createJob = function(user,job_id = NULL, process_graph = process_graph, storeProcessGraph = TRUE) {
         if (is.null(job_id)) {
           job_id = private$newJobId()
         }
+        if (!is.null(process_graph) && is.list(process_graph) && storeProcessGraph) {
+          # get graph_id
+          process_graph = self$createProcessGraph(process_graph, user$user_id)
+        }
         
         job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
+        
         
         return(job)
       },
 
       createUser = function(user_name, password, silent=FALSE) {
         files.folder = "files"
+        
+        if (!self$userExists(user_name=user_name)) {
         id = private$newUserId()
         
         user = User$new(user_id = id)
@@ -133,18 +145,46 @@ OpenEOServer <- R6Class(
         user$password = password
         
         user_info = data.frame(user_id = id, user_name=user_name, password = password, login_secret = "")
-        if (dbGetQuery(self$database, "select count(*) from user where user_id=:id",
+        
+        con = self$getConnection()
+        if (dbGetQuery(con, "select count(*) from user where user_id=:id",
                        param=list(id = id)) == 0) {
-          dbWriteTable(self$database,"user",as.data.frame(user_info),append=TRUE)
+          dbWriteTable(con,"user",as.data.frame(user_info),append=TRUE)
         }
+        dbDisconnect(con)
         
         dir.create(user$workspace, showWarnings = FALSE)
-        dir.create(paste(user$workspace,files.folder,sep="/"), showWarnings = FALSE)
+        dir.create(paste(user$workspace, files.folder, sep="/"), showWarnings = FALSE)
         
-        if (!silent) {
-          return(user)
+          if (!silent) {
+            return(user)
+          }
+        } else {
+          user = self$loadUser(user_name=user_name)
+          
+          if (!silent) {
+            return(user)
+          }
         }
         
+      },
+      
+      createProcessGraph = function(process_graph, user_id) {
+        pgid = private$newProcessGraphId()
+        
+        if (is.list(process_graph)) {
+          process_graph = toJSON(process_graph,auto_unbox=TRUE,pretty=TRUE)
+        } else {
+          stop("process_graph is no list object")
+        }
+        process_graph = encodeProcessGraph(process_graph)
+        
+        con = self$getConnection()
+        dbExecute(con, "insert into process_graph (graph_id, user_id, process_graph) values (:graphId, :userId, :graph)",
+                  param = list(graphId = pgid, userId = user_id, graph = process_graph))
+        dbDisconnect(con)
+        
+        return(pgid)
       },
 
       
@@ -161,16 +201,15 @@ OpenEOServer <- R6Class(
       },
       
       initializeDatabase = function() {
-        self$database = self$getConnection()
-        
-        if (!dbExistsTable(self$database,"user")) {
-          dbExecute(self$database, "create table user (user_id integer, 
+        con = self$getConnection()
+        if (!dbExistsTable(con,"user")) {
+          dbExecute(con, "create table user (user_id integer, 
                     user_name text, 
                     password text, 
                     login_secret text)")
         }
-        if (!dbExistsTable(self$database,"job")) {
-          dbExecute(self$database, "create table job (job_id text, 
+        if (!dbExistsTable(con,"job")) {
+          dbExecute(con, "create table job (job_id text, 
                     user_id integer, 
                     status text, 
                     submitted text,
@@ -178,6 +217,13 @@ OpenEOServer <- R6Class(
                     consumed_credits integer,
                     process_graph text)")
         }
+        if (!dbExistsTable(con,"process_graph")) {
+          dbExecute(con, "create table process_graph (graph_id text, 
+                    user_id integer, 
+                    process_graph text)")
+        }
+        
+        dbDisconnect(con)
       },
       
       initEnvironmentDefault = function() {
@@ -200,15 +246,25 @@ OpenEOServer <- R6Class(
         }
       },
       
-      loadUser = function(user_id) {
+      loadUser = function(user_id=NULL,user_name=NULL) {
+        userExists = self$userExists(user_id=user_id, user_name = user_name)
         
-        if (dbGetQuery(openeo.server$database, "select count(*) from user where user_id = :id"
-                       ,param = list(id=user_id)) == 1
-        ) {
-          user_info = dbGetQuery(openeo.server$database, "select * from user where user_id = :id"
-                                 ,param = list(id=user_id))
+        if (userExists) {
           
-          user = User$new(user_id)
+          con = self$getConnection()
+          if (!is.null(user_id)) {
+            
+            user_info = dbGetQuery(con, "select * from user where user_id = :id"
+                                   ,param = list(id=user_id))
+            
+            
+          } else if (!is.null(user_name)){
+            user_info = dbGetQuery(con, "select * from user where user_name = :name"
+                                   ,param = list(name=user_name))
+          } 
+          dbDisconnect(con)  
+        
+          user = User$new(user_info$user_id)
           user$user_name = user_info$user_name
           return(user)
         } else {
@@ -218,27 +274,84 @@ OpenEOServer <- R6Class(
       },
       loadJob = function(job_id) {
         if (self$jobExists(job_id)) {
-          job_info = dbGetQuery(self$database, "select * from job where job_id = :id"
+          con = self$getConnection()
+          job_info = dbGetQuery(con, "select * from job where job_id = :id"
                                  ,param = list(id=job_id))
+          dbDisconnect(con)
+          
           job = Job$new(job_id)
           job$user_id = job_info$user_id
           job$status = job_info$status
           job$submitted = job_info$submitted
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
-          job$process_graph = fromJSON(decodeProcessGraph(job_info$process_graph),simplifyDataFrame = FALSE)
+          job$process_graph = self$loadProcessGraph(job_info$process_graph) #from db
           
-          job$loadProcessGraph()
+          job$loadProcessGraph() # create executable graph and store output on job$output
           
           
           return(job)
         }
       },
+      loadProcessGraph = function(graph_id) {
+        # note: this is a function to load the process graph from db; NOT the one where the process graph is created
+        if (self$graphExists(graph_id)) {
+          con = self$getConnection()
+          graph_binary = dbGetQuery(con, "select process_graph from process_graph where graph_id = :id",
+                                    param = list(id = graph_id))[1,]
+          dbDisconnect(con)
+          graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
+          return(graph_list)
+        } else {
+          return(NULL)
+        }
+        
+      },
       jobExists = function(job_id) {
-        return(dbGetQuery(openeo.server$database, "select count(*) from job where job_id = :id"
-                  ,param = list(id=job_id)) == 1)
+        if (nchar(job_id) == 15) {
+          con = self$getConnection()
+          result = dbGetQuery(con, "select count(*) from job where job_id = :id"
+                              ,param = list(id=job_id)) == 1
+          dbDisconnect(con)
+          return(result)
+        } else {
+          return(FALSE)
+        }
+      },
+      graphExists = function(graph_id) {
+        if (nchar(graph_id) == 18) {
+          con = self$getConnection()
+          result = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id"
+                              ,param = list(id=graph_id)) == 1
+          dbDisconnect(con)
+          return(result)
+        } else {
+          return(FALSE)
+        }
+      },
+      userExists = function(user_id = NULL, user_name=NULL) {
+        if (is.null(user_id) && is.null(user_name)) {
+          stop("Cannot search for user without any information.")
+        }
+        con = self$getConnection()
+        if (is.null(user_id)) {
+          #search by name
+          exists = dbGetQuery(con,"select count(user_id) from user where user_name = :name",param=list(name=user_name)) == 1
+        } else {
+          #search by id
+          exists = dbGetQuery(con,"select count(user_id) from user where user_id = :id",param=list(id = user_id)) == 1
+        }
+        dbDisconnect(con)
+        return(exists)
+      },
+      deleteJob = function(job_id) {
+        con = self$getConnection()
+        
+        
       }
+        
     ),
+    # private ====
     private = list(
       loadDemoData = function() {
         self$data = list()
@@ -253,45 +366,64 @@ OpenEOServer <- R6Class(
         self$register(filter_daterange)
         self$register(find_min)
         self$register(calculate_ndvi)
-        
-        #filter_sp_extent = Process$new()
-        #filter_sp_extent$register()
-        
-        #crop_extent = Process$new()
-        #crop_extent$register()
+        self$register(filter_bands)
+        self$register(zonal_statistics)
+        self$register(filter_bbox)
 
       },
       
-      newJobId = function(n=1, length=15) {
-        # cudos to https://ryouready.wordpress.com/2008/12/18/generate-random-string-name/
-        randomString <- c(1:n)                  
-        for (i in 1:n) {
-          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                          length, replace=TRUE),
-                                   collapse="")
-        }
+      newJobId = function() {
+        randomString = private$createAlphaNumericId(n=1,length=15)
         
-        jobIdExists = dbGetQuery(self$database, "select count(*) from job where job_id = :id", param=list(id=randomString)) == 1
         
-        if (jobIdExists) {
+        if (self$jobExists(randomString)) {
           # if id exists get a new one (recursive)
-          return(self$newJobId())
+          return(private$newJobId())
         } else {
           return(randomString)
         }
       },
       
       newUserId = function() {
-        id = runif(1, 10^11, (10^12-1))
-        if (id %in% list.files(self$workspaces.path)) {
-          return(self$newUserId())
+        id = runif(1, 10^8, (10^9-1))
+        
+        con = self$getConnection()
+        userIdExists = dbGetQuery(con, "select count(*) from user where user_id = :id", param=list(id=id)) == 1
+        dbDisconnect(con)
+        
+        if (userIdExists) {
+          return(private$newUserId())
         } else {
           return(floor(id))
         }
+      },
+      
+      newProcessGraphId = function() {
+        randomString = private$createAlphaNumericId(n=1,length=18)
         
+        con = self$getConnection()
+        userIdExists = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
+        dbDisconnect(con)
+        
+        if (userIdExists) {
+          return(private$newProcessGraphId())
+        } else {
+          return(randomString)
+        }
+      },
+      createAlphaNumericId = function(n=1, length=15) {
+        randomString <- c(1:n)                  
+        for (i in 1:n) {
+          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                          length, replace=TRUE),
+                                   collapse="")
+        }
+        return(randomString)
       }
     )
 )
+
+# statics ====
 
 #' @export
 openeo.server = OpenEOServer$new()

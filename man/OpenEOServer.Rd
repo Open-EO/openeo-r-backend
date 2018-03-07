@@ -23,13 +23,9 @@ jobs.
 
 \item{\code{api.port}}{The port where the plumber webservice is working under}
 
-\item{\code{jobs}}{This will be managed during startup. Here all the users submitted jobs are registered}
-
 \item{\code{processes}}{This field is also managed during runtime. Here all template processes are listed}
 
 \item{\code{data}}{A list of products offered by the service which is managed at runtime.}
-
-\item{\code{users}}{The registered user on this server}
 }}
 
 \keyword{datasets}

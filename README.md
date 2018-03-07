@@ -45,6 +45,17 @@ When you want to use the server on operational level, meaning you have created y
 R -f path/to/your_file.R
 ```
 
+## Docker installation
+As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend.
+
+```
+docker-compose build openeo-baseserver
+docker-compose build openeo-rserver
+docker-compose start openeo-rserver
+```
+
+Note: preparing the base server will take a considerable amount of time. But when it is done, then you can install newer versions of the backend faster, since the baseserver will contain R and all required dependencies.
+
 ## Authentication / Authorization Behavior
 On this local backend we consider three levels of access that require either _open access_, _basic authorization_ and _bearer token authorization_. For _open access_ we consider all meta data services that support exploration of data, processes and other functionalities. Then _basic authorization_ is currently used for the authentication services (login), and finally the _bearer token authorization_ is applied on services for the job management and the user data.
 

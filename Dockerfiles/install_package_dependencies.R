@@ -4,4 +4,5 @@ install.packages("devtools",repos=cran.mirror)
 library(devtools)
 
 install_deps("/opt/dockerfiles",repos=cran.mirror)
-install("/opt/dockerfiles")
+installation = list.files("/opt/dockerfiles",recursive=TRUE,full.names = TRUE)
+removed = file.remove(installation)
