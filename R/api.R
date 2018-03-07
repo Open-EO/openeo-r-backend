@@ -48,7 +48,23 @@ openeo.server$api.version <- "0.0.2"
     "/api/users/{user_id}/files/{path}",
     "/api/users/{user_id}/jobs",
     "/api/auth/login",
-    "/api/users/{user_id}/process_graphs"
+    "/api/users/{user_id}/process_graphs",
+    "/api/capabilities",
+    "/api/capabilities/output_formats"
+  )
+}
+
+.output_formats = function() {
+  formats = c(openeo.server$outputGDALFormats,openeo.server$outputOGRFormats)
+  namedList = lapply(formats,function(format) {
+    res = list(list(gdalformat=format))
+    names(res) = format
+    return(res)
+  })
+  
+  list(
+    default="GTiff",
+    formats = namedList
   )
 }
 
@@ -280,6 +296,14 @@ createAPI = function() {
   
   root$handle("OPTIONS",
               "/api/capabilities",
+              handler = .cors_option_bypass)
+  root$handle("GET",
+              "/api/capabilities/output_formats",
+              handler = .capabilities,
+              serializer = serializer_unboxed_json())
+  
+  root$handle("OPTIONS",
+              "/api/capabilities/output_formats",
               handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)

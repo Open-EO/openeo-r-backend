@@ -150,13 +150,20 @@ createJobsEndpoint = function() {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
     job = openeo.server$loadJob(job_id)
-    result = job$run()
+    
+    if (is.null(format)) {
+      format = job$output$format
+    }
+    
     con = openeo.server$getConnection()
     updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
     dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
                                               status="running",
                                               job_id=job_id))
     dbDisconnect(con)
+    
+    result = job$run()
+    
     
     
     con = openeo.server$getConnection()
