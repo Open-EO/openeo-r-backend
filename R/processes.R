@@ -95,6 +95,10 @@ zonal_statistics = Process$new(
   operation = function(imagery,regions,func) {
     func = get(tolower(func))
     
+    if (startsWith(regions,"/")) {
+      regions = gsub("^/","",regions)
+    }
+    
     file.path = paste(openeo.server$workspaces.path,regions,sep="/")
     layername = ogrListLayers(file.path)[1]
     
@@ -117,7 +121,7 @@ zonal_statistics = Process$new(
                              fun=func,
                              df=TRUE)
     
-    colnames(values) = c(colnames(data@data),timestamps)
+    colnames(values) = c(colnames(regions@data),timestamps)
     out = SpatialPolygonsDataFrame(polygonList,data=values)
     
     return(out)

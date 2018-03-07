@@ -63,7 +63,10 @@ openeo.server$api.version <- "0.0.2"
   user_pwd = unlist(strsplit(decoded,":"))[2]
   tryCatch(
     {  
-      result = dbGetQuery(openeo.server$database, "select * from user where user_name = :name limit 1",param=list(name=user_name))
+      con = openeo.server$getConnection()
+      result = dbGetQuery(con, "select * from user where user_name = :name limit 1",param=list(name=user_name))
+      dbDisconnect(con)
+      
       if (nrow(result) == 0) {
         stop("Invalid user")
       }
@@ -92,19 +95,13 @@ openeo.server$api.version <- "0.0.2"
 #
 
 .executeSynchronous = function(req,res) {
-  drivers = gdalDrivers()
-  ogr_drivers = ogrDrivers()
-  
-  allowedGDALFormats = drivers[drivers$create,"name"]
-  allowedOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
-  
-  
+
   if (!is.null(req$postBody)) {
     process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
     output = process_graph$output
     
     format = output$format
-    if (is.null(format) || !format %in% allowedGDALFormats || !format %in% allowedOGRFormats) {
+    if (is.null(format) || !format %in% openeo.server$outputGDALFormats || !format %in% openeo.server$outputOGRFormats) {
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     
@@ -119,8 +116,14 @@ openeo.server$api.version <- "0.0.2"
   job$loadProcessGraph()
   result = job$run()
   
+  return(.create_output(res = res,result = result, format = format))
+
+  
+}
+
+.create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  if (format %in% allowedOGRFormats) {
+  if (!isCollection(result)) {
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
     filename = tempfile()
@@ -152,10 +155,7 @@ openeo.server$api.version <- "0.0.2"
       unlink(rasterfile@file@name)
     })
   }
-
-  
 }
-
 
 #
 # pipeline filter ====
@@ -202,6 +202,15 @@ openeo.server$api.version <- "0.0.2"
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   
   return(res)
+}
+
+.replace_user_me_in_body = function(req, res, ...) {
+  if (!is.null(req$postBody)) {
+    text = req$postBody
+    text = gsub("users/me/files",paste("users",req$user$user_id,"files",sep="/"), text)
+    req$postBody = text
+  }
+  forward()
 }
 
 .not_implemented_yet = function(req,res, ...) {
@@ -317,6 +326,8 @@ createAPI = function() {
                             "/",
                             handler = .cors_option_bypass)
   executeSynchronous$filter("authorization",.authorized)
+  executeSynchronous$filter("me_filter",.replace_user_me_in_body)
+  
   root$mount("/api/execute",executeSynchronous)
   
   services = createServicesEndpoint()

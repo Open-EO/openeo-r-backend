@@ -31,6 +31,7 @@ Job <- R6Class(
     last_update=NULL,
     user_id=NULL,
     consumed_credits=NULL,
+    output=NULL,
     
     # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
@@ -103,8 +104,7 @@ Job <- R6Class(
         ))
       }
       
-      # dir.create(self$filePath)
-      # write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
+      dbDisconnect(con)
     },
     
     loadProcessGraph = function() {
@@ -127,13 +127,17 @@ Job <- R6Class(
             parsedJson = self$process_graph
           }
         } else {
-          jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
+          con = openeo.server$getConnection()
+          jsonText = dbGetQuery(con, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
+          dbDisconnect(con)
+          
           parsedJson = fromJSON(jsonText, simplifyDataFrame = FALSE)
           if (!"process_graph" %in% names(parsedJson)) {
             parsedJson = list(process_graph=self$process_graph)
           }
         }
         
+        self$output = parsedJson[["output"]] # NULL if not exists
         
         self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
       } else {

@@ -66,6 +66,7 @@ createJobsEndpoint = function() {
   
   
   jobs$filter("authorization",.authorized)
+  jobs$filter("me_filter", .replace_user_me_in_body)
   
   return(jobs)
 }
@@ -109,7 +110,7 @@ createJobsEndpoint = function() {
   job$submitted = submit_time
   job$last_update = submit_time
   
-  job$store(con=openeo.server$database)
+  job$store(con=openeo.server$getConnection())
   
   result = list(
     job_id=job$job_id,
@@ -145,37 +146,30 @@ createJobsEndpoint = function() {
 # those are not openeo specification, it is merely a test to execute the job and return data
 
 #* @serializer contentType list(type="image/GTiff")
-#* @get /api/download/<job_id>
-.downloadSimple = function(req,res,job_id,format) {
+#* @get /api/job/<job_id>/download
+.downloadSimple = function(req,res,job_id,format=NULL) {
   if (!openeo.server$jobExists(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
     job = openeo.server$loadJob(job_id)
     result = job$run()
+    con = openeo.server$getConnection()
+    updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+    dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                              status="running",
+                                              job_id=job_id))
+    dbDisconnect(con)
     
-    updated_at = as.character(Sys.time())
-    job_status = "finished"
     
     con = openeo.server$getConnection()
     updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-    dbExecute(con, updateJobQuery ,param=list(time=updated_at,
-                                              status=job_status,
+    dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                              status="finished",
                                               job_id=job_id))
+    dbDisconnect(con)
     
     
-    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
     
-    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
-    
-    
-    tryCatch({
-      sendFile(res, 
-               status=200, 
-               file.name="output", 
-               contentType=paste("application/gdal-",format,sep=""),
-               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
-    },finally = function(rasterfile) {
-      unlink(rasterfile@file@name)
-    })
+    return(.create_output(res = res, result = result, format = format))
   }
 }
