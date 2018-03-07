@@ -24,7 +24,6 @@ Job <- R6Class(
     # attributes ----
     job_id = NULL,
     status=NULL,
-    evaluation=NULL,
     process_graph = NULL,
     view=NULL,
     submitted=NULL,
@@ -53,7 +52,9 @@ Job <- R6Class(
       return(self)
     },
     
-    store = function(con) {
+    store = function() {
+      
+      con = openeo.server$getConnection()
       exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
       if (isProcess(self$process_graph)) {
         stop("Cannot store process_graph. For the database it has to be a key")
@@ -105,6 +106,7 @@ Job <- R6Class(
       }
       
       dbDisconnect(con)
+      invisible(self)
     },
     
     loadProcessGraph = function() {

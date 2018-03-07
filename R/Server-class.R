@@ -299,7 +299,7 @@ OpenEOServer <- R6Class(
           con = self$getConnection()
           graph_binary = dbGetQuery(con, "select process_graph from process_graph where graph_id = :id",
                                     param = list(id = graph_id))[1,]
-          dbDisconnect()
+          dbDisconnect(con)
           graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
           return(graph_list)
         } else {
@@ -343,6 +343,11 @@ OpenEOServer <- R6Class(
         }
         dbDisconnect(con)
         return(exists)
+      },
+      deleteJob = function(job_id) {
+        con = self$getConnection()
+        
+        
       }
         
     ),
@@ -380,11 +385,11 @@ OpenEOServer <- R6Class(
       },
       
       newUserId = function() {
-        id = runif(1, 10^11, (10^12-1))
+        id = runif(1, 10^8, (10^9-1))
         
         con = self$getConnection()
         userIdExists = dbGetQuery(con, "select count(*) from user where user_id = :id", param=list(id=id)) == 1
-        dbDisconnect(db)
+        dbDisconnect(con)
         
         if (userIdExists) {
           return(private$newUserId())

@@ -42,12 +42,13 @@ openeo.server$api.version <- "0.0.2"
     "/api/processes/",
     "/api/processes/{process_id}",
     "/api/jobs/",
-    "/api/download/",
+    "/api/jobs/{job_id}/download",
+    "/api/execute/",
     "/api/users/{user_id}/files",
     "/api/users/{user_id}/files/{rel_path}",
     "/api/users/{user_id}/jobs",
     "/api/auth/login",
-    "/api/users/{user_id}/processes"
+    "/api/users/{user_id}/process_graphs"
   )
 }
 

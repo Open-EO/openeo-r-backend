@@ -96,7 +96,6 @@ createJobsEndpoint = function() {
 #* @post /api/jobs
 #* @serializer unboxedJSON
 .createNewJob = function(req,res) {
-
   # TODO check if postBody is valid
   process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   # TODO check if this is the simple representation or the complex (probably correct version)
@@ -106,11 +105,10 @@ createJobsEndpoint = function() {
   job = openeo.server$createJob(user = req$user, process_graph = process_graph)
   submit_time = Sys.time()
   job$status = "submitted"
-  job$evaluation = evaluate
   job$submitted = submit_time
   job$last_update = submit_time
   
-  job$store(con=openeo.server$getConnection())
+  job$store()
   
   result = list(
     job_id=job$job_id,
@@ -121,7 +119,7 @@ createJobsEndpoint = function() {
     consumed_credits = job$consumed_credits
   )
   
-  return()
+  return(result)
 }
 
 .createSimpleArgList = function(graph) {
