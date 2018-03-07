@@ -45,7 +45,7 @@ openeo.server$api.version <- "0.0.2"
     "/api/jobs/{job_id}/download",
     "/api/execute/",
     "/api/users/{user_id}/files",
-    "/api/users/{user_id}/files/{rel_path}",
+    "/api/users/{user_id}/files/{path}",
     "/api/users/{user_id}/jobs",
     "/api/auth/login",
     "/api/users/{user_id}/process_graphs"
@@ -165,6 +165,10 @@ openeo.server$api.version <- "0.0.2"
 
 #* @filter checkAuth
 .authorized = function(req, res){
+  if (req$REQUEST_METHOD == 'OPTIONS') {
+    return(forward())
+  }
+  
   tryCatch({
     auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
     if (auth[1] == "Bearer") {
@@ -192,9 +196,9 @@ openeo.server$api.version <- "0.0.2"
   )
 }
 
-.cors_filter = function(res) {
-  res$setHeader("Access-Control-Allow-Origin", "*")
-  res$setHeader("Access-Control-Allow-Credentials", TRUE)
+.cors_filter = function(req,res) {
+  res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
+  res$setHeader("Access-Control-Allow-Credentials", "true")
   plumber::forward()
 }
 
@@ -202,7 +206,7 @@ openeo.server$api.version <- "0.0.2"
   res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   
-  return(res)
+  ok(res)
 }
 
 .replace_user_me_in_body = function(req, res, ...) {
