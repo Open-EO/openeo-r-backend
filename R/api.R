@@ -57,15 +57,16 @@ openeo.server$api.version <- "0.0.2"
 .output_formats = function() {
   formats = c(openeo.server$outputGDALFormats,openeo.server$outputOGRFormats)
   namedList = lapply(formats,function(format) {
-    res = list(list(gdalformat=format))
-    names(res) = format
+    res = list(gdalformat=format)
     return(res)
   })
+
+  names(namedList) = formats
   
-  list(
+  return(list(
     default="GTiff",
     formats = namedList
-  )
+  ))
 }
 
 
@@ -118,7 +119,7 @@ openeo.server$api.version <- "0.0.2"
     output = process_graph$output
     
     format = output$format
-    if (is.null(format) || !format %in% openeo.server$outputGDALFormats || !format %in% openeo.server$outputOGRFormats) {
+    if (is.null(format) || !(format %in% openeo.server$outputGDALFormats || format %in% openeo.server$outputOGRFormats)) {
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     
@@ -299,7 +300,7 @@ createAPI = function() {
               handler = .cors_option_bypass)
   root$handle("GET",
               "/api/capabilities/output_formats",
-              handler = .capabilities,
+              handler = .output_formats,
               serializer = serializer_unboxed_json())
   
   root$handle("OPTIONS",
