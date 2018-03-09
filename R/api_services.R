@@ -2,15 +2,10 @@ createServicesEndpoint = function() {
   services = plumber$new()
   
   services$handle("GET",
-                  "/types",
-                  handler = .not_implemented_yet,
+                  "/<service_id>",
+                  handler=.not_implemented_yet,
                   serializer = serializer_unboxed_json())
-  services$handle("OPTIONS",
-                  "/types",
-                  handler = .cors_option_bypass)
-  
-  
-  services$handle("GET",
+  services$handle("PATCH",
                   "/<service_id>",
                   handler=.not_implemented_yet,
                   serializer = serializer_unboxed_json())
