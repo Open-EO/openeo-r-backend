@@ -1,6 +1,5 @@
 library(openEO.R.Backend)
 rm(openeo.server)
-openeo.server$data.path =  paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
 openeo.server$workspaces.path = "/var/openeo/workspace"
 openeo.server$initEnvironmentDefault()
 openeo.server$initializeDatabase()

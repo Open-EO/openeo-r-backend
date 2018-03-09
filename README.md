@@ -20,13 +20,11 @@ After loading the package an object called _openeo.server_ exists, which can be 
 the example data sets provided by this package and where to store newly created users, their data and jobs. As a default value for the data the server will set the directory of
 the package installation. Note: please remove the '/' suffix from your directory paths. If the `workspaces.path` is not set explicitly, then it will assume to look and/or store the
 created data in the current working directory `getwd()`.  
-You then need to load the demo data and processes for the server or you need to develop and register your own Processes and Products.  
-Also if you are starting the server for the first time, then you might create a user first. If there was already a user created in the specified `workspaces.path`, then it will be
-loaded.
+You then need to load the demo data and processes for the server or you need to develop and register your own Processes and Products. If you haven't already, then `loadDemo()` will download the sample data for you and store it under `/data` in the `workspace.path`
+Also if you are starting the server for the first time, then you might create a user first. 
 
 ```
 library(openEO.R.Backend)
-openeo.server$data.path =  paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
 openeo.server$workspaces.path = "somewhere/on/computer"
 
 openeo.server$initEnvironmentDefault()
@@ -46,7 +44,7 @@ R -f path/to/your_file.R
 ```
 
 ## Docker installation
-As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend.
+As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend. It is important that you build the baseserver before the openeo-rserver, because it will contain the basic server configuration for the application server (openeo-rserver).
 
 ```
 docker-compose build openeo-baseserver
@@ -62,7 +60,8 @@ On this local backend we consider three levels of access that require either _op
 This means that you should be aware to use the proper HTTP headers in your requests. `Authorization: Basic <encoded_credentials>` at the login process and `Authorization: Bearer <token>` at the other authorized services. For the bearer token authorization you will send the token that you have retrieved at the login.
 
 ## Notes
-There are some minor variations to the openEO API, regarding naming of the endpoints. Due to the different access methods we use multiple _plumber_ routes that run on a shared _root_ route. By doing this we cannot leave an endpoint blank, which means that some enpoints require a trailing `/`. For example, you will need to query `GET http://host:port/api/processes/` to fetch the list of offered processes. Somehow akward it gets at the job endpoint, where you will need to `POST http://host:port/api/jobs/?evaluate=lazy` to upload your job.
+There are some minor variations to the openEO API, regarding naming of the endpoints. Due to the different access methods we use multiple _plumber_ routes that run on a shared _root_ route. By doing this we cannot leave an endpoint blank, which means that some enpoints require a trailing `/`. For example, you will need to query `GET http://host:port/api/processes/` to fetch the list of offered processes. The basic rule of thump here, is that all the endpoints directly after `/api/xxx` need the trailing slash, but not the basic server endpoints like
+`capabilities`.
 
 ## Links
 * [openEO.org](http://openeo.org/)

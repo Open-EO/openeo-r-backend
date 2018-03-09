@@ -57,8 +57,8 @@ OpenEOServer <- R6Class(
         self$initEnvironmentDefault()
         
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
@@ -189,6 +189,7 @@ OpenEOServer <- R6Class(
 
       
       loadDemo = function() {
+
         self$initEnvironmentDefault()
         self$initializeDatabase()
         
@@ -228,11 +229,15 @@ OpenEOServer <- R6Class(
       
       initEnvironmentDefault = function() {
         
-        if (is.null(self$data.path)) {
-          self$data.path <- paste(system.file(package="openEO.R.Backend"),"extdata",sep="/")
-        }
         if (is.null(self$workspaces.path)) {
           self$workspaces.path <- getwd()
+        }
+        if (is.null(self$data.path)) {
+          self$data.path <- paste(self$workspaces.path,"data",sep="/")
+          
+          if (!dir.exists(self$data.path)) {
+            dir.create(self$data.path,recursive = TRUE)
+          }
         }
         if (is.null(self$secret.key)) {
           self$secret.key <- sha256(charToRaw("openEO-R"))
@@ -354,6 +359,25 @@ OpenEOServer <- R6Class(
     # private ====
     private = list(
       loadDemoData = function() {
+        if (! all(c("landsat7","sentinel2") %in%list.files(self$data.path))) {
+          cat("Downloading the demo data...  ")
+          # download from dropbox
+          data.path = gsub("/$","",self$data.path)
+          
+          zipfile = paste(data.path,"openeo-demo.zip",sep="/")
+          download.file(url="https://uni-muenster.sciebo.de/s/aiAEcP6DtHQ7t2Q/download",
+                        destfile = zipfile,
+                        mode="wb",quiet = TRUE)
+          cat("[done]\n")
+          # unzip
+          cat("Unzipping...  ")
+          unzip(zipfile=zipfile, exdir = gsub("/$","",self$data.path))
+          # remove zip
+          file.remove(zipfile)
+          
+          cat("[done]\n")
+        }
+        
         self$data = list()
         
         loadLandsat7Dataset()

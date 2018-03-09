@@ -64,6 +64,12 @@ createJobsEndpoint = function() {
               "/<job_id>/download",
               handler = .cors_option_bypass)
   
+  jobs$handle("DELETE",
+              "/<job_id>",
+              handler = .deleteJob,
+              serializer = serializer_unboxed_json())
+
+  
   
   jobs$filter("authorization",.authorized)
   jobs$filter("me_filter", .replace_user_me_in_body)
@@ -176,5 +182,21 @@ createJobsEndpoint = function() {
     
     
     return(.create_output(res = res, result = result, format = format))
+  }
+}
+
+
+.deleteJob = function(req,res,job_id) {
+  con = openeo.server$getConnection()
+  
+  success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
+  
+  
+  dbDisconnect(con)
+  
+  if (success) {
+    ok(res)
+  } else {
+    error(res, "Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }
 }
