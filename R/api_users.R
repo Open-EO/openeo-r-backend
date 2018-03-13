@@ -44,6 +44,10 @@ createUsersEndpoint = function() {
                handler = .cors_option_bypass)
   
   
+  users$handle("GET",
+               "/<userid>/process_graphs",
+               handler = .not_implemented_yet,
+               serializer = serializer_unboxed_json())
   users$handle("POST",
                "/<userid>/process_graphs",
                handler = .createUserProcessGraph,

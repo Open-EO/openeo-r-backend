@@ -364,6 +364,7 @@ OpenEOServer <- R6Class(
           # download from dropbox
           data.path = gsub("/$","",self$data.path)
           
+          dir.create(data.path, recursive = TRUE)
           zipfile = paste(data.path,"openeo-demo.zip",sep="/")
           download.file(url="https://uni-muenster.sciebo.de/s/aiAEcP6DtHQ7t2Q/download",
                         destfile = zipfile,

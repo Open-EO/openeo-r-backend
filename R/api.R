@@ -37,20 +37,20 @@ openeo.server$api.version <- "0.0.2"
 
 .capabilities = function() {
   list(
-    "/api/data/",
-    "/api/data/{product_id}",
-    "/api/processes/",
-    "/api/processes/{process_id}",
-    "/api/jobs/",
-    "/api/jobs/{job_id}/download",
-    "/api/execute/",
-    "/api/users/{user_id}/files",
-    "/api/users/{user_id}/files/{path}",
-    "/api/users/{user_id}/jobs",
-    "/api/auth/login",
-    "/api/users/{user_id}/process_graphs",
-    "/api/capabilities",
-    "/api/capabilities/output_formats"
+    "/data/",
+    "/data/{product_id}",
+    "/processes/",
+    "/processes/{process_id}",
+    "/jobs/",
+    "/jobs/{job_id}/download",
+    "/execute/",
+    "/users/{user_id}/files",
+    "/users/{user_id}/files/{path}",
+    "/users/{user_id}/jobs",
+    "/auth/login",
+    "/users/{user_id}/process_graphs",
+    "/capabilities",
+    "/capabilities/output_formats"
   )
 }
 
