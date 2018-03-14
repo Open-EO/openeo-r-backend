@@ -55,4 +55,4 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 
 ## Links
 * [openEO.org](http://openeo.org/)
-* [openEO core API](https://open-eo.github.io/openeo-api-poc/)
+* [openEO core API](https://open-eo.github.io/openeo-api/)
