@@ -48,9 +48,10 @@ openeo.server$api.version <- "0.0.2"
     "/users/{user_id}/files/{path}",
     "/users/{user_id}/jobs",
     "/auth/login",
-    "/users/{user_id}/process_graphs",
     "/capabilities",
-    "/capabilities/output_formats"
+    "/capabilities/output_formats",
+    "/users/{user_id}/process_graphs",
+    "/users/{user_id}/process_graphs/{graph_id}"
   )
 }
 

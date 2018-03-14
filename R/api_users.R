@@ -1,8 +1,8 @@
 #' @importFrom jsonlite validate
 NULL
-############################
+
 #
-# user data and functions
+# endpoint function ====
 #
 
 
@@ -43,10 +43,17 @@ createUsersEndpoint = function() {
                "/<userid>/jobs",
                handler = .cors_option_bypass)
   
+  users$handle("GET",
+               "/<userid>/services",
+               handler = .not_implemented_yet,
+               serializer = serializer_unboxed_json())
+  users$handle("OPTIONS",
+               "/<userid>/services",
+               handler = .cors_option_bypass)
   
   users$handle("GET",
                "/<userid>/process_graphs",
-               handler = .not_implemented_yet,
+               handler = .listUserProcessGraphs,
                serializer = serializer_unboxed_json())
   users$handle("POST",
                "/<userid>/process_graphs",
@@ -59,11 +66,15 @@ createUsersEndpoint = function() {
   
   users$handle("GET",
                "/<userid>/process_graphs/<graph_id>",
-               handler = .not_implemented_yet,
+               handler = .getProcessGraph,
+               serializer = serializer_unboxed_json())
+  users$handle("PUT",
+               "/<userid>/process_graphs/<graph_id>",
+               handler = .modifyProcessGraph,
                serializer = serializer_unboxed_json())
   users$handle("DELETE",
                "/<userid>/process_graphs/<graph_id>",
-               handler = .not_implemented_yet,
+               handler = .deleteProcessGraph,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/process_graphs/<graph_id>",
@@ -92,9 +103,9 @@ createUsersEndpoint = function() {
   
 }
 
-############################
+
 #
-# Request handling functions
+# Request handling functions ====
 #
 
 #* @get /api/users/<userid>/files
@@ -226,4 +237,68 @@ createUsersEndpoint = function() {
   } else {
     error(res,401,"Not authorized to view jobs of others")
   }
+}
+
+# GET /api/users/<userid>/process_graphs
+.listUserProcessGraphs = function(req, res, userid) {
+  con = openeo.server$getConnection()
+  user_id = req$user$user_id
+  query = "select distinct graph_id from process_graph where user_id = :uid"
+  graph_ids = dbExecute(con,query,param=list(uid = user_id))
+  dbDisconnect(con)
+  
+  return(graph_ids)
+}
+
+# DELETE /api/users/<userid>/process_graphs/<graph_id>
+.deleteProcessGraph = function(req,res,userid,graph_id) {
+  user_id = req$user$user_id
+  
+  con = openeo.server$getConnection()
+  query = "delete from process_graph where graph_id = :gid and user_id = :uid"
+  success = dbExecute(con,query,param=list(gid = graph_id, uid = user_id)) == 1
+  
+  dbDisconnect(con)
+  if (success) {
+    ok(res)
+  } else {
+    error(res = res, status = 500, msg = "Cannot delete graph. Either it is already deleted, does not exists or you don't have rights to delete the graph.")
+  }
+}
+
+# GET /api/users/<userid>/process_graphs/<graph_id>
+.getProcessGraph = function(req,res,userid,graph_id) {
+  user_id = req$user$user_id
+  
+  con = openeo.server$getConnection()
+  query = "select process_graph from process_graph where graph_id = :gid and user_id = :uid"
+  graph_binary = dbGetQuery(con,query,param=list(gid = graph_id, uid = user_id))[1,]
+  
+  dbDisconnect(con)
+  
+  graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
+  return(graph_list$process_graph)
+}
+
+#PUT /users/<userid>/process_graphs/<graph_id>
+.modifyProcessGraph = function(req,res,userid,graph_id) {
+  user_id = req$user$user_id
+  parsedGraph = fromJson(req$postBody,simplifyDataFrame = FALSE)
+  parsedGraph = .createSimpleArgList(parsedGraph)
+  
+  #fetch old one from db... contains process_graph and output...
+  con = openeo.server$getConnection()
+  findQuery = "select process_graph from process_graph where graph_id = :gid and user_id = :uid"
+  oldBinaryGraph = dbGetQuery(con, findQuery, param=list(gid = graph_id, uid = user_id))[1,]
+  oldGraph = fromJSON(decodeProcessGraph(oldBinaryGraph),simplifyDataFrame = FALSE)
+  
+  oldGraph$process_graph = parsedGraph
+  
+  binary_processgraph = encodeProcessGraph(toJSON(oldGraph,auto_unbox=TRUE,pretty = TRUE))
+  
+  query = "update process_graph set process_graph = :binary_graph where graph_id = :gid and user_id = :uid"
+  dbExecute(con, query, param = list(binary_graph = binary_graph, gid = graph_id, uid = user_id))
+  dbDisconnect(con)
+  
+  return(ok(res))
 }
