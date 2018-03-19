@@ -73,7 +73,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 
 ```JSON
 {
-    process_graph: {
+    "process_graph": {
       "process_id": "find_min",
       "args": {
         "imagery": {
@@ -95,7 +95,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
         }
       }
     },
-    output: {
+    "output": {
         format: "GTiff"
     }
 }
@@ -111,7 +111,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 
 ```JSON
 {
-    process_graph: {
+    "process_graph": {
       "process_id": "zonal_statistics",
       "args": {
         "imagery": {
@@ -134,7 +134,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
         "func": "median"
       }
     },
-    output: {
+    "output": {
         format: "GPKG"
     }
 }
