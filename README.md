@@ -96,7 +96,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
       }
     },
     "output": {
-        format: "GTiff"
+        "format": "GTiff"
     }
 }
 ```
@@ -135,7 +135,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
       }
     },
     "output": {
-        format: "GPKG"
+        "format": "GPKG"
     }
 }
 ```
