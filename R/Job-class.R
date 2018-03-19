@@ -19,17 +19,20 @@
 #' @export
 Job <- R6Class(
   "Job",
+  # public ====
   public = list(
+    # attributes ----
     job_id = NULL,
     status=NULL,
-    evaluation=NULL,
     process_graph = NULL,
     view=NULL,
     submitted=NULL,
     last_update=NULL,
     user_id=NULL,
     consumed_credits=NULL,
+    output=NULL,
     
+    # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
       if (is.null(job_id)||missing(job_id)) {
         stop("Cannot create new Job. There is no job_id specified")
@@ -43,12 +46,22 @@ Job <- R6Class(
       
       self$consumed_credits = 0
       
-      self$process_graph = process_graph
+      if (!is.null(process_graph)) {
+        self$process_graph = process_graph
+      }
       return(self)
     },
     
-    store = function(con) {
+    store = function() {
+      
+      con = openeo.server$getConnection()
       exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
+      if (isProcess(self$process_graph)) {
+        stop("Cannot store process_graph. For the database it has to be a key")
+      } else if (is.list(self$process_graph)) {
+        graph_id = openeo.server$createProcessGraph(process_graph = self$process_graph,user_id = self$user_id)
+        self$process_graph = graph_id
+      }
       
       if (!exists) {
         insertIntoQuery = "insert into job (job_id, 
@@ -64,7 +77,7 @@ Job <- R6Class(
           job_id = self$job_id,
           user_id = self$user_id,
           status = self$status,
-          process_graph = encodeProcessGraph(toJSON(self$process_graph,auto_unbox = TRUE,pretty=TRUE)),
+          process_graph = self$process_graph,
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits
@@ -84,7 +97,7 @@ Job <- R6Class(
         dbExecute(con, updateQuery, param = list(
           user_id = self$user_id,
           status = self$status,
-          process_graph = encodeProcessGraph(toJSON(self$process_graph$detailedInfo(),auto_unbox = TRUE,pretty=TRUE)),
+          process_graph = self$process_graph,
           submitted = as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits,
@@ -92,30 +105,41 @@ Job <- R6Class(
         ))
       }
       
-      # dir.create(self$filePath)
-      # write(x=json,file=paste(self$filePath,"/process_graph.json",sep=""))
+      dbDisconnect(con)
+      invisible(self)
     },
     
     loadProcessGraph = function() {
       if (!isProcess(self$process_graph)) {
         
         if (is.character(self$process_graph)) {
-          parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
-          if (!"process_graph" %in% names(parsedJson)) {
-            parsedJson = list(process_graph=parsedJson)
+          if (validate(self$process_graph) == TRUE) {
+            parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
+            if (!"process_graph" %in% names(parsedJson)) {
+              parsedJson = list(process_graph=parsedJson)
+            }
+          } else {
+            #should be a process_graph id
+            # TODO load process_graph by id
           }
         } else if (is.list(self$process_graph)) {
           if (!"process_graph" %in% names(self$process_graph)) {
             parsedJson = list(process_graph=self$process_graph)
+          } else {
+            parsedJson = self$process_graph
           }
         } else {
-          jsonText = dbGetQuery(openeo.server$database, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
+          con = openeo.server$getConnection()
+          jsonText = dbGetQuery(con, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
+          dbDisconnect(con)
+          
           parsedJson = fromJSON(jsonText, simplifyDataFrame = FALSE)
           if (!"process_graph" %in% names(parsedJson)) {
             parsedJson = list(process_graph=self$process_graph)
           }
         }
         
+        self$output = parsedJson[["output"]] # NULL if not exists
         
         self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
       } else {
@@ -165,6 +189,8 @@ Job <- R6Class(
     
   )
 )
+
+# statics ====
 
 encodeProcessGraph = function(text) {
   return(bin2hex(charToRaw(text)))

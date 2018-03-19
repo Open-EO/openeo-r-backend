@@ -1,21 +1,22 @@
-FROM r-base:3.4.3
+FROM openeo-baseserver:1.0
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.1.2"
+LABEL version="0.2.0-poc"
 LABEL description="A simple openeo (almost) conformant backend for frontend development"
 
 # create the path for the user files
 RUN mkdir -p /opt/dockerfiles/
 RUN mkdir -p /var/openeo/workspace/
+RUN mkdir -p /var/openeo/workspace/data/
+
+RUN wget -O /var/openeo/workspace/data/openeo-demo.zip -nv https://uni-muenster.sciebo.de/s/aiAEcP6DtHQ7t2Q/download
+RUN unzip -q -d /var/openeo/workspace/data/ /var/openeo/workspace/data/openeo-demo.zip
+
+RUN rm /var/openeo/workspace/data/openeo-demo.zip
 
 COPY ./ /opt/dockerfiles/
 
-# run commands to prepare the image
-# install dependencies
-RUN apt-get -y update
-RUN apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev
-
-# install R dependencies and install package
-RUN R -f /opt/dockerfiles/Dockerfiles/install_package_dependencies.R
+# install package
+RUN R -f /opt/dockerfiles/Dockerfiles/install_package.R
 
 
 # cmd or entrypoint for startup

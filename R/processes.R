@@ -1,6 +1,7 @@
 #' @include Server-class.R
 #' @include Process-class.R
 
+# filter_daterange ====
 filter_daterange = Process$new(
   process_id = "filter_daterange",
   description = "filters a data set with a temporal dimension based on a stated start and end date",
@@ -21,7 +22,7 @@ filter_daterange = Process$new(
       required = FALSE
     )
   ),
-  operation = function(imagery, from=NA, to=NA) {
+  operation = function(imagery, from=NULL, to=NULL) {
     cat("Starting filter_daterange\n")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
@@ -45,6 +46,90 @@ filter_daterange = Process$new(
   }
 )
 
+# filter_bands ====
+filter_bands = Process$new(
+  process_id = "filter_bands",
+  description = "filters by single and multiple band ids",
+  args = list(
+    Argument$new(
+      name = "imagery",
+      description = "the temporal dataset/collection",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "bands",
+      description = "one or more band ids",
+      required = TRUE
+    )
+  ),
+  operation = function(imagery,bands) {
+    collection = NULL
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    cat("Filtering for bands")
+    return(collection$filterByBands(bands))
+  }
+)
+
+# zonal_statistic ====
+zonal_statistics = Process$new(
+  process_id = "zonal_statistics",
+  description = "Calculates the zonal statistics from a given file containing polygons and returns a spatial polygon dataframe. It should not be nested in other calls which require imagery.",
+  args = list(
+    Argument$new(
+      name = "imagery",
+      description = "The imagery data set on which the zonal statistics shall be performed",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "regions",
+      description = "The relative link in the user workspace, where to find the geometries file",
+      required = TRUE
+    ),
+    Argument$new(
+      name = "func",
+      description = "An aggregation function like 'mean', 'median' or 'sum'",
+      required = TRUE
+    )
+  ),
+  operation = function(imagery,regions,func) {
+    func = get(tolower(func))
+    
+    if (startsWith(regions,"/")) {
+      regions = gsub("^/","",regions)
+    }
+    
+    file.path = paste(openeo.server$workspaces.path,regions,sep="/")
+    layername = ogrListLayers(file.path)[1]
+    
+    regions = readOGR(dsn=file.path,layer = layername)
+    
+    polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    rasterList = lapply(collection$granules, function(granule) {
+      return(granule$data)
+    })
+    timestamps = sapply(collection$granules, function(granule) {
+      return(as.character(granule$time))
+    })
+    b = brick(rasterList)
+    
+    values = raster::extract(b,
+                             regions,
+                             na.rm=TRUE,
+                             fun=func,
+                             df=TRUE)
+    
+    colnames(values) = c(colnames(regions@data),timestamps)
+    out = SpatialPolygonsDataFrame(polygonList,data=values)
+    
+    return(out)
+    
+  }
+)
+
+# find_min ====
 find_min = Process$new(
   process_id = "find_min",
   description = "calculates the minimum value per pixel of a single valued band collection",
@@ -85,10 +170,46 @@ find_min = Process$new(
   }
 )
 
+# filter_bbox ====
+filter_bbox = Process$new(
+  process_id="filter_bbox",
+  description="Subsets an imagery by a specific extent",
+  args = list(Argument$new(name = "imagery",
+                           description = "the spatio-temporal dataset/collection",
+                           required = TRUE),
+              Argument$new(name = "left",
+                           description = "The left value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "right",
+                           description = "The right value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "bottom",
+                           description = "The bottom value of a spatial extent",
+                           required = TRUE),
+              Argument$new(name = "top",
+                           description = "The top value of a spatial extent",
+                           required = TRUE)),
+  operation = function(imagery, left, right, bottom, top) {
+    collection = getCollectionFromImageryStatement(imagery)
+    e = extent(left,right,bottom,top)
+    
+    cropped_granules = lapply(collection$granules, function(granule) {
+      granule$data = crop(granule$data,e)
+      granule$extent = extent(granule$data)
+      return(granule)
+    })
+    output = collection$clone(deep=TRUE)
+    
+    output$granules = cropped_granules
+    return(output)
+  }
+)
+
+# calculate_ndvi ====
 calculate_ndvi = Process$new(
   process_id = "calculate_ndvi",
   description = "Calculates the ndvi per pixel and scene in a given collection",
-  arg = list(Argument$new(
+  args = list(Argument$new(
                name = "imagery",
                description = "the spatio-temporal dataset/collection",
                required = TRUE

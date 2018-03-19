@@ -55,6 +55,15 @@ Granule <- R6Class(
       }
       
       self$bands = append(self$bands,bands)
+    },
+  
+    getBandIndices = function(bandids) {
+      ids = names(self$bands)
+      
+      selector = sapply(bandids,function(val) {
+        return(paste(val))
+      })
+      return(match(selector, ids))
     })
 )
 

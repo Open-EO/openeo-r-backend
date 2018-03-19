@@ -37,6 +37,12 @@ Collection <- R6Class(
       res$granules = res$granules[indices$min : indices$max]
       return(res)
     },
+    filterByBands = function(bands) {
+      res = self$clone(deep=TRUE)
+      res$granules = .collection.filterbyband(res$granules,bands)
+      
+      return(res)
+    },
     sortGranulesByTime= function () {
       self$granules = self$granules[
         order(
@@ -70,11 +76,26 @@ Collection <- R6Class(
       return(names(firstGranule$bands))
     },
     getBandIndex = function(band_id) {
-      return(which(band_id == self$getBandNames()))
+      return(match(band_id, self$getBandNames()))
     }
   )
   
 )
+
+.collection.filterbyband = function (granules,bands) {
+  filteredGranules = list()
+  for (i in 1:length(granules)) {
+    currentGranule = granules[[i]]$clone(deep=TRUE)
+    
+    bandIndices = currentGranule$getBandIndices(bands)
+    currentGranule$data = subset(currentGranule$data, subset = bandIndices)
+    currentGranule$bands = currentGranule$bands[bandIndices]
+    
+    filteredGranules[[i]] = currentGranule    
+  }
+  
+  return(filteredGranules)
+}
 
 .collection.filterbytime = function (granules,from,to) {
   minpos = -1
