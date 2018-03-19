@@ -15,11 +15,13 @@
 Argument <- R6Class(
   "Argument",
   public = list(
+    # attributes ====
     name = NULL,
     description = NULL,
     required = NULL,
     value = NULL,
     
+    # public ====
     initialize = function(name = NA,
                           description = NA,
                           required = FALSE) {
@@ -54,6 +56,7 @@ Argument <- R6Class(
   )
 )
 
+# static =====
 isArgument = function(obj) {
   return("Argument" %in% class(obj))
 }

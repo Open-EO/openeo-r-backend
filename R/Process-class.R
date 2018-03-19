@@ -18,11 +18,13 @@
 Process <- R6Class(
   "Process",
   public = list(
+    # attributes ====
     process_id = NULL,
     args = NULL,
     description = NULL,
     operation = NULL,
     
+    # public ====
     initialize = function(process_id = NA,
                           description = NA,
                           args = NA,
@@ -69,23 +71,44 @@ Process <- R6Class(
         clonedArguments=append(clonedArguments,arg$clone(deep=TRUE))
       }
       runner$args = clonedArguments
-      
-      for (key in 1:length(args)) {
+
+      for (key in names(args)) {
         value = args[[key]]
         
         #TODO maybe add a handling for UDF or in the UDF class 
         if (class(value) == "list" && "process_id" %in% names(value)) {
-          runner$args[[key]]$value= job$loadProcess(value)
+          runner$setArgumentValue(key,job$loadProcess(value))
         } else {
-          runner$args[[key]]$value = value
+          runner$setArgumentValue(key, value)
         }
       }
       
       return(ExecutableProcess$new(process=runner))
+    },
+    
+    setArgumentValue = function(name, value) {
+      # arguments are unnamed so list(Argument) -> list(Argument:name)
+      argument_names = lapply(self$args,function(argument) {
+        return(argument$name)
+      })
+      
+      # get index of argument
+      x = match(name,argument_names)
+      
+      if (is.na(x)) {
+        stop(paste("Cannot find argument: '",name,"' in process '",self$process_id,"'",sep=""))
+      }
+      
+      # set value for argument at index "x"
+      self$args[[x]]$value = value
+      
+      invisible(self)
     }
     
   )
 )
+
+# statics ====
 
 #' @export
 isProcess = function(obj) {
