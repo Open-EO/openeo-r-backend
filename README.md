@@ -3,7 +3,7 @@
 [![Status](https://img.shields.io/badge/Status-proof--of--concept-yellow.svg)]()
 
 A reference implementation for the openEO core API as a proof-of-concept written in R, utilizing the `plumber` package as a lightweight webserver. The webserver is not final and in terms of
-security aspects not optimized. The goal of this package is to provide a simplistic version of local [openEO conformant server backend](https://open-eo.github.io/openeo-api-poc/).
+security aspects not optimized. The goal of this package is to provide a simplistic version of local [openEO conformant server backend](https://open-eo.github.io/openeo-api/).
 
 ## Installation
 Install the package by using `install_github` from the devtools package.
@@ -63,6 +63,84 @@ This means that you should be aware to use the proper HTTP headers in your reque
 There are some minor variations to the openEO API, regarding naming of the endpoints. Due to the different access methods we use multiple _plumber_ routes that run on a shared _root_ route. By doing this we cannot leave an endpoint blank, which means that some enpoints require a trailing `/`. For example, you will need to query `GET http://host:port/api/processes/` to fetch the list of offered processes. The basic rule of thump here, is that all the endpoints directly after `/api/xxx` need the trailing slash, but not the basic server endpoints like
 `capabilities`.
 
+## Process Graphs for Proof-of-Concept
+
+### [Use Case 1](https://open-eo.github.io/openeo-api/poc/index.html#use-case-1-deriving-minimum-ndvi-measurements-over-pixel-time-series-of-sentinel-2-imagery)
+| --- | --- |
+| Endpoint: | POST /jobs or POST /execute |
+| Query-Configuration: | Authorization with Bearer-Token |
+
+```JSON
+{
+    process_graph: {
+      "process_id": "find_min",
+      "args": {
+        "imagery": {
+          "process_id": "calculate_ndvi",
+          "args": {
+            "imagery": {
+              "process_id": "filter_daterange",
+              "args": {
+                "imagery": {
+                  "product_id": "sentinel2_subset"
+                },
+                "from": "2017-04-01",
+                "to": "2017-05-01"
+              }
+            },
+            "nir": 8,
+            "red": 4
+          }
+        }
+      }
+    },
+    output: {
+        format: "GTiff"
+    }
+}
+```
+
+
+### [Use Case 3](https://open-eo.github.io/openeo-api/poc/index.html#use-case-3-compute-time-series-of-zonal-regional-statistics-of-sentinel-2-imagery-over-user-uploaded-polygons)
+| --- | --- |
+| Prerequisites: | An uploaded ["polygons.geojson"](https://raw.githubusercontent.com/Open-EO/openeo-r-client/master/examples/polygons.geojson) file in the users workspace (PUT /users/me/files/<path>)|
+| Endpoint: | POST /jobs or POST /execute |
+| Query-Configuration: | Authorization with Bearer-Token |
+
+```JSON
+{
+    process_graph: {
+      "process_id": "zonal_statistics",
+      "args": {
+        "imagery": {
+          "process_id": "filter_daterange",
+          "args": {
+            "imagery": {
+              "process_id": "filter_bands",
+              "args": {
+                "imagery": {
+                  "product_id": "sentinel2_subset"
+                },
+                "bands": "8"
+              }
+            },
+            "from": "2017-04-01",
+            "to": "2017-07-01"
+          }
+        },
+        "regions": "/users/me/files/polygons.geojson",
+        "func": "median"
+      }
+    },
+    output: {
+        format: "GPKG"
+    }
+}
+```
+
+If you are interested, then check the [openeo-r-client example](https://github.com/Open-EO/openeo-r-client/blob/master/examples/rbackend-uc3-example.R) for reference.
+
 ## Links
 * [openEO.org](http://openeo.org/)
-* [openEO core API](https://open-eo.github.io/openeo-api-poc/)
+* [openEO core API](https://open-eo.github.io/openeo-api/)
+* [openEO YouTube channel](https://www.youtube.com/channel/UCMJQil8j9sHBQkcSlSaEsvQ)
