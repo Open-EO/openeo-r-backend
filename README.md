@@ -66,6 +66,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 ## Process Graphs for Proof-of-Concept
 
 ### [Use Case 1](https://open-eo.github.io/openeo-api/poc/index.html#use-case-1-deriving-minimum-ndvi-measurements-over-pixel-time-series-of-sentinel-2-imagery)
+| | |
 | --- | --- |
 | Endpoint: | POST /jobs or POST /execute |
 | Query-Configuration: | Authorization with Bearer-Token |
@@ -102,6 +103,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 
 
 ### [Use Case 3](https://open-eo.github.io/openeo-api/poc/index.html#use-case-3-compute-time-series-of-zonal-regional-statistics-of-sentinel-2-imagery-over-user-uploaded-polygons)
+| | |
 | --- | --- |
 | Prerequisites: | An uploaded ["polygons.geojson"](https://raw.githubusercontent.com/Open-EO/openeo-r-client/master/examples/polygons.geojson) file in the users workspace (PUT /users/me/files/<path>)|
 | Endpoint: | POST /jobs or POST /execute |
