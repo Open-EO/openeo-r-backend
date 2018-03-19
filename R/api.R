@@ -113,13 +113,16 @@ openeo.server$api.version <- "0.0.2"
 # download endpoint ====
 #
 
-.executeSynchronous = function(req,res) {
+.executeSynchronous = function(req,res,format=NULL) {
 
   if (!is.null(req$postBody)) {
     process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
     output = process_graph$output
     
-    format = output$format
+    if (is.null(format)) {
+      format = output$format
+    } 
+    
     if (is.null(format) || !(format %in% openeo.server$outputGDALFormats || format %in% openeo.server$outputOGRFormats)) {
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
