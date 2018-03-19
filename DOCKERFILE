@@ -1,6 +1,6 @@
 FROM openeo-baseserver:1.0
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.2.0-poc"
+LABEL version="0.2.1"
 LABEL description="A simple openeo (almost) conformant backend for frontend development"
 
 # create the path for the user files

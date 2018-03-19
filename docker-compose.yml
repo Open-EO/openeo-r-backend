@@ -9,7 +9,7 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.2.0-poc
+        image: openeo-r-backend:0.2.1
         container_name: openeo-rserver
         ports:
             - "8000:8000"
