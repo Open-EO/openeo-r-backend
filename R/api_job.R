@@ -58,7 +58,7 @@ createJobsEndpoint = function() {
   
   jobs$handle("GET",
               "/<job_id>/download",
-              handler = .downloadSimple,
+              handler = .createDownloadableFileList,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
               "/<job_id>/download",
@@ -145,6 +145,19 @@ createJobsEndpoint = function() {
     }
   }
   return(graph)
+}
+
+.createDownloadableFileList = function(req,res,job_id) {
+  if (!openeo.server$jobExists(job_id)) {
+    error(res, 404, paste("Cannot find job with id:",job_id))
+  } else {
+    job_results = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+    
+    base_url = paste("http://",openeo.server$host,":",openeo.server$api.port,"/api/result/",job_id,sep="")
+    
+    #get files in outputfolder but not the log file
+    paste(base_url,list.files(folder,pattern="[^process\\.log]"),sep="/")
+  }
 }
 
 # those are not openeo specification, it is merely a test to execute the job and return data

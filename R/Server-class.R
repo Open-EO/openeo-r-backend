@@ -21,8 +21,9 @@
 #' @export
 OpenEOServer <- R6Class(
     "OpenEOServer",
+    # public ====
     public = list(
-      # attributes ====
+      # attributes ----
       api.version = "0.0.2",
       secret.key = NULL,
       
@@ -31,6 +32,7 @@ OpenEOServer <- R6Class(
       sqlite.path = NULL,
       
       api.port = NULL,
+      host = NULL,
       
       processes = NULL,
       data = NULL,
@@ -38,7 +40,7 @@ OpenEOServer <- R6Class(
       outputGDALFormats = NULL,
       outputOGRFormats = NULL,
       
-      # public ====
+      # functions ----
       initialize = function() {
         self$processes = list()
         self$data = list()
@@ -49,16 +51,23 @@ OpenEOServer <- R6Class(
         self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
       },
       
-      startup = function (port=NA,host="127.0.0.1") {
+      startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
         if (! is.na(port)) {
           self$api.port = port
+        }
+        self$host = host_name
+        
+        batch_job_download_dir = paste(openeo.server$workspaces.path,"jobs",sep="/")
+        
+        if (! dir.exists(batch_job_download_dir)) {
+          dir.create(batch_job_download_dir,recursive = TRUE)
         }
         
         self$initEnvironmentDefault()
         
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
@@ -71,6 +80,9 @@ OpenEOServer <- R6Class(
         root$registerHook("exit", function(){
           print("Bye bye!")
         })
+        
+        job_downloads = PlumberStatic$new(batch_job_download_dir)
+        root$mount("/api/result", job_downloads)
         
         root$run(port = self$api.port,host = host)
       },
@@ -411,16 +423,13 @@ OpenEOServer <- R6Class(
           })
 
       }
-      
-      
-        
     ),
     # private ====
     private = list(
       loadDemoData = function() {
-        if (! all(c("landsat7","sentinel2") %in%list.files(self$data.path))) {
+        if (! all(c("landsat7","sentinel2") %in% list.files(self$data.path))) {
           cat("Downloading the demo data...  ")
-          # download from dropbox
+
           data.path = gsub("/$","",self$data.path)
           
           dir.create(data.path, recursive = TRUE)

@@ -39,7 +39,7 @@ User <- R6Class(
     },
     
     getJobOutputFolder = function(job_id) {
-      return(paste(self$workspace,private$jobs.folder,job_id,sep="/"))
+      return(paste(openeo.server$workspaces.path,private$jobs.folder,job_id,sep="/"))
     }
   ),
   # actives ====

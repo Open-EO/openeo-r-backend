@@ -371,19 +371,6 @@ createAPI = function() {
   
   root$mount("/api/auth",authentication)
   
-  download = plumber$new()
-  
-  download$handle("GET",
-                  "/<job_id>",
-                  handler = .downloadSimple,
-                  serializer = serializer_unboxed_json())
-  download$handle("OPTIONS",
-                  "/<job_id>",
-                  handler = .cors_option_bypass)
-  
-  download$filter("authorization", .authorized)
-  
-  root$mount("/api/download",download)
   
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",
