@@ -263,6 +263,7 @@ calculate_ndvi = Process$new(
 # This function resolves the imagery statement defined in a process. It can be
 # either a product or an intermediate calculation. In any case the result shall
 # be a collection on which the calculations shall be performed.
+#' @export
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
   if (isProduct(imagery)) {

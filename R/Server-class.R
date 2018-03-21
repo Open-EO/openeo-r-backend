@@ -23,7 +23,7 @@ OpenEOServer <- R6Class(
     "OpenEOServer",
     public = list(
       # attributes ====
-      api.version = NULL,
+      api.version = "0.0.2",
       secret.key = NULL,
       
       data.path = NULL,
@@ -350,10 +350,69 @@ OpenEOServer <- R6Class(
         return(exists)
       },
       deleteJob = function(job_id) {
-        con = self$getConnection()
+        con = openeo.server$getConnection()
+        success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
+        dbDisconnect(con)
         
-        
+        return(success)
+      },
+      runJob = function(job, outputPath,format=NULL) {
+          job_id = job$job_id
+          
+          if (!dir.exists(outputPath)) {
+            dir.create(outputPath,recursive = TRUE)
+          }
+          
+          log = paste(outputPath, "process.log",sep="/")
+          
+          sink(file=log,append = TRUE,type = "output")
+          tryCatch({
+            
+            # self$register(job)
+            
+            if ("output" %in% names(job) && "format" %in% names(job$output)) {
+              format = job$output$format
+            }
+            
+            if (is.null(format) || length(format)==0) {
+              format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
+            }
+            
+            con = openeo.server$getConnection()
+            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                                      status="running",
+                                                      job_id=job_id))
+            dbDisconnect(con)
+            
+            cat("Start job processing...\n")
+            result = job$run()
+            cat("Job done\n")
+            
+            
+            
+            con = openeo.server$getConnection()
+            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                                      status="finished",
+                                                      job_id=job_id))
+            dbDisconnect(con)
+            cat("Set job to finished\n")
+          
+          
+          
+            cat("Creating output\n")
+            openEO.R.Backend:::.create_output_no_response(result, format, dir = outputPath)
+            cat("Output finished\n")
+          }, error = function(e) {
+            cat(str(e))
+          }, finally={
+            sink()
+          })
+
       }
+      
+      
         
     ),
     # private ====
@@ -450,8 +509,17 @@ OpenEOServer <- R6Class(
 
 # statics ====
 
+#' Creates a server instance
+#' 
+#' The function creates a new server instance on the global variable 'openeo.server'. The names for
+#' this variable is reserved and should not be changed by any means. It will crash the system, since
+#' many endpoints will be accessing and depending on the correctly set variable 'openeo.server'.
+#' 
 #' @export
-openeo.server = OpenEOServer$new()
+createServerInstance = function() {
+  assign("openeo.server", OpenEOServer$new(),envir=.GlobalEnv)
+  invisible()
+}
 
 #' Migration tool
 #' 

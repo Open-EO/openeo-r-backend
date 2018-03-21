@@ -25,8 +25,6 @@
 #' @importFrom jsonlite base64_dec
 #' @importFrom jsonlite base64_enc
 
-openeo.server$api.version <- "0.0.2"
-
 #
 # serverinformation endpoint ====
 #
@@ -43,6 +41,7 @@ openeo.server$api.version <- "0.0.2"
     "/processes/{process_id}",
     "/jobs/",
     "/jobs/{job_id}/download",
+    "/jobs/{job_id}/queue",
     "/execute/",
     "/users/{user_id}/files",
     "/users/{user_id}/files/{path}",
@@ -143,14 +142,45 @@ openeo.server$api.version <- "0.0.2"
   
 }
 
+.create_output_no_response = function(result, format, dir) {
+  #store the job? even though it is completed?
+  if (!isCollection(result)) {
+    cat("Creating vector file with OGR\n")
+    # assuming that we don't have a collection as a result
+    layername = 1 # TODO change to something meaningful
+
+    filename = tempfile(tmpdir = dir)
+
+    cat(paste("storing file at",filename,"\n"))
+    writeOGR(result,dsn=filename,layer=layername,driver=format)
+    
+  } else {
+    cat("Creating raster file with GDAL\n")
+    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+    cat(str(rasterdata))
+    
+
+    filename = paste(dir,"output",sep="/")
+
+    
+    cat(paste("storing file at",filename,"\n"))
+    rasterfile = writeRaster(x=rasterdata,filename=filename,format=format)
+  }
+}
+
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
   if (!isCollection(result)) {
+    cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
+
     filename = tempfile()
+
+    cat(paste("storing file at",filename,"\n"))
     writeOGR(result,dsn=filename,layer=layername,driver=format)
     
+
     tryCatch({
       sendFile(res, 
                status=200, 
@@ -160,13 +190,17 @@ openeo.server$api.version <- "0.0.2"
     },finally = function(filename) {
       unlink(filename)
     })
+
     
   } else {
+    cat("Creating raster file with GDAL\n")
     rasterdata = result$granules[[1]]$data #TODO handle multi granules...
+    cat(str(rasterdata))
     
+    cat(paste("storing file at",filename,"\n"))
     rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
     
-    
+
     tryCatch({
       sendFile(res, 
                status=200, 

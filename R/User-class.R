@@ -4,11 +4,13 @@
 User <- R6Class(
   "User",
   public = list(
+    # attributes ====
     user_id = NULL,
     user_name = NULL,
     password = NULL,
     token = NULL,
     
+    #public ====
     initialize = function(user_id) {
       self$user_id = user_id
     },
@@ -34,8 +36,13 @@ User <- R6Class(
          size = row["size"]
        )) 
       }))
+    },
+    
+    getJobOutputFolder = function(job_id) {
+      return(paste(self$workspace,private$jobs.folder,job_id,sep="/"))
     }
   ),
+  # actives ====
   active = list(
     workspace = function() {
       return(paste(openeo.server$workspaces.path,"users",self$user_id,sep="/"))
@@ -61,12 +68,14 @@ User <- R6Class(
       }
     }
   ),
+  # private ====
   private = list(
     jobs.folder = "jobs",
     files.folder = "files"
   )
 )
 
+# static ====
 isUser = function(obj) {
   return(all("User" %in% class(obj)))
 }

@@ -12,7 +12,8 @@ Depends:
     sodium (>= 1.1),
     plumber (>= 0.4.4),
     DBI (>= 0.7),
-    RSQLite (>= 2.0)
+    RSQLite (>= 2.0),
+    future (>= 1.7.0)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -25,7 +26,8 @@ Imports:
     raster,
     rgdal,
     gdalUtils,
-    sodium
+    sodium,
+    future
 Suggests:
     raster,
     rgdal

@@ -1,5 +1,7 @@
 library(openEO.R.Backend)
-rm(openeo.server)
+
+createServerInstance()
+
 openeo.server$workspaces.path = "/var/openeo/workspace"
 openeo.server$initEnvironmentDefault()
 openeo.server$initializeDatabase()

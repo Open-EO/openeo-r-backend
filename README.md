@@ -16,15 +16,20 @@ install_github(repo="Open-EO/openeo-r-backend",ref="master")
 The package contains a set of example data in `inst/extdata`, so it might take some more time to install as usual. The data can be found in the packages install directory under `/extdata`
 
 ## Getting Started
-After loading the package an object called _openeo.server_ exists, which can be configured. With the parameters `data.path` and `workspaces.path` you configure where to look for 
-the example data sets provided by this package and where to store newly created users, their data and jobs. As a default value for the data the server will set the directory of
-the package installation. Note: please remove the '/' suffix from your directory paths. If the `workspaces.path` is not set explicitly, then it will assume to look and/or store the
-created data in the current working directory `getwd()`.  
+After loading the package an object call `createServerInstance()` to create the _openeo.server_ object. The variable and object is important and should not be renamed or removed in any case, because otherwise the server won't work. The object itself, however, can be configured further. With the parameters `data.path` and `workspaces.path` you configure where to look for 
+the example data sets provided by this package and where to store newly created users, their data and jobs. 
+
+As with versions > 0.2.0 the data was removed from the GitHub repository and was stored externally. When loading the demo data the data will be downloaded, so please make sure to have an internet connection and be aware about eventual internet costs. You can specify where the data shall be stored with `openeo.server$data.path`. As a default it will store the data in the subfolder `data` in `openeo.server$workspaces.path`.
+
+Note: please remove the '/' suffix from your directory paths. If the `workspaces.path` is not set explicitly, then it will assume to look and/or store the created data in the current working directory `getwd()`.
+
 You then need to load the demo data and processes for the server or you need to develop and register your own Processes and Products. If you haven't already, then `loadDemo()` will download the sample data for you and store it under `/data` in the `workspace.path`
 Also if you are starting the server for the first time, then you might create a user first. 
 
 ```
 library(openEO.R.Backend)
+createServerInstance()
+
 openeo.server$workspaces.path = "somewhere/on/computer"
 
 openeo.server$initEnvironmentDefault()
@@ -47,9 +52,7 @@ R -f path/to/your_file.R
 As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend. It is important that you build the baseserver before the openeo-rserver, because it will contain the basic server configuration for the application server (openeo-rserver).
 
 ```
-docker-compose build openeo-baseserver
-docker-compose build openeo-rserver
-docker-compose start openeo-rserver
+docker-compose up -d
 ```
 
 Note: preparing the base server will take a considerable amount of time. But when it is done, then you can install newer versions of the backend faster, since the baseserver will contain R and all required dependencies.

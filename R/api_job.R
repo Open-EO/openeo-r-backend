@@ -29,9 +29,9 @@ createJobsEndpoint = function() {
               handler = .cors_option_bypass)
   
   
-  jobs$handle("GET",
+  jobs$handle("PATCH",
               "/<job_id>/queue",
-              handler = .not_implemented_yet,
+              handler = .performJob,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
               "/<job_id>/queue",
@@ -187,16 +187,32 @@ createJobsEndpoint = function() {
 
 
 .deleteJob = function(req,res,job_id) {
-  con = openeo.server$getConnection()
-  
-  success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
-  
-  
-  dbDisconnect(con)
+  success = openeo.server$deleteJob(job_id)
   
   if (success) {
     ok(res)
   } else {
     error(res, "Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }
+}
+
+.performJob = function(req,res,job_id) {
+  
+  if (!openeo.server$jobExists(job_id)) {
+    stop("Job does not exist")
+  }
+  path = req$user$getJobOutputFolder(job_id)
+  job = openeo.server$loadJob(job_id)
+  
+  plan(multiprocess)
+  
+  processing <- future({
+    openeo.server$runJob(job= job, outputPath=path)
+  }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
+  
+  sending = future({
+    ok(res)
+  })
+  
+  value(sending)
 }
