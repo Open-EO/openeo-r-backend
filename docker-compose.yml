@@ -1,17 +1,33 @@
 version: '3'
 services:
-    openeo-baseserver:
+    openeo-r-baseserver:
         build: 
             context: .
             dockerfile: DOCKERFILE-base
         image: openeo-baseserver:1.1
-    openeo-rserver:
+    openeo-r-server:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.2.1
-        container_name: openeo-rserver
+        image: openeo-r-backend:0.2.2
+        container_name: openeo-r-server
         ports:
             - "8000:8000"
         depends_on:
-            - openeo-baseserver
+            - openeo-r-baseserver
+        volumes:
+            - C:\code\openeo-r-workspace\:/var/openeo/workspace/
+        external_links:
+            - openeo-r-mapserver:mapserver
+    openeo-r-mapserver:
+        image: geodata/mapserver
+        container_name: openeo-r-mapserver
+        volumes:
+            - C:\code\openeo-r-workspace\:/maps
+        depends_on:
+            - openeo-r-server
+        ports:
+            - "8080:80"
+
+volumes:
+    openeo-r-workspace: 
