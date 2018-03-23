@@ -7,8 +7,16 @@ MapServerConfig <- R6Class(
     map = NULL,
     
     # functions ====
-    initialize = function(obj,service_type, scale="AUTO", normalize="AUTO") {
+    initialize = function(obj,service, scale="AUTO", normalize="AUTO") {
+      
+      service_id = service$service_id
+      service_type = service$service_type
+      
       map = MapServerMap$new()
+      
+      if (!is.null(service_id)) {
+        map$NAME = service_id
+      }
       
       service_type = tolower(service_type)
       if (service_type %in% private$supported_services) {
@@ -28,6 +36,8 @@ MapServerConfig <- R6Class(
           map$PROJECTION = toString(crs(obj))
           
           # layers
+          layers = list()
+          
           # bands
           for (band_index in 1:nbands(obj)) {
             band = obj[[band_index]]
@@ -37,7 +47,7 @@ MapServerConfig <- R6Class(
             layer$STATUS = "ON"
             layer$TYPE = "RASTER"
             # on the mapserver service the workspace will be found at another directory, so replace it
-            layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps/", x=obj@file@name)
+            layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=obj@file@name)
             
             processings = list()
             if (!is.null(normalize)) {
@@ -48,6 +58,9 @@ MapServerConfig <- R6Class(
             }
             
             processings = append(processings, paste("BANDS",paste(rep(band_index,3),sep=","),sep="="))
+            layer$PROCESSING = processings
+            
+            layers = append(layers,layer)
           }
           
           #TODO maybe add composites like false colors
@@ -58,10 +71,7 @@ MapServerConfig <- R6Class(
         stop("Not supported service type.")
       }
       
-      
-      
-      layers = list()
-      
+      map$LAYER = layers
       self$map = map
       
     },
@@ -69,6 +79,11 @@ MapServerConfig <- R6Class(
     toFile = function(file) {
       
       data = c()
+      
+      dir = regmatches(file,regexpr(text=file,pattern="^(.*)/"))
+      if (!dir.exists(file)) {
+        dir.create(dir,recursive = TRUE)
+      }
       
       if (!file.exists(file)) {
         file.create(file)
@@ -93,7 +108,8 @@ MapServerConfig <- R6Class(
       
       keys = c(paste(service_type,"_srs",sep=""),
                paste(service_type,"_enable_request",sep=""))
-      values = list("EPSG:3857 EPSG:4326")
+      values = list("EPSG:3857 EPSG:4326", "*")
+      
       names(values) <- keys
       web$METADATA <- values
       

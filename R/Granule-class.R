@@ -14,13 +14,16 @@
 #' @export
 Granule <- R6Class(
   "Granule",
+  # public ----
   public=list(
+    # attributes ====
     time=NULL,
     extent=NULL,
     srs=NULL,
     data=NULL,
     bands=NULL,
     
+    #functions ====
     initialize = function(time=NULL,extent=NULL,srs=NULL,data=NULL,bands=NULL) {
       self$time=time
       self$extent=extent
@@ -67,6 +70,7 @@ Granule <- R6Class(
     })
 )
 
+# statics ----
 isGranule = function(obj) {
   return("Granule" %in% class(obj))
 }

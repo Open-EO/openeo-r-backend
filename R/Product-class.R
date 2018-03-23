@@ -4,7 +4,9 @@
 #' @export
 Product <- R6Class(
         "Product",
+        # public ----
         public = list(
+          # attributes ====
           product_id = NULL,
           description = NULL,
           source= NULL,
@@ -12,6 +14,8 @@ Product <- R6Class(
           time = NULL,
           bands = NULL,
           srs=NULL,
+          
+          # functions ====
           initialize = function(product_id=NA,description=NA,source=NA) {
             self$product_id = product_id
             self$description= description
@@ -68,10 +72,14 @@ Product <- R6Class(
           }
           
         ),
+        # private ----
         private = list(
+          #attributes ====
           collection=NULL
         )
 )
+
+# statics ====
 
 #' @export
 isProduct = function(obj) {

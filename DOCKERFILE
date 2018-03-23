@@ -1,4 +1,4 @@
-FROM openeo-baseserver:1.0
+FROM openeo-baseserver:1.1
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
 LABEL version="0.2.2"
 LABEL description="A simple openeo (almost) conformant backend for frontend development"
@@ -6,12 +6,6 @@ LABEL description="A simple openeo (almost) conformant backend for frontend deve
 # create the path for the user files
 RUN mkdir -p /opt/dockerfiles/
 RUN mkdir -p /var/openeo/workspace/
-RUN mkdir -p /var/openeo/workspace/data/
-
-RUN wget -O /var/openeo/workspace/data/openeo-demo.zip -nv https://uni-muenster.sciebo.de/s/aiAEcP6DtHQ7t2Q/download
-RUN unzip -q -d /var/openeo/workspace/data/ /var/openeo/workspace/data/openeo-demo.zip
-
-RUN rm /var/openeo/workspace/data/openeo-demo.zip
 
 COPY ./ /opt/dockerfiles/
 

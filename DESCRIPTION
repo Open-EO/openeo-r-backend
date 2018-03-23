@@ -47,6 +47,7 @@ Collate:
     'data.R'
     'processes.R'
     'Server-class.R'
+    'Service-class.R'
     'User-class.R'
     'View-class.R'
     'api_processes.R'

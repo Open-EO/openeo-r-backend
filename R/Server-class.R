@@ -66,8 +66,8 @@ OpenEOServer <- R6Class(
         self$initEnvironmentDefault()
         
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
@@ -234,6 +234,14 @@ OpenEOServer <- R6Class(
           dbExecute(con, "create table process_graph (graph_id text, 
                     user_id integer, 
                     process_graph text)")
+        }
+        if (!dbExistsTable(con,"service")) {
+          dbExecute(con, "create table service (
+                    service_id text,
+                    job_id text,
+                    args text,
+                    type text
+          )")
         }
         
         dbDisconnect(con)
@@ -466,7 +474,7 @@ OpenEOServer <- R6Class(
       },
       
       newJobId = function() {
-        randomString = private$createAlphaNumericId(n=1,length=15)
+        randomString = createAlphaNumericId(n=1,length=15)
         
         
         if (self$jobExists(randomString)) {
@@ -492,7 +500,7 @@ OpenEOServer <- R6Class(
       },
       
       newProcessGraphId = function() {
-        randomString = private$createAlphaNumericId(n=1,length=18)
+        randomString = createAlphaNumericId(n=1,length=18)
         
         con = self$getConnection()
         userIdExists = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
@@ -503,20 +511,22 @@ OpenEOServer <- R6Class(
         } else {
           return(randomString)
         }
-      },
-      createAlphaNumericId = function(n=1, length=15) {
-        randomString <- c(1:n)                  
-        for (i in 1:n) {
-          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                          length, replace=TRUE),
-                                   collapse="")
-        }
-        return(randomString)
       }
     )
 )
 
 # statics ====
+
+createAlphaNumericId = function(n=1, length=15) {
+  randomString <- c(1:n)                  
+  for (i in 1:n) {
+    randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                    length, replace=TRUE),
+                             collapse="")
+  }
+  return(randomString)
+}
+
 
 #' Creates a server instance
 #' 
