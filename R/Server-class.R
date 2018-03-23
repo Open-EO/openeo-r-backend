@@ -33,6 +33,7 @@ OpenEOServer <- R6Class(
       
       api.port = NULL,
       host = NULL,
+      mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
       
       processes = NULL,
       data = NULL,
@@ -268,6 +269,12 @@ OpenEOServer <- R6Class(
         
         if (is.null(self$api.port)) {
           self$api.port <- 8000
+        }
+        
+        if (is.null(self$mapserver.url)) {
+          # in docker environment mapserver is accessible under
+          # "mapserver"
+          self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
       

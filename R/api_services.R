@@ -31,6 +31,21 @@ createServicesEndpoint = function() {
   return(services)
 }
 
+# wms redirecter endpoint ----
+createWMSEndpoint = function() {
+  wms = plumber$new()
+  
+  wms$handle("GET",
+                  "/<service_id>",
+                  handler=.referToMapserver,
+                  serializer = serializer_proxy())
+  
+  wms$handle("OPTIONS",
+                  "/<service_id>",
+                  handler=.cors_option_bypass)
+  
+  return(wms)
+}
 
 # handler ----
 .createNewService = function(req, res) {
@@ -74,4 +89,28 @@ createServicesEndpoint = function() {
   }
   
   return(service$detailedInfo())
+}
+
+.referToMapserver = function(req,res,service_id) {
+  s = req$QUERY_STRING
+  queryKVP = unlist(strsplit(substr(s,2,nchar(s)),"[&=]"))
+  
+  keys = "map"
+  values = list(paste("/maps/services/",service_id,".map",sep=""))
+  
+  for (key_index in seq(1,length(queryKVP),2)) {
+    key = queryKVP[key_index]
+    value = queryKVP[key_index+1]
+    
+    keys = append(keys,key)
+    values = append(values,value)
+  }
+  names(values) = keys
+  
+  
+  url = openeo.server$mapserver.url
+  if (endsWith(url, "?")) {
+    url = substr(url, 1, nchar(url)-1)
+  }
+  response = GET(url = url,query = values)
 }

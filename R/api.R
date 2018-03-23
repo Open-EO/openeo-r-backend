@@ -388,6 +388,9 @@ createAPI = function() {
   services = createServicesEndpoint()
   root$mount("/api/services",services)
   
+  wms = createWMSEndpoint()
+  root$mount("/api/wms",wms)
+  
   udf_runtimes = createUDFRuntimesEndpoint()
   root$mount("/api/udf_runtimes",udf_runtimes)
   

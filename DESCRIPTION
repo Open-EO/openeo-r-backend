@@ -13,7 +13,9 @@ Depends:
     plumber (>= 0.4.4),
     DBI (>= 0.7),
     RSQLite (>= 2.0),
-    future (>= 1.7.0)
+    future (>= 1.7.0),
+    httr (>= 1.3.1),
+    httpuv (>= 1.3.6.2)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -27,10 +29,8 @@ Imports:
     rgdal,
     gdalUtils,
     sodium,
-    future
-Suggests:
-    raster,
-    rgdal
+    future,
+    httr
 Collate: 
     'Argument-class.R'
     'Band-class.R'
@@ -57,3 +57,4 @@ Collate:
     'api_job.R'
     'api_data.R'
     'api.R'
+    'serializer_proxy.R'

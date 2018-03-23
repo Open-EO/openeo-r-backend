@@ -4,7 +4,7 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE-base
-        image: openeo-baseserver:1.1
+        image: openeo-baseserver:1.2
     openeo-r-server:
         build: 
             context: .
@@ -23,7 +23,7 @@ services:
         image: geodata/mapserver
         container_name: openeo-r-mapserver
         volumes:
-            - C:\code\openeo-r-workspace\:/maps
+            - C:\code\openeo-r-workspace\:/maps/
         depends_on:
             - openeo-r-server
         ports:

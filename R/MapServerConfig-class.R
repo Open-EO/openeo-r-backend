@@ -5,10 +5,11 @@ MapServerConfig <- R6Class(
   public=list(
     # attributes ====
     map = NULL,
+    service = NULL,
     
     # functions ====
     initialize = function(obj,service, scale="AUTO", normalize="AUTO") {
-      
+      self$service = service
       service_id = service$service_id
       service_type = service$service_type
       
@@ -47,7 +48,7 @@ MapServerConfig <- R6Class(
             layer$STATUS = "ON"
             layer$TYPE = "RASTER"
             # on the mapserver service the workspace will be found at another directory, so replace it
-            layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=obj@file@name)
+            layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",obj@file@name))
             
             processings = list()
             if (!is.null(normalize)) {
@@ -57,7 +58,7 @@ MapServerConfig <- R6Class(
               processings = append(processings, paste("SCALE",scale,sep="="))
             }
             
-            processings = append(processings, paste("BANDS",paste(rep(band_index,3),sep=","),sep="="))
+            processings = append(processings, paste("BANDS",paste(rep(band_index,3),sep="",collapse = ","),sep="="))
             layer$PROCESSING = processings
             
             layers = append(layers,layer)
@@ -81,7 +82,7 @@ MapServerConfig <- R6Class(
       data = c()
       
       dir = regmatches(file,regexpr(text=file,pattern="^(.*)/"))
-      if (!dir.exists(file)) {
+      if (!dir.exists(dir)) {
         dir.create(dir,recursive = TRUE)
       }
       
@@ -106,9 +107,23 @@ MapServerConfig <- R6Class(
     createWebElement = function(service_type) {
       web = MapServerWeb$new()
       
+      service_url = paste(self$service$url,"?SERVICE=",toupper(service_type),sep="")
+      
+      version = self$service$service_args[[match("version",tolower(names(self$service$service_args)))]]
+      if (!is.null(version)) {
+        service_url = paste(service_url,"&VERSION=",version,sep="")
+      }
+      
+      if (tolower(service_type) == "wms") {
+        service_operations = "GetCapabilities GetMap"
+      } else {
+        service_operations = "*"
+      }
+      
       keys = c(paste(service_type,"_srs",sep=""),
-               paste(service_type,"_enable_request",sep=""))
-      values = list("EPSG:3857 EPSG:4326", "*")
+               paste(service_type,"_enable_request",sep=""),
+               paste(service_type,"_onlineresource",sep=""))
+      values = list("EPSG:3857 EPSG:4326", service_operations , service_url)
       
       names(values) <- keys
       web$METADATA <- values
