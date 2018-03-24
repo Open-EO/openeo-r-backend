@@ -12,15 +12,15 @@ createServicesEndpoint = function() {
   
   services$handle("GET",
                   "/<service_id>",
-                  handler=.not_implemented_yet,
+                  handler=.getServiceInformation,
                   serializer = serializer_unboxed_json())
   services$handle("PATCH",
                   "/<service_id>",
-                  handler=.not_implemented_yet,
+                  handler=.updateService,
                   serializer = serializer_unboxed_json())
   services$handle("DELETE",
                   "/<service_id>",
-                  handler=.not_implemented_yet,
+                  handler=.deleteService,
                   serializer = serializer_unboxed_json())
   services$handle("OPTIONS",
                   "/<service_id>",
@@ -113,4 +113,54 @@ createWMSEndpoint = function() {
     url = substr(url, 1, nchar(url)-1)
   }
   response = GET(url = url,query = values)
+}
+
+.getServiceInformation = function(req,res,service_id) {
+  if (exists.service(service_id)) {
+    service = Service$new()$load(service_id)
+    
+    return(service$detailedInfo())
+  } else {
+    error(re, 404, "Cannot find service")
+  }
+}
+
+.updateService = function(req,res,service_id) {
+  if (exists.service(service_id)) {
+    patch = fromJSON(req$postBody,simplifyDataFrame=FALSE)
+    if (names(patch) == "service_args") {
+      args = patch[["service_args"]]
+      service = Service$new()$load(service_id)
+      
+      for (key in names(args)) {
+        value = args[[key]]
+        service$service_args[[key]] = value
+      }
+      
+      service$store()
+      ok(res)
+    }
+    
+  } else {
+    error(res, 404, "Cannot find service")
+  }
+}
+
+.deleteService = function(req,res,service_id) {
+  if (exists.service(service_id)) {
+    con = openeo.server$getConnection()
+    deleteQuery = "delete from service where service_id = :sid"
+    dbExecute(con, deleteQuery, param=list(sid=service_id))
+    dbDisconnect(con)
+    
+    mapfile = paste(openeo.server$workspaces.path,"services",paste(service_id,"map",sep="."),sep="/")
+    
+    if (file.exists(mapfile)) {
+      unlink(mapfile)
+    }
+    
+    ok(res)
+  } else {
+    error(re, 404, "Cannot find service")
+  }
 }

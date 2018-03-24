@@ -45,7 +45,7 @@ createUsersEndpoint = function() {
   
   users$handle("GET",
                "/<userid>/services",
-               handler = .not_implemented_yet,
+               handler = .listUserServices,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/services",
@@ -301,4 +301,13 @@ createUsersEndpoint = function() {
   dbDisconnect(con)
   
   return(ok(res))
+}
+
+.listUserServices = function(req,res,user_id) {
+  
+  if (user_id == "me" || user_id == req$user$user_id) {
+    lapply(req$user$services, function(service_id) {
+      return(Service$new()$load(service_id)$detailedInfo())
+    })
+  }
 }

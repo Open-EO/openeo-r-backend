@@ -66,6 +66,16 @@ User <- R6Class(
       } else {
         return(as.list(result)[[1]])
       }
+    },
+    services = function() {
+      con = openeo.server$getConnection()
+      result = dbGetQuery(con, "select service_id from job as j join service as s on j.job_id = s.job_id where user_id = :id",param=list(id = self$user_id))
+      dbDisconnect(con)
+      if (is.null(result)) {
+        return(list())
+      } else {
+        return(as.list(result)[[1]])
+      }
     }
   ),
   # private ====

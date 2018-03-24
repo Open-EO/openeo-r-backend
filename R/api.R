@@ -35,22 +35,26 @@
 
 .capabilities = function() {
   list(
-    "/data/",
-    "/data/{product_id}",
-    "/processes/",
-    "/processes/{process_id}",
-    "/jobs/",
-    "/jobs/{job_id}/download",
-    "/jobs/{job_id}/queue",
-    "/execute/",
-    "/users/{user_id}/files",
-    "/users/{user_id}/files/{path}",
-    "/users/{user_id}/jobs",
     "/auth/login",
     "/capabilities",
     "/capabilities/output_formats",
+    "/capabilities/services",
+    "/data/",
+    "/data/{product_id}",
+    "/jobs/",
+    "/jobs/{job_id}/download",
+    "/jobs/{job_id}/queue",
+    "/processes/",
+    "/processes/{process_id}",
+    "/execute/",
+    "/services/",
+    "/users/{user_id}/files",
+    "/users/{user_id}/files/{path}",
+    "/users/{user_id}/jobs",
     "/users/{user_id}/process_graphs",
-    "/users/{user_id}/process_graphs/{graph_id}"
+    "/users/{user_id}/process_graphs/{graph_id}",
+    
+    
   )
 }
 
@@ -66,6 +70,12 @@
   return(list(
     default="GTiff",
     formats = namedList
+  ))
+}
+
+.services = function() {
+  return(list(
+    "wms"
   ))
 }
 
@@ -343,6 +353,14 @@ createAPI = function() {
   
   root$handle("OPTIONS",
               "/api/capabilities/output_formats",
+              handler = .cors_option_bypass)
+  
+  root$handle("GET",
+              "/api/capabilities/services",
+              handler = .services,
+              serializer = serializer_unboxed_json())
+  root$handle("OPTIONS",
+              "/api/capabilities/services",
               handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)
