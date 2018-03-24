@@ -12,7 +12,7 @@ Service <- R6Class(
     
     # functions ====
     initialize = function() {
-      
+      invisible(self)
     },
     
     detailedInfo = function () {
@@ -31,7 +31,7 @@ Service <- R6Class(
       # check if exists
       if (exists.service(service_id)) {
         # load information from db
-        con = self$getConnection()
+        con = openeo.server$getConnection()
         service_info = dbGetQuery(con, "select * from service where service_id = :id"
                               ,param = list(id=service_id))
         dbDisconnect(con)

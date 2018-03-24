@@ -303,9 +303,9 @@ createUsersEndpoint = function() {
   return(ok(res))
 }
 
-.listUserServices = function(req,res,user_id) {
+.listUserServices = function(req,res,userid) {
   
-  if (user_id == "me" || user_id == req$user$user_id) {
+  if (userid == "me" || userid == req$user$user_id) {
     lapply(req$user$services, function(service_id) {
       return(Service$new()$load(service_id)$detailedInfo())
     })
