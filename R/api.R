@@ -152,14 +152,31 @@
   
 }
 
+.ogrExtension = function(format) {
+  metadata <- system(paste("ogrinfo --format ","\"",format,"\"",sep=""), intern=TRUE)
+  
+  extension.line = sapply(metadata, function(line) {
+    m = regexec("\\s*Extension[s]?:\\s*([a-zA-Z0-9\\-_]*).*$",line)
+    split = unlist(regmatches(line, m))
+    if (length(split) > 0) {
+      return(split[2])
+    } else {
+      return(NULL)
+    }
+  },USE.NAMES = FALSE)
+  
+  return(unlist(extension.line))
+}
+
 .create_output_no_response = function(result, format, dir) {
   #store the job? even though it is completed?
   if (!isCollection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
-
-    filename = tempfile(tmpdir = dir)
+    extension = .ogrExtension(format)
+    
+    filename = paste(dir,"/output.",extension,sep="")
 
     cat(paste("storing file at",filename,"\n"))
     writeOGR(result,dsn=filename,layer=layername,driver=format)
@@ -195,7 +212,7 @@
       sendFile(res, 
                status=200, 
                file.name="output", 
-               contentType=paste("application/gdal-",format,sep=""),
+               contentType=paste("application/ogr-",format,sep=""),
                data=readBin(filename, "raw", n=file.info(filename)$size))
     },finally = function(filename) {
       unlink(filename)
@@ -342,10 +359,11 @@ createAPI = function() {
               "/api/capabilities",
               handler = .capabilities,
               serializer = serializer_unboxed_json())
-  
   root$handle("OPTIONS",
               "/api/capabilities",
               handler = .cors_option_bypass)
+  
+  
   root$handle("GET",
               "/api/capabilities/output_formats",
               handler = .output_formats,
