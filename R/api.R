@@ -427,6 +427,9 @@ createAPI = function() {
   wms = createWMSEndpoint()
   root$mount("/api/wms",wms)
   
+  wfs = createWFSEndpoint()
+  root$mount("/api/wfs",wfs)
+  
   udf_runtimes = createUDFRuntimesEndpoint()
   root$mount("/api/udf_runtimes",udf_runtimes)
   

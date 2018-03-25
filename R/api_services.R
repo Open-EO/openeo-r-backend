@@ -31,7 +31,7 @@ createServicesEndpoint = function() {
   return(services)
 }
 
-# wms redirecter endpoint ----
+# redirecter endpoints ----
 createWMSEndpoint = function() {
   wms = plumber$new()
   
@@ -45,6 +45,21 @@ createWMSEndpoint = function() {
                   handler=.cors_option_bypass)
   
   return(wms)
+}
+
+createWFSEndpoint = function() {
+  wfs = plumber$new()
+  
+  wfs$handle("GET",
+             "/<service_id>",
+             handler=.referToMapserver,
+             serializer = serializer_proxy())
+  
+  wfs$handle("OPTIONS",
+             "/<service_id>",
+             handler=.cors_option_bypass)
+  
+  return(wfs)
 }
 
 # handler ----
@@ -79,13 +94,21 @@ createWMSEndpoint = function() {
   if (type %in% c("wms","wcs")) {
     files = list.files(paste(openeo.server$workspaces.path,"jobs",job_id,sep="/"),pattern="[^process.log|map.map]",full.names = TRUE)
 
-    config = MapServerConfig$new(obj = raster(files[1]),service=service)
+    config = MapServerConfig$new()
+    config = config$fromRaster(obj = raster(files[1]),service=service)
     #TODO maybe we need to create layers for each additional file...
     
     mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
     config$toFile(mapfile)
   } else {
     #TODO
+    job_folder = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+    files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
+    config = MapServerConfig$new()
+    config = config$fromVector(obj = readOGR(files[1]),service=service,data.dir=job_folder)
+    
+    mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
+    config$toFile(mapfile)
   }
   
   return(service$detailedInfo())

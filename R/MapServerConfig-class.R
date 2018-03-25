@@ -8,7 +8,32 @@ MapServerConfig <- R6Class(
     service = NULL,
     
     # functions ====
-    initialize = function(obj,service, scale="AUTO", normalize="AUTO") {
+    initialize = function() {
+
+    },
+    
+    toFile = function(file) {
+      
+      data = c()
+      
+      dir = regmatches(file,regexpr(text=file,pattern="^(.*)/"))
+      if (!dir.exists(dir)) {
+        dir.create(dir,recursive = TRUE)
+      }
+      
+      if (!file.exists(file)) {
+        file.create(file)
+      }
+      
+      # write stuff to file
+      data = self$map$toString()
+      
+      con = file(file)
+      writeLines(data,con)
+      close(con)
+    },
+    
+    fromVector = function(obj,service,data.dir=NULL) {
       self$service = service
       service_id = service$service_id
       service_type = service$service_type
@@ -21,7 +46,87 @@ MapServerConfig <- R6Class(
       
       service_type = tolower(service_type)
       if (service_type %in% private$supported_services) {
-        map$WEB = private$createWebElement(service_type)
+        map$WEB = private$createWebElement()
+        
+        if (service_type %in% c("wfs")) {
+
+          e = extent(obj)
+          extent.string = paste(e@xmin, e@ymin, e@xmax, e@ymax)
+          map$EXTENT = extent.string
+          
+          if (is.null(crs(obj)) || is.na(crs(obj))) {
+            stop("Cannot set an unknown CRS for WFS")
+          } else {
+            map$PROJECTION = toString(crs(obj))
+          }
+          
+          layers = list()
+          
+          #for now create only one layer, assuming that this will be the case...
+          layer = MapServerLayer$new()
+          
+          if (regexpr(class(obj),pattern="^.*(Polygon|polygon|POLYGON).*$") > 0) {
+            layer$TYPE = "POLYGON"
+            layer$NAME = "POLYGON"
+          } else if (regexpr(class(obj),pattern="^.*(Line|line|LINE).*$") > 0) {
+            layer$TYPE = "LINE"
+            layer$NAME = "LINE"
+          } else if (regexpr(class(obj),pattern="^.*(Point|point|POINT).*$") > 0) {
+            layer$TYPE = "POINT"
+            layer$NAME = "POINT"
+          } else {
+            stop("Currently only supporting polygon, lines or points as data types")
+          }
+          
+          layer$STATUS = "ON"
+          
+          if (!is.null(data.dir)) {
+            # TODO consider multiple files and possibly more than one layer
+            layer$CONNECTIONTYPE = "OGR"
+            
+            # shp files
+            vector.files = list.files(data.dir,pattern="*.shp", full.names = TRUE)
+            
+            if (is.null(vector.files) || length(vector.files) == 0) {
+              stop("Cannot find SHP file to create a WFS from")
+            }
+            
+            layer$CONNECTION = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",vector.files[1]))
+            layer$DATA= "0"
+          }
+          
+          layer$PROJECTION = toString(crs(obj))
+          
+          layers = append(layers, layer)
+          
+        } else {
+          stop("Unsupported map file creation for image service from vector data")
+        }
+        
+      } else {
+        stop("Not supported service type.")
+      }
+      
+      map$LAYER = layers
+      self$map = map
+      
+      invisible(self)
+    },
+    
+    fromRaster = function(obj,service, scale="AUTO", normalize="AUTO") {
+      self$service = service
+      service_id = service$service_id
+      service_type = service$service_type
+      
+      map = MapServerMap$new()
+      
+      if (!is.null(service_id)) {
+        map$NAME = service_id
+      }
+      
+      service_type = tolower(service_type)
+      if (service_type %in% private$supported_services) {
+        map$WEB = private$createWebElement()
         
         if (service_type %in% c("wms","wcs")) {
           # TODO obj might be a collection...
@@ -66,6 +171,8 @@ MapServerConfig <- R6Class(
           
           #TODO maybe add composites like false colors
           
+        } else {
+          stop("Unsupported map file creation for WFS from image object.")
         }
         
       } else {
@@ -75,27 +182,7 @@ MapServerConfig <- R6Class(
       map$LAYER = layers
       self$map = map
       
-    },
-    
-    toFile = function(file) {
-      
-      data = c()
-      
-      dir = regmatches(file,regexpr(text=file,pattern="^(.*)/"))
-      if (!dir.exists(dir)) {
-        dir.create(dir,recursive = TRUE)
-      }
-      
-      if (!file.exists(file)) {
-        file.create(file)
-      }
-      
-      # write stuff to file
-      data = self$map$toString()
-      
-      con = file(file)
-      writeLines(data,con)
-      close(con)
+      invisible(self)
     }
     
   ),
@@ -104,7 +191,8 @@ MapServerConfig <- R6Class(
     # attributes ====
     supported_services = c("wcs","wms","wfs"),
     # functions ====
-    createWebElement = function(service_type) {
+    createWebElement = function() {
+      service_type = tolower(self$service$service_type)
       web = MapServerWeb$new()
       
       service_url = paste(self$service$url,"?SERVICE=",toupper(service_type),sep="")
@@ -122,8 +210,9 @@ MapServerConfig <- R6Class(
       
       keys = c(paste(service_type,"_srs",sep=""),
                paste(service_type,"_enable_request",sep=""),
-               paste(service_type,"_onlineresource",sep=""))
-      values = list("EPSG:3857 EPSG:4326", service_operations , service_url)
+               paste(service_type,"_onlineresource",sep=""),
+               paste(service_type,"_title",sep=""))
+      values = list("EPSG:3857 EPSG:4326", service_operations , service_url, service_type)
       
       names(values) <- keys
       web$METADATA <- values
