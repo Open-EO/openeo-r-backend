@@ -156,7 +156,7 @@ createJobsEndpoint = function() {
     base_url = paste("http://",openeo.server$host,":",openeo.server$api.port,"/api/result/",job_id,sep="")
     
     #get files in outputfolder but not the log file
-    paste(base_url,list.files(folder,pattern="[^process\\.log]"),sep="/")
+    paste(base_url,list.files(job_results,pattern="[^process\\.log]"),sep="/")
   }
 }
 
