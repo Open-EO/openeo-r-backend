@@ -210,7 +210,7 @@ createUsersEndpoint = function() {
     possibleUserJobs = user$jobs
     jobRepresentation = lapply(possibleUserJobs, function(job_id){
       job = openeo.server$loadJob(job_id)
-      return(job$detailedInfo())
+      return(job$shortInfo())
     })
     
     return(unname(jobRepresentation))

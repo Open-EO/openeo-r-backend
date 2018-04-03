@@ -158,6 +158,17 @@ Job <- R6Class(
         stop(paste("Cannot load process",processId))
       }
     },
+    shortInfo = function() {
+      info = list(
+        job_id = self$job_id,
+        status = self$status,
+        submitted = self$submitted,
+        updated = self$last_update,
+        consumed_credits = self$consumed_credits
+      )
+      
+      return(info)
+    },
     
     detailedInfo = function() {
       if (is.null(self$process_graph) || ! isProcess(self$process_graph)) {
@@ -172,8 +183,9 @@ Job <- R6Class(
         user_id = self$user_id,
         status = self$status,
         process_graph = processGraphList,
+        output = self$output,
         submitted = self$submitted,
-        last_update = self$last_update,
+        updated = self$last_update,
         consumed_credits = self$consumed_credits
       )
       
