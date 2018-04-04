@@ -318,6 +318,7 @@ OpenEOServer <- R6Class(
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
           job$process_graph = self$loadProcessGraph(job_info$process_graph) #from db
+          job$persistent = TRUE
           
           job$loadProcessGraph() # create executable graph and store output on job$output
           
@@ -394,9 +395,7 @@ OpenEOServer <- R6Class(
           
           sink(file=log,append = TRUE,type = "output")
           tryCatch({
-            
-            # self$register(job)
-            
+
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
               format = job$output$format
             }
@@ -405,31 +404,15 @@ OpenEOServer <- R6Class(
               format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
             }
             
-            con = openeo.server$getConnection()
-            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                                      status="running",
-                                                      job_id=job_id))
-            dbDisconnect(con)
+            job = job$run()
             
-            cat("Start job processing...\n")
-            result = job$run()
-            cat("Job done\n")
-            
-            
-            
-            con = openeo.server$getConnection()
-            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                                      status="finished",
-                                                      job_id=job_id))
-            dbDisconnect(con)
-            cat("Set job to finished\n")
-          
-          
-          
+
+            if (job$status == "error") {
+              stop("Canceling output creation due to prior error")
+            }
+
             cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(result, format, dir = outputPath)
+            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = outputPath)
             cat("Output finished\n")
           }, error = function(e) {
             cat(str(e))

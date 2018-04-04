@@ -145,11 +145,9 @@
   job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
 
   job$loadProcessGraph()
-  result = job$run()
+  job = job$run()
   
-  return(.create_output(res = res,result = result, format = format))
-
-  
+  return(.create_output(res = res,result = job$results, format = format))
 }
 
 .ogrExtension = function(format) {
@@ -184,8 +182,6 @@
   } else {
     cat("Creating raster file with GDAL\n")
     rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-    cat(str(rasterdata))
-    
 
     filename = paste(dir,"output",sep="/")
 
@@ -222,8 +218,8 @@
   } else {
     cat("Creating raster file with GDAL\n")
     rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-    cat(str(rasterdata))
     
+    filename=tempfile()
     cat(paste("storing file at",filename,"\n"))
     rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
     

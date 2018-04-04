@@ -31,6 +31,8 @@ Job <- R6Class(
     user_id=NULL,
     consumed_credits=NULL,
     output=NULL,
+    results = NULL,
+    persistent = FALSE,
     
     # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
@@ -196,7 +198,51 @@ Job <- R6Class(
       if (!isProcess(self$process_graph)) {
           self$loadProcessGraph()
       }
-      self$process_graph$execute()
+      
+      
+      tryCatch({
+        cat("Start job processing...\n")
+        self$status = "running"
+        
+        if (self$persistent) {
+          con = openeo.server$getConnection()
+          updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+          dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                                    status="running",
+                                                    job_id=self$job_id))
+          dbDisconnect(con)
+        }
+        
+        
+        self$results = self$process_graph$execute()
+        
+        
+        self$status = "finished"
+        
+        if (self$persistent) {
+          con = openeo.server$getConnection()
+          updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+          dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                                    status="finished",
+                                                    job_id=self$job_id))
+          dbDisconnect(con)
+        }
+        
+        cat("Job done\n")
+      }, error=function (e) {
+        cat("Error. Aborting execution.\n")
+        self$status = "error"
+        if (self$persistent) {
+          con = openeo.server$getConnection()
+          updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
+          dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
+                                                    status="error",
+                                                    job_id=self$job_id))
+          dbDisconnect(con)
+        }
+      }, finally={
+        return(self)
+      })
     }
     
   )

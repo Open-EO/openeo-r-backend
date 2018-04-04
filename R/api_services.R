@@ -89,6 +89,9 @@ createWFSEndpoint = function() {
   
   job = openeo.server$loadJob(job_id) 
   #if not running or finished then run job!
+  if (job$status %in% c("submitted")) {
+    openeo.server$runJob(job)
+  }
   
   # when finished then create: create map file
   if (type %in% c("wms","wcs")) {
