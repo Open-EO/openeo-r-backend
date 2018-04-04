@@ -92,15 +92,15 @@ createWFSEndpoint = function() {
   if (job$status %in% c("submitted")) {
     openeo.server$runJob(job)
   }
-  
   # when finished then create: create map file
   if (type %in% c("wms","wcs")) {
-    files = list.files(paste(openeo.server$workspaces.path,"jobs",job_id,sep="/"),pattern="[^process.log|map.map]",full.names = TRUE)
-
+    job_result_path = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+    files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
+    files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
     config = MapServerConfig$new()
-    config = config$fromRaster(obj = raster(files[1]),service=service)
+    config = config$fromRaster(obj = lapply(files,brick),service=service)
     #TODO maybe we need to create layers for each additional file...
-    
+
     mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
     config$toFile(mapfile)
   } else {

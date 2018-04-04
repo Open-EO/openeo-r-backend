@@ -129,44 +129,48 @@ MapServerConfig <- R6Class(
         map$WEB = private$createWebElement()
         
         if (service_type %in% c("wms","wcs")) {
-          # TODO obj might be a collection...
-          
+          #create global variables...
           # assume obj to be a raster for now
-          e = extent(obj)
+          e = extent(obj[[1]])
           extent.string = paste(e@xmin, e@ymin, e@xmax, e@ymax)
           map$EXTENT = extent.string
           
-          size.string = paste(ncol(obj),nrow(obj))
+          size.string = paste(ncol(obj[[1]]),nrow(obj[[1]]))
           map$SIZE = size.string
           
-          map$PROJECTION = toString(crs(obj))
+          map$PROJECTION = toString(crs(obj[[1]]))
           
           # layers
           layers = list()
           
-          # bands
-          for (band_index in 1:nbands(obj)) {
-            band = obj[[band_index]]
-            
-            layer = MapServerLayer$new()
-            layer$NAME = paste("band",band_index,sep="")
-            layer$STATUS = "ON"
-            layer$TYPE = "RASTER"
-            # on the mapserver service the workspace will be found at another directory, so replace it
-            layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",obj@file@name))
-            
-            processings = list()
-            if (!is.null(normalize)) {
-              processings = append(processings, paste("KERNELDENSITY_NORMALIZATION",normalize,sep="="))
+            # TODO obj might be a collection...
+          for (index in 1:length(obj)) {
+            ras = obj[[index]]
+  
+            # bands
+            for (band_index in 1:nbands(ras)) {
+              band = ras[[band_index]]
+              
+              layer = MapServerLayer$new()
+              layer$NAME = names(band)
+              layer$STATUS = "ON"
+              layer$TYPE = "RASTER"
+              # on the mapserver service the workspace will be found at another directory, so replace it
+              layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",ras@file@name))
+              
+              processings = list()
+              if (!is.null(normalize)) {
+                processings = append(processings, paste("KERNELDENSITY_NORMALIZATION",normalize,sep="="))
+              }
+              if (!is.null(scale)) {
+                processings = append(processings, paste("SCALE",scale,sep="="))
+              }
+              
+              processings = append(processings, paste("BANDS",paste(rep(band_index,3),sep="",collapse = ","),sep="="))
+              layer$PROCESSING = processings
+              
+              layers = append(layers,layer)
             }
-            if (!is.null(scale)) {
-              processings = append(processings, paste("SCALE",scale,sep="="))
-            }
-            
-            processings = append(processings, paste("BANDS",paste(rep(band_index,3),sep="",collapse = ","),sep="="))
-            layer$PROCESSING = processings
-            
-            layers = append(layers,layer)
           }
           
           #TODO maybe add composites like false colors
