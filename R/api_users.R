@@ -83,7 +83,7 @@ createUsersEndpoint = function() {
   
   users$handle("GET",
                "/<userid>/services",
-               handler = .not_implemented_yet,
+               handler = .listUserServices,
                serializer=serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/services",

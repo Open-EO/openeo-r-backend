@@ -48,12 +48,13 @@
     "/processes/{process_id}",
     "/execute/",
     "/services/",
+    "/services/{service_id}",
     "/users/{user_id}/files",
     "/users/{user_id}/files/{path}",
     "/users/{user_id}/jobs",
     "/users/{user_id}/process_graphs",
     "/users/{user_id}/process_graphs/{graph_id}",
-    
+    "/users/{user_id}/services"
     
   )
 }
