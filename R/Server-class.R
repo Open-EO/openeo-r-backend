@@ -33,6 +33,7 @@ OpenEOServer <- R6Class(
       
       api.port = NULL,
       host = NULL,
+      mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
       
       processes = NULL,
       data = NULL,
@@ -66,8 +67,8 @@ OpenEOServer <- R6Class(
         self$initEnvironmentDefault()
         
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
@@ -235,6 +236,14 @@ OpenEOServer <- R6Class(
                     user_id integer, 
                     process_graph text)")
         }
+        if (!dbExistsTable(con,"service")) {
+          dbExecute(con, "create table service (
+                    service_id text,
+                    job_id text,
+                    args text,
+                    type text
+          )")
+        }
         
         dbDisconnect(con)
       },
@@ -260,6 +269,12 @@ OpenEOServer <- R6Class(
         
         if (is.null(self$api.port)) {
           self$api.port <- 8000
+        }
+        
+        if (is.null(self$mapserver.url)) {
+          # in docker environment mapserver is accessible under
+          # "mapserver"
+          self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
       
@@ -303,6 +318,7 @@ OpenEOServer <- R6Class(
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
           job$process_graph = self$loadProcessGraph(job_info$process_graph) #from db
+          job$persistent = TRUE
           
           job$loadProcessGraph() # create executable graph and store output on job$output
           
@@ -377,11 +393,9 @@ OpenEOServer <- R6Class(
           
           log = paste(outputPath, "process.log",sep="/")
           
-          sink(file=log,append = TRUE,type = "output")
+          logToFile(file=log)
           tryCatch({
-            
-            # self$register(job)
-            
+
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
               format = job$output$format
             }
@@ -390,36 +404,20 @@ OpenEOServer <- R6Class(
               format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
             }
             
-            con = openeo.server$getConnection()
-            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                                      status="running",
-                                                      job_id=job_id))
-            dbDisconnect(con)
+            job = job$run()
             
-            cat("Start job processing...\n")
-            result = job$run()
-            cat("Job done\n")
-            
-            
-            
-            con = openeo.server$getConnection()
-            updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-            dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                                      status="finished",
-                                                      job_id=job_id))
-            dbDisconnect(con)
-            cat("Set job to finished\n")
-          
-          
-          
+
+            if (job$status == "error") {
+              stop("Canceling output creation due to prior error")
+            }
+
             cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(result, format, dir = outputPath)
+            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = outputPath)
             cat("Output finished\n")
           }, error = function(e) {
             cat(str(e))
           }, finally={
-            sink()
+            logToConsole()
           })
 
       }
@@ -466,7 +464,7 @@ OpenEOServer <- R6Class(
       },
       
       newJobId = function() {
-        randomString = private$createAlphaNumericId(n=1,length=15)
+        randomString = createAlphaNumericId(n=1,length=15)
         
         
         if (self$jobExists(randomString)) {
@@ -492,7 +490,7 @@ OpenEOServer <- R6Class(
       },
       
       newProcessGraphId = function() {
-        randomString = private$createAlphaNumericId(n=1,length=18)
+        randomString = createAlphaNumericId(n=1,length=18)
         
         con = self$getConnection()
         userIdExists = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
@@ -503,20 +501,36 @@ OpenEOServer <- R6Class(
         } else {
           return(randomString)
         }
-      },
-      createAlphaNumericId = function(n=1, length=15) {
-        randomString <- c(1:n)                  
-        for (i in 1:n) {
-          randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
-                                          length, replace=TRUE),
-                                   collapse="")
-        }
-        return(randomString)
       }
     )
 )
 
+# logging ====
+logToConsole = function() {
+  sink()
+}
+logToNull = function() {
+  if (tolower(Sys.info()["sysname"]) == "windows") {
+    sink("nul")
+  } else {
+    sink("/dev/null")
+  }
+}
+logToFile = function(file) {
+  sink(file = file,append = TRUE,type="output")
+}
+
 # statics ====
+
+createAlphaNumericId = function(n=1, length=15) {
+  randomString <- c(1:n)                  
+  for (i in 1:n) {
+    randomString[i] <- paste(sample(c(0:9, letters, LETTERS),
+                                    length, replace=TRUE),
+                             collapse="")
+  }
+  return(randomString)
+}
 
 #' Creates a server instance
 #' 

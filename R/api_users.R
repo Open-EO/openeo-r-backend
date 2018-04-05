@@ -45,7 +45,7 @@ createUsersEndpoint = function() {
   
   users$handle("GET",
                "/<userid>/services",
-               handler = .not_implemented_yet,
+               handler = .listUserServices,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/services",
@@ -210,7 +210,7 @@ createUsersEndpoint = function() {
     possibleUserJobs = user$jobs
     jobRepresentation = lapply(possibleUserJobs, function(job_id){
       job = openeo.server$loadJob(job_id)
-      return(job$detailedInfo())
+      return(job$shortInfo())
     })
     
     return(unname(jobRepresentation))
@@ -301,4 +301,13 @@ createUsersEndpoint = function() {
   dbDisconnect(con)
   
   return(ok(res))
+}
+
+.listUserServices = function(req,res,userid) {
+  
+  if (userid == "me" || userid == req$user$user_id) {
+    lapply(req$user$services, function(service_id) {
+      return(Service$new()$load(service_id)$detailedInfo())
+    })
+  }
 }

@@ -1,6 +1,6 @@
 Package: openEO.R.Backend
 Title: Reference backend implementation for openEO conformant backend with a local filesystem
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre"))
 Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
     the file backend solution is the local file system containing some raster data collections.
@@ -13,7 +13,9 @@ Depends:
     plumber (>= 0.4.4),
     DBI (>= 0.7),
     RSQLite (>= 2.0),
-    future (>= 1.7.0)
+    future (>= 1.7.0),
+    httr (>= 1.3.1),
+    httpuv (>= 1.3.6.2)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -27,10 +29,8 @@ Imports:
     rgdal,
     gdalUtils,
     sodium,
-    future
-Suggests:
-    raster,
-    rgdal
+    future,
+    httr
 Collate: 
     'Argument-class.R'
     'Band-class.R'
@@ -39,10 +39,15 @@ Collate:
     'Process-class.R'
     'ExecutableProcess-class.R'
     'Job-class.R'
+    'MapServerConfig-class.R'
+    'MapServerLayer-class.R'
+    'MapServerMap-class.R'
+    'MapServerWeb-class.R'
     'Product-class.R'
     'data.R'
     'processes.R'
     'Server-class.R'
+    'Service-class.R'
     'User-class.R'
     'View-class.R'
     'api_processes.R'
@@ -52,3 +57,4 @@ Collate:
     'api_job.R'
     'api_data.R'
     'api.R'
+    'serializer_proxy.R'

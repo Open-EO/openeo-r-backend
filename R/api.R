@@ -35,22 +35,26 @@
 
 .capabilities = function() {
   list(
-    "/data/",
-    "/data/{product_id}",
-    "/processes/",
-    "/processes/{process_id}",
-    "/jobs/",
-    "/jobs/{job_id}/download",
-    "/jobs/{job_id}/queue",
-    "/execute/",
-    "/users/{user_id}/files",
-    "/users/{user_id}/files/{path}",
-    "/users/{user_id}/jobs",
     "/auth/login",
     "/capabilities",
     "/capabilities/output_formats",
+    "/capabilities/services",
+    "/data/",
+    "/data/{product_id}",
+    "/jobs/",
+    "/jobs/{job_id}/download",
+    "/jobs/{job_id}/queue",
+    "/processes/",
+    "/processes/{process_id}",
+    "/execute/",
+    "/services/",
+    "/users/{user_id}/files",
+    "/users/{user_id}/files/{path}",
+    "/users/{user_id}/jobs",
     "/users/{user_id}/process_graphs",
-    "/users/{user_id}/process_graphs/{graph_id}"
+    "/users/{user_id}/process_graphs/{graph_id}",
+    
+    
   )
 }
 
@@ -66,6 +70,12 @@
   return(list(
     default="GTiff",
     formats = namedList
+  ))
+}
+
+.services = function() {
+  return(list(
+    "wms"
   ))
 }
 
@@ -135,39 +145,57 @@
   job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
 
   job$loadProcessGraph()
-  result = job$run()
+  job = job$run()
   
-  return(.create_output(res = res,result = result, format = format))
-
-  
+  return(.create_output(res = res,result = job$results, format = format))
 }
 
+.ogrExtension = function(format) {
+  metadata <- system(paste("ogrinfo --format ","\"",format,"\"",sep=""), intern=TRUE)
+  
+  extension.line = sapply(metadata, function(line) {
+    m = regexec("\\s*Extension[s]?:\\s*([a-zA-Z0-9\\-_]*).*$",line)
+    split = unlist(regmatches(line, m))
+    if (length(split) > 0) {
+      return(split[2])
+    } else {
+      return(NULL)
+    }
+  },USE.NAMES = FALSE)
+  
+  return(unlist(extension.line))
+}
+
+# creates files for batch processing
 .create_output_no_response = function(result, format, dir) {
   #store the job? even though it is completed?
   if (!isCollection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
-
-    filename = tempfile(tmpdir = dir)
+    extension = .ogrExtension(format)
+    
+    filename = paste(dir,"/output.",extension,sep="")
 
     cat(paste("storing file at",filename,"\n"))
     writeOGR(result,dsn=filename,layer=layername,driver=format)
     
   } else {
     cat("Creating raster file with GDAL\n")
-    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-    cat(str(rasterdata))
     
-
-    filename = paste(dir,"output",sep="/")
-
-    
-    cat(paste("storing file at",filename,"\n"))
-    rasterfile = writeRaster(x=rasterdata,filename=filename,format=format)
+    for (index in 1:length(result$granules)) {
+      rasterdata = result$granules[[index]]$data
+  
+      filename = paste(dir,paste("output",index,sep="_"),sep="/") #TODO use the time stamp somehow
+  
+      
+      cat(paste("storing file for granule[[",index,"]] at ",filename,"\n",sep=""))
+      rasterfile = writeRaster(x=rasterdata,filename=filename,format=format)
+    }
   }
 }
 
+# creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
   if (!isCollection(result)) {
@@ -185,7 +213,7 @@
       sendFile(res, 
                status=200, 
                file.name="output", 
-               contentType=paste("application/gdal-",format,sep=""),
+               contentType=paste("application/x-ogr-",format,sep=""),
                data=readBin(filename, "raw", n=file.info(filename)$size))
     },finally = function(filename) {
       unlink(filename)
@@ -195,8 +223,8 @@
   } else {
     cat("Creating raster file with GDAL\n")
     rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-    cat(str(rasterdata))
     
+    filename=tempfile()
     cat(paste("storing file at",filename,"\n"))
     rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
     
@@ -205,7 +233,7 @@
       sendFile(res, 
                status=200, 
                file.name="output", 
-               contentType=paste("application/gdal-",format,sep=""),
+               contentType=paste("application/x-gdal-",format,sep=""),
                data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
     },finally = function(rasterfile) {
       unlink(rasterfile@file@name)
@@ -332,10 +360,11 @@ createAPI = function() {
               "/api/capabilities",
               handler = .capabilities,
               serializer = serializer_unboxed_json())
-  
   root$handle("OPTIONS",
               "/api/capabilities",
               handler = .cors_option_bypass)
+  
+  
   root$handle("GET",
               "/api/capabilities/output_formats",
               handler = .output_formats,
@@ -343,6 +372,14 @@ createAPI = function() {
   
   root$handle("OPTIONS",
               "/api/capabilities/output_formats",
+              handler = .cors_option_bypass)
+  
+  root$handle("GET",
+              "/api/capabilities/services",
+              handler = .services,
+              serializer = serializer_unboxed_json())
+  root$handle("OPTIONS",
+              "/api/capabilities/services",
               handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)
@@ -387,6 +424,12 @@ createAPI = function() {
   
   services = createServicesEndpoint()
   root$mount("/api/services",services)
+  
+  wms = createWMSEndpoint()
+  root$mount("/api/wms",wms)
+  
+  wfs = createWFSEndpoint()
+  root$mount("/api/wfs",wfs)
   
   udf_runtimes = createUDFRuntimesEndpoint()
   root$mount("/api/udf_runtimes",udf_runtimes)

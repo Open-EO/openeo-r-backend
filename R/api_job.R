@@ -156,48 +156,9 @@ createJobsEndpoint = function() {
     base_url = paste("http://",openeo.server$host,":",openeo.server$api.port,"/api/result/",job_id,sep="")
     
     #get files in outputfolder but not the log file
-    paste(base_url,list.files(folder,pattern="[^process\\.log]"),sep="/")
+    paste(base_url,list.files(job_results,pattern="[^process\\.log]"),sep="/")
   }
 }
-
-# those are not openeo specification, it is merely a test to execute the job and return data
-
-#* @serializer contentType list(type="image/GTiff")
-#* @get /api/job/<job_id>/download
-.downloadSimple = function(req,res,job_id,format=NULL) {
-  if (!openeo.server$jobExists(job_id)) {
-    error(res, 404, paste("Cannot find job with id:",job_id))
-  } else {
-    job = openeo.server$loadJob(job_id)
-    
-    if (is.null(format)) {
-      format = job$output$format
-    }
-    
-    con = openeo.server$getConnection()
-    updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-    dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                              status="running",
-                                              job_id=job_id))
-    dbDisconnect(con)
-    
-    result = job$run()
-    
-    
-    
-    con = openeo.server$getConnection()
-    updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
-    dbExecute(con, updateJobQuery ,param=list(time=as.character(Sys.time()),
-                                              status="finished",
-                                              job_id=job_id))
-    dbDisconnect(con)
-    
-    
-    
-    return(.create_output(res = res, result = result, format = format))
-  }
-}
-
 
 .deleteJob = function(req,res,job_id) {
   success = openeo.server$deleteJob(job_id)
