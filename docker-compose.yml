@@ -16,14 +16,14 @@ services:
         depends_on:
             - openeo-r-baseserver
         volumes:
-            - C:\code\openeo-r-workspace\:/var/openeo/workspace/
+            - openeo-r-workspace:/var/openeo/workspace/
         external_links:
             - openeo-r-mapserver:mapserver
     openeo-r-mapserver:
         image: geodata/mapserver
         container_name: openeo-r-mapserver
         volumes:
-            - C:\code\openeo-r-workspace\:/maps/
+            - openeo-r-workspace:/maps/
         depends_on:
             - openeo-r-server
         ports:
