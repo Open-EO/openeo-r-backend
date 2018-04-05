@@ -393,7 +393,7 @@ OpenEOServer <- R6Class(
           
           log = paste(outputPath, "process.log",sep="/")
           
-          sink(file=log,append = TRUE,type = "output")
+          logToFile(file=log)
           tryCatch({
 
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
@@ -417,7 +417,7 @@ OpenEOServer <- R6Class(
           }, error = function(e) {
             cat(str(e))
           }, finally={
-            sink()
+            logToConsole()
           })
 
       }
@@ -505,6 +505,21 @@ OpenEOServer <- R6Class(
     )
 )
 
+# logging ====
+logToConsole = function() {
+  sink()
+}
+logToNull = function() {
+  if (tolower(Sys.info()["sysname"]) == "windows") {
+    sink("nul")
+  } else {
+    sink("/dev/null")
+  }
+}
+logToFile = function(file) {
+  sink(file = file,append = TRUE,type="output")
+}
+
 # statics ====
 
 createAlphaNumericId = function(n=1, length=15) {
@@ -516,7 +531,6 @@ createAlphaNumericId = function(n=1, length=15) {
   }
   return(randomString)
 }
-
 
 #' Creates a server instance
 #' 
