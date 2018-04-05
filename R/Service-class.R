@@ -29,7 +29,7 @@ Service <- R6Class(
     
     load = function(service_id) {
       # check if exists
-      if (exists.service(service_id)) {
+      if (exists.Service(service_id)) {
         # load information from db
         con = openeo.server$getConnection()
         service_info = dbGetQuery(con, "select * from service where service_id = :id"
@@ -85,8 +85,21 @@ Service <- R6Class(
         
       }
       invisible(self)
+    },
+    remove = function(service_id) {
+      con = openeo.server$getConnection()
+      deleteQuery = "delete from service where service_id = :sid"
+      dbExecute(con, deleteQuery, param=list(sid=service_id))
+      dbDisconnect(con)
+      
+      mapfile = paste(openeo.server$workspaces.path,"services",paste(service_id,"map",sep="."),sep="/")
+      
+      if (file.exists(mapfile)) {
+        unlink(mapfile)
+      }
     }
   ),
+  # actives ----
   active = list(
     url = function() {
       return(paste("http://",openeo.server$host,":",openeo.server$api.port,"/api/",
@@ -100,7 +113,7 @@ Service <- R6Class(
       randomString = paste("S",createAlphaNumericId(n=1,length=12),sep="")
       
       
-      if (exists.service(randomString)) {
+      if (exists.Service(randomString)) {
         # if id exists get a new one (recursive)
         return(private$newServiceId())
       } else {
@@ -135,7 +148,7 @@ Service <- R6Class(
 # statics ====
 
 #' @export
-exists.service = function(service_id) {
+exists.Service = function(service_id) {
   if (nchar(service_id) == 13) {
     con = openeo.server$getConnection()
     result = dbGetQuery(con, "select count(*) from service where service_id = :id"

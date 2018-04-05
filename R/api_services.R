@@ -142,7 +142,7 @@ createWFSEndpoint = function() {
 }
 
 .getServiceInformation = function(req,res,service_id) {
-  if (exists.service(service_id)) {
+  if (exists.Service(service_id)) {
     service = Service$new()$load(service_id)
     
     return(service$detailedInfo())
@@ -152,7 +152,7 @@ createWFSEndpoint = function() {
 }
 
 .updateService = function(req,res,service_id) {
-  if (exists.service(service_id)) {
+  if (exists.Service(service_id)) {
     patch = fromJSON(req$postBody,simplifyDataFrame=FALSE)
     if (names(patch) == "service_args") {
       args = patch[["service_args"]]
@@ -173,17 +173,9 @@ createWFSEndpoint = function() {
 }
 
 .deleteService = function(req,res,service_id) {
-  if (exists.service(service_id)) {
-    con = openeo.server$getConnection()
-    deleteQuery = "delete from service where service_id = :sid"
-    dbExecute(con, deleteQuery, param=list(sid=service_id))
-    dbDisconnect(con)
-    
-    mapfile = paste(openeo.server$workspaces.path,"services",paste(service_id,"map",sep="."),sep="/")
-    
-    if (file.exists(mapfile)) {
-      unlink(mapfile)
-    }
+  if (exists.Service(service_id)) {
+    service = Service$new()
+    service$remove(service_id)
     
     ok(res)
   } else {

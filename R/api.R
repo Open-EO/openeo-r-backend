@@ -263,8 +263,8 @@
       
       user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
       
-  
-      user = openeo.server$loadUser(user_id)
+      user = User$new()
+      user = user$load(user_id = user_id)
       req$user = user
       
       forward()

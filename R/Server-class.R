@@ -124,7 +124,7 @@ OpenEOServer <- R6Class(
         if (isJob(obj)) {
           # unlink(obj$filePath, recursive = TRUE,force=TRUE)
           dbExecute(con, "delete from job where job_id = :id",param=list(id=obj$job_id))
-        } else if (isUser(obj)) {
+        } else if (is.User(obj)) {
           unlink(obj$workspace,recursive = TRUE)
           dbExecute(con, "delete from user where user_id = :id",param=list(id=obj$user_id))
         }
@@ -148,38 +148,17 @@ OpenEOServer <- R6Class(
       },
 
       createUser = function(user_name, password, silent=FALSE) {
-        files.folder = "files"
-        
-        if (!self$userExists(user_name=user_name)) {
-        id = private$newUserId()
-        
-        user = User$new(user_id = id)
+        user = User$new()
         user$user_name = user_name
         user$password = password
         
-        user_info = data.frame(user_id = id, user_name=user_name, password = password, login_secret = "")
+        user = user$create()
         
-        con = self$getConnection()
-        if (dbGetQuery(con, "select count(*) from user where user_id=:id",
-                       param=list(id = id)) == 0) {
-          dbWriteTable(con,"user",as.data.frame(user_info),append=TRUE)
-        }
-        dbDisconnect(con)
-        
-        dir.create(user$workspace, showWarnings = FALSE)
-        dir.create(paste(user$workspace, files.folder, sep="/"), showWarnings = FALSE)
-        
-          if (!silent) {
-            return(user)
-          }
+        if (silent) {
+          invisible(user)
         } else {
-          user = self$loadUser(user_name=user_name)
-          
-          if (!silent) {
-            return(user)
-          }
+          return(user)
         }
-        
       },
       
       createProcessGraph = function(process_graph, user_id) {
@@ -278,32 +257,6 @@ OpenEOServer <- R6Class(
         }
       },
       
-      loadUser = function(user_id=NULL,user_name=NULL) {
-        userExists = self$userExists(user_id=user_id, user_name = user_name)
-        
-        if (userExists) {
-          
-          con = self$getConnection()
-          if (!is.null(user_id)) {
-            
-            user_info = dbGetQuery(con, "select * from user where user_id = :id"
-                                   ,param = list(id=user_id))
-            
-            
-          } else if (!is.null(user_name)){
-            user_info = dbGetQuery(con, "select * from user where user_name = :name"
-                                   ,param = list(name=user_name))
-          } 
-          dbDisconnect(con)  
-        
-          user = User$new(user_info$user_id)
-          user$user_name = user_info$user_name
-          return(user)
-        } else {
-          stop("Cannot load user. It doesn't exists or too many user entries.")
-        }
-        
-      },
       loadJob = function(job_id) {
         if (self$jobExists(job_id)) {
           con = self$getConnection()
@@ -361,21 +314,6 @@ OpenEOServer <- R6Class(
         } else {
           return(FALSE)
         }
-      },
-      userExists = function(user_id = NULL, user_name=NULL) {
-        if (is.null(user_id) && is.null(user_name)) {
-          stop("Cannot search for user without any information.")
-        }
-        con = self$getConnection()
-        if (is.null(user_id)) {
-          #search by name
-          exists = dbGetQuery(con,"select count(user_id) from user where user_name = :name",param=list(name=user_name)) == 1
-        } else {
-          #search by id
-          exists = dbGetQuery(con,"select count(user_id) from user where user_id = :id",param=list(id = user_id)) == 1
-        }
-        dbDisconnect(con)
-        return(exists)
       },
       deleteJob = function(job_id) {
         con = openeo.server$getConnection()
@@ -472,20 +410,6 @@ OpenEOServer <- R6Class(
           return(private$newJobId())
         } else {
           return(randomString)
-        }
-      },
-      
-      newUserId = function() {
-        id = runif(1, 10^8, (10^9-1))
-        
-        con = self$getConnection()
-        userIdExists = dbGetQuery(con, "select count(*) from user where user_id = :id", param=list(id=id)) == 1
-        dbDisconnect(con)
-        
-        if (userIdExists) {
-          return(private$newUserId())
-        } else {
-          return(floor(id))
         }
       },
       
