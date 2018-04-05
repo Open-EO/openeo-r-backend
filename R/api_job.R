@@ -59,7 +59,7 @@ createJobsEndpoint = function() {
   jobs$handle("GET",
               "/<job_id>/download",
               handler = .createDownloadableFileList,
-              serializer = serializer_unboxed_json())
+              serializer = serializer_json())
   jobs$handle("OPTIONS",
               "/<job_id>/download",
               handler = .cors_option_bypass)
