@@ -120,15 +120,16 @@ OpenEOServer <- R6Class(
       },
       
       delete = function(obj) {
-        con = self$getConnection()
+        
         if (isJob(obj)) {
-          # unlink(obj$filePath, recursive = TRUE,force=TRUE)
+          con = self$getConnection()
           dbExecute(con, "delete from job where job_id = :id",param=list(id=obj$job_id))
+          dbDisconnect(con)
         } else if (is.User(obj)) {
-          unlink(obj$workspace,recursive = TRUE)
-          dbExecute(con, "delete from user where user_id = :id",param=list(id=obj$user_id))
+          
+          obj$remove()
         }
-        dbDisconnect(con)
+        
         
       },
       

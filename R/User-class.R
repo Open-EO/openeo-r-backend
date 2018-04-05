@@ -103,6 +103,16 @@ User <- R6Class(
         message("Skipping creation. User already exists.")
         invisible(self)
       }
+    },
+    remove = function() {
+      if (is.null(self$user_id) || !exists.User(user_id = self$user_id)) {
+        stop("Cannot delete user because it is not instantiated or user does not exists.")
+      }
+      
+      unlink(self$workspace,recursive = TRUE)
+      con = openeo.server$getConnection()
+      dbExecute(con, "delete from user where user_id = :id",param=list(id=self$user_id))
+      dbDisconnect(con)
     }
     
   ),
