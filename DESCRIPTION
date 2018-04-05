@@ -43,6 +43,7 @@ Collate:
     'MapServerLayer-class.R'
     'MapServerMap-class.R'
     'MapServerWeb-class.R'
+    'ProcessGraph-class.R'
     'Product-class.R'
     'data.R'
     'processes.R'

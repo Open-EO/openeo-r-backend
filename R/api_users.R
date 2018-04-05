@@ -227,10 +227,12 @@ createUsersEndpoint = function() {
     if (!is.null(req$postBody) && validate(req$postBody)) {
       process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
       process_graph = .createSimpleArgList(process_graph)
-      graph_id = openeo.server$createProcessGraph(process_graph, req$user$user_id)
+      
+      graph = ProcessGraph$new(process_graph,req$user$user_id)
+      graph$store()
       
       res$status = 200
-      return(list(process_graph_id=graph_id))
+      return(list(process_graph_id=graph$graph_id))
     } else {
       return(error(res,400,"No data or malformed json was send"))
     }

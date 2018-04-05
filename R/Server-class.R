@@ -139,7 +139,10 @@ OpenEOServer <- R6Class(
         }
         if (!is.null(process_graph) && is.list(process_graph) && storeProcessGraph) {
           # get graph_id
-          process_graph = self$createProcessGraph(process_graph, user$user_id)
+          graph = ProcessGraph$new(process_graph, user$user_id)
+          graph$store()
+          
+          process_graph = graph$graph_id
         }
         
         job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
@@ -160,24 +163,6 @@ OpenEOServer <- R6Class(
         } else {
           return(user)
         }
-      },
-      
-      createProcessGraph = function(process_graph, user_id) {
-        pgid = private$newProcessGraphId()
-        
-        if (is.list(process_graph)) {
-          process_graph = toJSON(process_graph,auto_unbox=TRUE,pretty=TRUE)
-        } else {
-          stop("process_graph is no list object")
-        }
-        process_graph = encodeProcessGraph(process_graph)
-        
-        con = self$getConnection()
-        dbExecute(con, "insert into process_graph (graph_id, user_id, process_graph) values (:graphId, :userId, :graph)",
-                  param = list(graphId = pgid, userId = user_id, graph = process_graph))
-        dbDisconnect(con)
-        
-        return(pgid)
       },
 
       
@@ -271,7 +256,12 @@ OpenEOServer <- R6Class(
           job$submitted = job_info$submitted
           job$last_update = job_info$last_update
           job$consumed_credits = job_info$consumed_credits
-          job$process_graph = self$loadProcessGraph(job_info$process_graph) #from db
+          
+          graph = ProcessGraph$new()
+          graph$graph_id = job_info$process_graph
+          graph$load()
+          
+          job$process_graph = graph$process_graph #from db
           job$persistent = TRUE
           
           job$loadProcessGraph() # create executable graph and store output on job$output
@@ -280,20 +270,7 @@ OpenEOServer <- R6Class(
           return(job)
         }
       },
-      loadProcessGraph = function(graph_id) {
-        # note: this is a function to load the process graph from db; NOT the one where the process graph is created
-        if (self$graphExists(graph_id)) {
-          con = self$getConnection()
-          graph_binary = dbGetQuery(con, "select process_graph from process_graph where graph_id = :id",
-                                    param = list(id = graph_id))[1,]
-          dbDisconnect(con)
-          graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
-          return(graph_list)
-        } else {
-          return(NULL)
-        }
-        
-      },
+
       jobExists = function(job_id) {
         if (nchar(job_id) == 15) {
           con = self$getConnection()
@@ -305,17 +282,7 @@ OpenEOServer <- R6Class(
           return(FALSE)
         }
       },
-      graphExists = function(graph_id) {
-        if (nchar(graph_id) == 18) {
-          con = self$getConnection()
-          result = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id"
-                              ,param = list(id=graph_id)) == 1
-          dbDisconnect(con)
-          return(result)
-        } else {
-          return(FALSE)
-        }
-      },
+      
       deleteJob = function(job_id) {
         con = openeo.server$getConnection()
         success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
@@ -412,21 +379,9 @@ OpenEOServer <- R6Class(
         } else {
           return(randomString)
         }
-      },
-      
-      newProcessGraphId = function() {
-        randomString = createAlphaNumericId(n=1,length=18)
-        
-        con = self$getConnection()
-        userIdExists = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
-        dbDisconnect(con)
-        
-        if (userIdExists) {
-          return(private$newProcessGraphId())
-        } else {
-          return(randomString)
-        }
       }
+      
+      
     )
 )
 

@@ -61,8 +61,10 @@ Job <- R6Class(
       if (isProcess(self$process_graph)) {
         stop("Cannot store process_graph. For the database it has to be a key")
       } else if (is.list(self$process_graph)) {
-        graph_id = openeo.server$createProcessGraph(process_graph = self$process_graph,user_id = self$user_id)
-        self$process_graph = graph_id
+        graph = ProcessGraph$new(self$process_graph, self$user_id)
+        graph$store()
+
+        self$process_graph = graph$graph_id
       }
       
       if (!exists) {
@@ -123,6 +125,10 @@ Job <- R6Class(
           } else {
             #should be a process_graph id
             # TODO load process_graph by id
+            graph = ProcessGraph$new()
+            graph$graph_id = self$process_graph
+            graph$load()
+            parsedJson = graph$process_graph
           }
         } else if (is.list(self$process_graph)) {
           if (!"process_graph" %in% names(self$process_graph)) {
@@ -131,6 +137,9 @@ Job <- R6Class(
             parsedJson = self$process_graph
           }
         } else {
+          # else it is assumed to be stored as plain text in job.process_graph ?! 
+          # - probably does not make sense
+          # - never used ?!
           con = openeo.server$getConnection()
           jsonText = dbGetQuery(con, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
           dbDisconnect(con)
@@ -249,15 +258,6 @@ Job <- R6Class(
 )
 
 # statics ====
-
-encodeProcessGraph = function(text) {
-  return(bin2hex(charToRaw(text)))
-}
-
-decodeProcessGraph = function(hex) {
-  return(rawToChar(hex2bin(hex)))
-}
-
 isJob = function(obj) {
   return("Job" %in% class(obj))
 }
