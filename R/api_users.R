@@ -310,7 +310,7 @@ createUsersEndpoint = function() {
   
   if (userid == "me" || userid == req$user$user_id) {
     lapply(req$user$services, function(service_id) {
-      return(Service$new()$load(service_id)$detailedInfo())
+      return(Service$new(service_id)$load()$detailedInfo())
     })
   }
 }

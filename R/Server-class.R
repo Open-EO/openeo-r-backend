@@ -124,7 +124,7 @@ OpenEOServer <- R6Class(
         user$user_name = user_name
         user$password = password
         
-        user = user$create()
+        user$store()
         
         if (silent) {
           invisible(user)
@@ -211,14 +211,14 @@ OpenEOServer <- R6Class(
         }
       },
 
-      runJob = function(job, outputPath,format=NULL) {
+      runJob = function(job, format=NULL) {
           job_id = job$job_id
           
-          if (!dir.exists(outputPath)) {
-            dir.create(outputPath,recursive = TRUE)
+          if (!dir.exists(job$output.folder)) {
+            dir.create(job$output.folder,recursive = TRUE)
           }
           
-          log = paste(outputPath, "process.log",sep="/")
+          log = paste(job$output.folder, "process.log",sep="/")
           
           logToFile(file=log)
           tryCatch({
@@ -239,7 +239,7 @@ OpenEOServer <- R6Class(
             }
 
             cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = outputPath)
+            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
             cat("Output finished\n")
           }, error = function(e) {
             cat(str(e))

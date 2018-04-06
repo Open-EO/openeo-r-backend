@@ -4,11 +4,11 @@ createJobsEndpoint = function() {
   jobs = plumber$new()
   
   jobs$handle("GET",
-              "/<jobid>",
+              "/<job_id>",
               handler = .describeJob,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
-              "/<jobid>",
+              "/<job_id>",
               handler = .cors_option_bypass)
   
   jobs$handle("POST",
@@ -80,9 +80,9 @@ createJobsEndpoint = function() {
 # handler functions ====
 
 #* @get /api/jobs/<jobid>
-.describeJob = function(req,res,jobid) {
-  if (exists.Job(jobid)) {
-    job = Job$new(job_id=jobid)
+.describeJob = function(req,res,job_id) {
+  if (exists.Job(job_id)) {
+    job = Job$new(job_id=job_id)
     job$load()
     
     tryCatch(
@@ -95,7 +95,7 @@ createJobsEndpoint = function() {
       }
     )
   } else {
-    error(res,404,paste("Job with id:",jobid,"cannot been found"))
+    error(res,404,paste("Job with id:",job_id,"cannot been found"))
   }
   
   return(res)
@@ -178,14 +178,14 @@ createJobsEndpoint = function() {
   if (!exists.Job(job_id)) {
     stop("Job does not exist")
   }
-  path = req$user$getJobOutputFolder(job_id)
+  
   job = Job$new(job_id=job_id)
   job$load()
   
   plan(multiprocess)
   
   processing <- future({
-    openeo.server$runJob(job= job, outputPath=path)
+    openeo.server$runJob(job= job)
   }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
   
   sending = future({

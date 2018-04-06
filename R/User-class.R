@@ -39,9 +39,6 @@ User <- R6Class(
       }))
     },
     
-    getJobOutputFolder = function(job_id) {
-      return(paste(openeo.server$workspaces.path,private$jobs.folder,job_id,sep="/"))
-    },
     load = function(user_id=NULL,user_name=NULL) {
       userExists = exists.User(user_id=user_id, user_name = user_name)
       
@@ -69,7 +66,7 @@ User <- R6Class(
       }
       
     },
-    create = function() {
+    store = function() {
       if (is.null(self$user_name) || is.null(self$password)) {
         stop("Cannot create user there are missing information.")
       }

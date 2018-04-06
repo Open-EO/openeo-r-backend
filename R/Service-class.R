@@ -11,7 +11,8 @@ Service <- R6Class(
     job_id = NULL,
     
     # functions ====
-    initialize = function() {
+    initialize = function(service_id = NULL) {
+      self$service_id = service_id
       invisible(self)
     },
     
@@ -27,7 +28,9 @@ Service <- R6Class(
       return(info)
     },
     
-    load = function(service_id) {
+    load = function() {
+      service_id = self$service_id
+      
       # check if exists
       if (exists.Service(service_id)) {
         # load information from db
@@ -86,7 +89,9 @@ Service <- R6Class(
       }
       invisible(self)
     },
-    remove = function(service_id) {
+    remove = function() {
+      service_id = self$service_id
+      
       con = openeo.server$getConnection()
       deleteQuery = "delete from service where service_id = :sid"
       dbExecute(con, deleteQuery, param=list(sid=service_id))
