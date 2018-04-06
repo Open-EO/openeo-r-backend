@@ -143,8 +143,8 @@
     
   }
   
-  job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
-
+  job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
+  
   job$loadProcessGraph()
   job = job$run()
   

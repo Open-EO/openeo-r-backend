@@ -135,10 +135,12 @@ Service <- R6Class(
     stringToArgs = function(string) {
       kvp = unlist(strsplit(string,"[=|;]"))
       args = list()
-      
-      for (key_index in seq(from=1,to=length(kvp),by=2)) {
-        args[[kvp[[key_index]]]] <- kvp[key_index + 1]
+      if (length(kvp > 0)) {
+        for (key_index in seq(from=1,to=length(kvp),by=2)) {
+          args[[kvp[[key_index]]]] <- kvp[key_index + 1]
+        }
       }
+      
       
       return(args)
     }

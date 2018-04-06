@@ -81,8 +81,10 @@ createJobsEndpoint = function() {
 
 #* @get /api/jobs/<jobid>
 .describeJob = function(req,res,jobid) {
-  if (openeo.server$jobExists(jobid)) {
-    job = openeo.server$loadJob(jobid)
+  if (exists.Job(jobid)) {
+    job = Job$new(job_id=jobid)
+    job$load()
+    
     tryCatch(
       {
         res$body = toJSON(job$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
@@ -108,7 +110,7 @@ createJobsEndpoint = function() {
   # this means search for "args" lists if (names(...$args) == NULL) => unlist(...$args, recursive = FALSE)
   process_graph = .createSimpleArgList(process_graph)
   
-  job = openeo.server$createJob(user = req$user, process_graph = process_graph)
+  job = Job$new(user_id = req$user$user_id, process_graph = process_graph)
   submit_time = Sys.time()
   job$status = "submitted"
   job$submitted = submit_time
@@ -148,7 +150,7 @@ createJobsEndpoint = function() {
 }
 
 .createDownloadableFileList = function(req,res,job_id) {
-  if (!openeo.server$jobExists(job_id)) {
+  if (!exists.Job(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
     job_results = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
@@ -161,22 +163,24 @@ createJobsEndpoint = function() {
 }
 
 .deleteJob = function(req,res,job_id) {
-  success = openeo.server$deleteJob(job_id)
+  job = Job$new(job_id)
+  success = job$remove()
   
   if (success) {
     ok(res)
   } else {
-    error(res, "Cannot delete job. Either it is already deleted or the job_id is not valid.")
+    error(res, 404 ,"Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }
 }
 
 .performJob = function(req,res,job_id) {
   
-  if (!openeo.server$jobExists(job_id)) {
+  if (!exists.Job(job_id)) {
     stop("Job does not exist")
   }
   path = req$user$getJobOutputFolder(job_id)
-  job = openeo.server$loadJob(job_id)
+  job = Job$new(job_id=job_id)
+  job$load()
   
   plan(multiprocess)
   

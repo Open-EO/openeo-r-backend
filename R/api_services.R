@@ -79,7 +79,7 @@ createWFSEndpoint = function() {
   service$service_args = args
   
   job_id = service_input$job_id
-  if (!is.null(job_id) && openeo.server$jobExists(job_id)) {
+  if (!is.null(job_id) && exists.Job(job_id)) {
     service$job_id = job_id
   } else {
     return(error(res,500,"Cannot link to job. Please create a job first."))
@@ -87,10 +87,12 @@ createWFSEndpoint = function() {
   
   service$store()
   
-  job = openeo.server$loadJob(job_id) 
+  job = Job$new(job_id)
+  job$load()
   #if not running or finished then run job!
   if (job$status %in% c("submitted")) {
-    openeo.server$runJob(job)
+    path = req$user$getJobOutputFolder(job_id)
+    openeo.server$runJob(job=job,outputPath=path,format = job$output[["format"]])
   }
   # when finished then create: create map file
   if (type %in% c("wms","wcs")) {

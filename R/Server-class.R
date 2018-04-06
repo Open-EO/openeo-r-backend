@@ -118,38 +118,6 @@ OpenEOServer <- R6Class(
         self[[listName]] = append(self[[listName]],newObj)
         
       },
-      
-      delete = function(obj) {
-        
-        if (isJob(obj)) {
-          con = self$getConnection()
-          dbExecute(con, "delete from job where job_id = :id",param=list(id=obj$job_id))
-          dbDisconnect(con)
-        } else if (is.User(obj)) {
-          
-          obj$remove()
-        }
-        
-        
-      },
-      
-      createJob = function(user,job_id = NULL, process_graph = process_graph, storeProcessGraph = TRUE) {
-        if (is.null(job_id)) {
-          job_id = private$newJobId()
-        }
-        if (!is.null(process_graph) && is.list(process_graph) && storeProcessGraph) {
-          # get graph_id
-          graph = ProcessGraph$new(process_graph, user$user_id)
-          graph$store()
-          
-          process_graph = graph$graph_id
-        }
-        
-        job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
-        
-        
-        return(job)
-      },
 
       createUser = function(user_name, password, silent=FALSE) {
         user = User$new()
@@ -242,54 +210,7 @@ OpenEOServer <- R6Class(
           self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
-      
-      loadJob = function(job_id) {
-        if (self$jobExists(job_id)) {
-          con = self$getConnection()
-          job_info = dbGetQuery(con, "select * from job where job_id = :id"
-                                 ,param = list(id=job_id))
-          dbDisconnect(con)
-          
-          job = Job$new(job_id)
-          job$user_id = job_info$user_id
-          job$status = job_info$status
-          job$submitted = job_info$submitted
-          job$last_update = job_info$last_update
-          job$consumed_credits = job_info$consumed_credits
-          
-          graph = ProcessGraph$new()
-          graph$graph_id = job_info$process_graph
-          graph$load()
-          
-          job$process_graph = graph$process_graph #from db
-          job$persistent = TRUE
-          
-          job$loadProcessGraph() # create executable graph and store output on job$output
-          
-          
-          return(job)
-        }
-      },
 
-      jobExists = function(job_id) {
-        if (nchar(job_id) == 15) {
-          con = self$getConnection()
-          result = dbGetQuery(con, "select count(*) from job where job_id = :id"
-                              ,param = list(id=job_id)) == 1
-          dbDisconnect(con)
-          return(result)
-        } else {
-          return(FALSE)
-        }
-      },
-      
-      deleteJob = function(job_id) {
-        con = openeo.server$getConnection()
-        success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
-        dbDisconnect(con)
-        
-        return(success)
-      },
       runJob = function(job, outputPath,format=NULL) {
           job_id = job$job_id
           
@@ -367,19 +288,9 @@ OpenEOServer <- R6Class(
         self$register(zonal_statistics)
         self$register(filter_bbox)
 
-      },
-      
-      newJobId = function() {
-        randomString = createAlphaNumericId(n=1,length=15)
-        
-        
-        if (self$jobExists(randomString)) {
-          # if id exists get a new one (recursive)
-          return(private$newJobId())
-        } else {
-          return(randomString)
-        }
       }
+      
+
       
       
     )

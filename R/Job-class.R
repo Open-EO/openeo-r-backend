@@ -36,11 +36,7 @@ Job <- R6Class(
     
     # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
-      if (is.null(job_id)||missing(job_id)) {
-        stop("Cannot create new Job. There is no job_id specified")
-      } else {
-        self$job_id = job_id
-      }
+      self$job_id = job_id
       
       if (!is.null(user_id)) {
         self$user_id = user_id
@@ -55,28 +51,40 @@ Job <- R6Class(
     },
     
     store = function() {
-      
-      con = openeo.server$getConnection()
-      exists = dbGetQuery(con,"select count(*) from job where job_id = :id",param=list(id=self$job_id)) == 1
-      if (isProcess(self$process_graph)) {
-        stop("Cannot store process_graph. For the database it has to be a key")
-      } else if (is.list(self$process_graph)) {
-        graph = ProcessGraph$new(self$process_graph, self$user_id)
-        graph$store()
 
-        self$process_graph = graph$graph_id
+      if (is.null(self$job_id)) {
+        self$job_id = private$newJobId()
       }
       
-      if (!exists) {
-        insertIntoQuery = "insert into job (job_id, 
-        user_id, 
-        status, 
-        process_graph,
-        submitted,
-        last_update,
-        consumed_credits) values (
-        :job_id, :user_id, :status, :process_graph, :submitted, :last_update, :consumed_credits 
+      if (!exists.Job(self$job_id)) {
+        if (isProcess(self$process_graph)) {
+          stop("Cannot store process_graph. For the database it has to be a key")
+        } else if (is.list(self$process_graph)) {
+          graph = ProcessGraph$new(self$process_graph, self$user_id)
+          graph$store()
+          
+          self$process_graph = graph$graph_id
+        }
+        
+        insertIntoQuery = "insert into job (
+            job_id, 
+            user_id, 
+            status, 
+            process_graph,
+            submitted,
+            last_update,
+            consumed_credits
+        ) values (
+            :job_id, 
+            :user_id, 
+            :status, 
+            :process_graph, 
+            :submitted, 
+            :last_update, 
+            :consumed_credits 
         );"
+        
+        con = openeo.server$getConnection()
         dbExecute(con, insertIntoQuery, param = list(
           job_id = self$job_id,
           user_id = self$user_id,
@@ -86,30 +94,32 @@ Job <- R6Class(
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits
         ))
+        dbDisconnect(con)
 
       } else {
         updateQuery = "update job 
-                        set 
+                       set 
                           user_id = :id, 
                           status = :status,
-                          process_graph = :process_graph, 
                           submitted = :submitted, 
                           last_update = :last_update,
                           consumed_credits = :consumed_credits 
-                        where job_id = :job_id;"
+                       where 
+                          job_id = :job_id;"
         
+        con = openeo.server$getConnection()
         dbExecute(con, updateQuery, param = list(
           user_id = self$user_id,
           status = self$status,
-          process_graph = self$process_graph,
           submitted = as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits,
           job_id = self$job_id
         ))
+        dbDisconnect(con)
       }
       
-      dbDisconnect(con)
+      self$persistent = TRUE
       invisible(self)
     },
     
@@ -124,7 +134,6 @@ Job <- R6Class(
             }
           } else {
             #should be a process_graph id
-            # TODO load process_graph by id
             graph = ProcessGraph$new()
             graph$graph_id = self$process_graph
             graph$load()
@@ -157,6 +166,41 @@ Job <- R6Class(
         # do nothing, we already have a process graph
       }
     },
+    
+    load = function() {
+      if (is.null(self$job_id)) {
+        stop("Cannot load job without an ID")
+      }
+      
+      if (!exists.Job(self$job_id)) {
+        stop("Cannot find job")
+      }
+      
+      con = openeo.server$getConnection()
+      job_info = dbGetQuery(con, "select * from job where job_id = :id"
+                            ,param = list(id=self$job_id))
+      dbDisconnect(con)
+      
+      self$user_id = job_info$user_id
+      self$status = job_info$status
+      self$submitted = job_info$submitted
+      self$last_update = job_info$last_update
+      self$consumed_credits = job_info$consumed_credits
+      
+      # when stored in a db then all the time the graph is loaded from db, regardless if it is published or not
+      graph = ProcessGraph$new()
+      graph$graph_id = job_info$process_graph
+      graph$load()
+      
+      self$process_graph = graph$process_graph #from db
+      self$persistent = TRUE
+      
+      self$loadProcessGraph() # create executable graph and store output on job$output
+      
+      
+      invisible(self)
+
+    },
 
     loadProcess = function(parsedJson) {
       processId = parsedJson[["process_id"]]
@@ -179,6 +223,26 @@ Job <- R6Class(
       )
       
       return(info)
+    },
+    remove = function() {
+      if (is.null(self$job_id) || !exists.Job(self$job_id)) {
+        return(FALSE)
+      }
+      
+      con = openeo.server$getConnection()
+      success1 = dbExecute(con,"delete from process_graph 
+                           where graph_id = (
+                              select process_graph
+                              from job
+                              where job_id = :id)",param=list(id = self$job_id)) == 1
+      success2 = dbExecute(con,"delete from job where job_id = :id",param=list(id = self$job_id)) == 1
+      dbDisconnect(con)
+      
+      if (dir.exists(self$output.folder)) {
+        unlink(self$output.folder,recursive = TRUE)
+      }
+
+      return(success1 && success2)
     },
     
     detailedInfo = function() {
@@ -254,10 +318,44 @@ Job <- R6Class(
       })
     }
     
+  ),
+  # active ----
+  active = list(
+    output.folder = function() {
+      jobs.folder = "jobs"
+      return(paste(openeo.server$workspaces.path, jobs.folder, self$job_id,sep="/"))
+    }
+  ), 
+  # private ----
+  private = list(
+    # functions ====
+    newJobId = function() {
+      randomString = createAlphaNumericId(n=1,length=15)
+      
+      
+      if (exists.Job(randomString)) {
+        # if id exists get a new one (recursive)
+        return(private$newJobId())
+      } else {
+        return(randomString)
+      }
+    }
   )
 )
 
 # statics ====
-isJob = function(obj) {
+is.Job = function(obj) {
   return("Job" %in% class(obj))
+}
+
+exists.Job = function(job_id) {
+  if (nchar(job_id) == 15) {
+    con = openeo.server$getConnection()
+    result = dbGetQuery(con, "select count(*) from job where job_id = :id"
+                        ,param = list(id=job_id)) == 1
+    dbDisconnect(con)
+    return(result)
+  } else {
+    return(FALSE)
+  }
 }

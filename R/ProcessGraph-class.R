@@ -16,7 +16,7 @@ ProcessGraph <- R6Class(
     store = function() {
       
       if (is.null(self$process_id)) {
-        self$process_id = private$newProcessGraphId()
+        self$graph_id = private$newProcessGraphId()
       }
       
       if (is.list(self$process_graph)) {
@@ -28,7 +28,7 @@ ProcessGraph <- R6Class(
       
       con = openeo.server$getConnection()
       dbExecute(con, "insert into process_graph (graph_id, user_id, process_graph) values (:graphId, :userId, :graph)",
-                param = list(graphId = self$process_id, 
+                param = list(graphId = self$graph_id, 
                              userId = self$user_id, 
                              graph = enc_process_graph))
       dbDisconnect(con)
@@ -48,6 +48,17 @@ ProcessGraph <- R6Class(
       }
       
       return(self)
+    },
+    remove = function() {
+      if (!exists.ProcessGraph(self$graph_id)) {
+        stop("Cannot find process graph to delete")
+      }
+      
+      con = openeo.server$getConnection()
+      success = dbExecute(con, "delete from process_graph where graph_id = :id",param=list(id=self$graph_id)) == 1
+      dbDisconnect(con)
+      
+      return(success)
     }
   ),
   # private ----
