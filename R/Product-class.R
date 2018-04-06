@@ -82,6 +82,6 @@ Product <- R6Class(
 # statics ====
 
 #' @export
-isProduct = function(obj) {
+is.Product = function(obj) {
   return("Product" %in% class(obj))
 }

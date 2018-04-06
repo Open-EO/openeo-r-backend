@@ -266,7 +266,7 @@ calculate_ndvi = Process$new(
 #' @export
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
-  if (isProduct(imagery)) {
+  if (is.Product(imagery)) {
     collection = imagery$getCollection()
   } else if (isCollection(imagery)) {
     collection = imagery

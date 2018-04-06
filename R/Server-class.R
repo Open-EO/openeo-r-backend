@@ -101,7 +101,7 @@ OpenEOServer <- R6Class(
           newObj = list(obj)
           names(newObj) = obj$process_id
           
-        } else if (isProduct(obj)) {
+        } else if (is.Product(obj)) {
           if (is.null(self$data)) {
             self$data = list()
           }
