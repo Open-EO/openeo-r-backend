@@ -4,8 +4,9 @@
 ExecutableProcess <- R6Class(
   "ExecutableProcess",
   inherit = Process,
+  # public ----
   public = list(
-    
+    # functions ====
     initialize= function(process_id = NA,
                         description = NA,
                         args = NA,
@@ -39,7 +40,7 @@ ExecutableProcess <- R6Class(
           name = self$args[[key]]$name
           value = self$args[[key]]$value
       
-          if (isExecutableProcess(value)) {
+          if (is.ExecutableProcess(value)) {
             parameter[[name]] = value$execute()
           } else {
             parameter[[name]] = value
@@ -65,6 +66,7 @@ ExecutableProcess <- R6Class(
   )
 )
 
-isExecutableProcess = function(obj) {
+# statics ----
+is.ExecutableProcess = function(obj) {
   return(all(c("ExecutableProcess", "Process") %in% class(obj)) )
 }

@@ -17,6 +17,7 @@
 #' @export
 Process <- R6Class(
   "Process",
+  # public ----
   public = list(
     # attributes ====
     process_id = NULL,
@@ -24,7 +25,7 @@ Process <- R6Class(
     description = NULL,
     operation = NULL,
     
-    # public ====
+    # functions ====
     initialize = function(process_id = NA,
                           description = NA,
                           args = NA,
@@ -111,6 +112,6 @@ Process <- R6Class(
 # statics ====
 
 #' @export
-isProcess = function(obj) {
+is.Process = function(obj) {
   return("Process" %in% class(obj))
 }

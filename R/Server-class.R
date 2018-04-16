@@ -92,7 +92,7 @@ OpenEOServer <- R6Class(
         listName = NULL
         newObj = NULL
         
-        if (isProcess(obj)) {
+        if (is.Process(obj)) {
           if (is.null(self$processes)) {
             self$processes = list()
           }

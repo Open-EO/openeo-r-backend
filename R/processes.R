@@ -272,7 +272,7 @@ getCollectionFromImageryStatement = function (imagery) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
-  } else if (isExecutableProcess(imagery)) {
+  } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
     if ("product_id" %in% names(imagery)) {

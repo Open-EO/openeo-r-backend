@@ -41,7 +41,7 @@ Argument <- R6Class(
       arg = list()
       value = NULL
       
-      if (isExecutableProcess(self$value)) {
+      if (is.ExecutableProcess(self$value)) {
         value = self$value$detailedInfo()
       } else if (class(self$value) == "list" && names(self$value)[1] == "product_id") {
         value = list(product_id = self$value$product_id)

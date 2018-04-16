@@ -57,7 +57,7 @@ Job <- R6Class(
       }
       
       if (!exists.Job(self$job_id)) {
-        if (isProcess(self$process_graph)) {
+        if (is.Process(self$process_graph)) {
           stop("Cannot store process_graph. For the database it has to be a key")
         } else if (is.list(self$process_graph)) {
           graph = ProcessGraph$new(self$process_graph, self$user_id)
@@ -124,7 +124,7 @@ Job <- R6Class(
     },
     
     loadProcessGraph = function() {
-      if (!isProcess(self$process_graph)) {
+      if (!is.Process(self$process_graph)) {
         
         if (is.character(self$process_graph)) {
           if (validate(self$process_graph) == TRUE) {
@@ -246,7 +246,7 @@ Job <- R6Class(
     },
     
     detailedInfo = function() {
-      if (is.null(self$process_graph) || ! isProcess(self$process_graph)) {
+      if (is.null(self$process_graph) || ! is.Process(self$process_graph)) {
         self$loadProcessGraph()
       }
       
@@ -268,7 +268,7 @@ Job <- R6Class(
     },
     
     run = function() {
-      if (!isProcess(self$process_graph)) {
+      if (!is.Process(self$process_graph)) {
           self$loadProcessGraph()
       }
       
