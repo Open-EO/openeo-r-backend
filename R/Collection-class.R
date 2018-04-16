@@ -9,8 +9,12 @@
 #' @export
 Collection <- R6Class(
   "Collection",
+  # public ----
   public = list(
+    # attributes ====
     granules = NULL,
+    
+    # functions ====
     initialize = function() {
       self$granules = list()
     },
@@ -31,7 +35,7 @@ Collection <- R6Class(
         to = self$getMaxTime()
       }
       
-      indices = .collection.filterbytime(self$granules,from,to)
+      indices = private$filterbytime(self$granules,from,to)
       
       res = self$clone(deep=TRUE)
       res$granules = res$granules[indices$min : indices$max]
@@ -39,7 +43,7 @@ Collection <- R6Class(
     },
     filterByBands = function(bands) {
       res = self$clone(deep=TRUE)
-      res$granules = .collection.filterbyband(res$granules,bands)
+      res$granules = private$filterbyband(res$granules,bands)
       
       return(res)
     },
@@ -78,54 +82,61 @@ Collection <- R6Class(
     getBandIndex = function(band_id) {
       return(match(band_id, self$getBandNames()))
     }
+  ),
+  
+  private = list(
+    filterbyband = function (granules,bands) {
+      filteredGranules = list()
+      for (i in 1:length(granules)) {
+        currentGranule = granules[[i]]$clone(deep=TRUE)
+        
+        bandIndices = currentGranule$getBandIndices(bands)
+        currentGranule$data = subset(currentGranule$data, subset = bandIndices)
+        currentGranule$bands = currentGranule$bands[bandIndices]
+        
+        filteredGranules[[i]] = currentGranule    
+      }
+      
+      return(filteredGranules)
+    },
+    
+    filterbytime = function (granules,from,to) {
+      minpos = -1
+      maxpos = -1
+      if (from > to) {
+        old <- to
+        to <- from
+        from <- old
+      }
+      
+      if (length(granules) == 0) return(NULL)
+      
+      for (i in 1:length(granules)) {
+        currentGranule = granules[[i]]
+        if (!is.null(currentGranule)) {
+          if (currentGranule$time >= from && minpos < 0) {
+            minpos = i
+          }
+          
+          if (currentGranule$time > to && maxpos < 0) {
+            maxpos = i-1
+          }
+        }
+        if (minpos >= 0 && maxpos >= 0) {
+          break
+        }
+      }
+      return(list(min = minpos, max = maxpos))
+    }
   )
   
 )
 
-.collection.filterbyband = function (granules,bands) {
-  filteredGranules = list()
-  for (i in 1:length(granules)) {
-    currentGranule = granules[[i]]$clone(deep=TRUE)
-    
-    bandIndices = currentGranule$getBandIndices(bands)
-    currentGranule$data = subset(currentGranule$data, subset = bandIndices)
-    currentGranule$bands = currentGranule$bands[bandIndices]
-    
-    filteredGranules[[i]] = currentGranule    
-  }
-  
-  return(filteredGranules)
-}
+# statics ----
 
-.collection.filterbytime = function (granules,from,to) {
-  minpos = -1
-  maxpos = -1
-  if (from > to) {
-    old <- to
-    to <- from
-    from <- old
-  }
-  
-  if (length(granules) == 0) return(NULL)
-  
-  for (i in 1:length(granules)) {
-    currentGranule = granules[[i]]
-    if (!is.null(currentGranule)) {
-      if (currentGranule$time >= from && minpos < 0) {
-        minpos = i
-      }
-      
-      if (currentGranule$time > to && maxpos < 0) {
-        maxpos = i-1
-      }
-    }
-    if (minpos >= 0 && maxpos >= 0) {
-      break
-    }
-  }
-  return(list(min = minpos, max = maxpos))
-}
 
-isCollection = function(obj) {
+
+
+is.Collection = function(obj) {
   return("Collection" %in% class(obj))
 }

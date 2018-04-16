@@ -170,7 +170,7 @@
 # creates files for batch processing
 .create_output_no_response = function(result, format, dir) {
   #store the job? even though it is completed?
-  if (!isCollection(result)) {
+  if (!is.Collection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
@@ -199,7 +199,7 @@
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  if (!isCollection(result)) {
+  if (!is.Collection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful

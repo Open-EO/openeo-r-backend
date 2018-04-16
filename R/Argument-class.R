@@ -57,6 +57,6 @@ Argument <- R6Class(
 )
 
 # static =====
-isArgument = function(obj) {
+is.Argument = function(obj) {
   return("Argument" %in% class(obj))
 }

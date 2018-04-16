@@ -268,7 +268,7 @@ getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
   if (is.Product(imagery)) {
     collection = imagery$getCollection()
-  } else if (isCollection(imagery)) {
+  } else if (is.Collection(imagery)) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
