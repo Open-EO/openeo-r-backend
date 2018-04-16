@@ -432,7 +432,7 @@ OpenEOServer <- R6Class(
           
           dir.create(data.path, recursive = TRUE)
           zipfile = paste(data.path,"openeo-demo.zip",sep="/")
-          download.file(url="https://uni-muenster.sciebo.de/s/aiAEcP6DtHQ7t2Q/download",
+          download.file(url="https://uni-muenster.sciebo.de/s/lwtfzvRjsI0oUiB/download",
                         destfile = zipfile,
                         mode="wb",quiet = TRUE)
           cat("[done]\n")
