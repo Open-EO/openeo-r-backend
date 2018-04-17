@@ -59,9 +59,7 @@ Job <- R6Class(
         }
         
         self$process_graph = private$pg$process_graph
-      } else {
-        stop("Found no process graph for job creation. Please state an id, a process_graph object or json text")
-      }
+      } 
       return(self)
     },
     
