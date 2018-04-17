@@ -133,7 +133,9 @@
       format = output$format
     } 
     
-    if (is.null(format) || !(format %in% openeo.server$outputGDALFormats || format %in% openeo.server$outputOGRFormats)) {
+    if (is.null(format) || 
+        !(format %in% openeo.server$outputGDALFormats || 
+          format %in% openeo.server$outputOGRFormats)) {
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     
@@ -143,9 +145,8 @@
     
   }
   
-  job = openeo.server$createJob(user = req$user, process_graph = process_graph, storeProcessGraph=FALSE)
-
-  job$loadProcessGraph()
+  job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
+  
   job = job$run()
   
   return(.create_output(res = res,result = job$results, format = format))
@@ -170,7 +171,7 @@
 # creates files for batch processing
 .create_output_no_response = function(result, format, dir) {
   #store the job? even though it is completed?
-  if (!isCollection(result)) {
+  if (!is.Collection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
@@ -199,7 +200,7 @@
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  if (!isCollection(result)) {
+  if (!is.Collection(result)) {
     cat("Creating vector file with OGR\n")
     # assuming that we don't have a collection as a result
     layername = 1 # TODO change to something meaningful
@@ -264,8 +265,8 @@
       
       user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
       
-  
-      user = openeo.server$loadUser(user_id)
+      user = User$new()
+      user = user$load(user_id = user_id)
       req$user = user
       
       forward()

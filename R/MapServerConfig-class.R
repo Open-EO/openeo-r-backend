@@ -114,6 +114,10 @@ MapServerConfig <- R6Class(
     },
     
     fromRaster = function(obj,service, scale="AUTO", normalize="AUTO") {
+      if (is.null(obj) || length(obj) == 0) {
+        stop("Cannot find files to create map file from.")
+      }
+      
       self$service = service
       service_id = service$service_id
       service_type = service$service_type

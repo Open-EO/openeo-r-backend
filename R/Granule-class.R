@@ -71,6 +71,6 @@ Granule <- R6Class(
 )
 
 # statics ----
-isGranule = function(obj) {
+is.Granule = function(obj) {
   return("Granule" %in% class(obj))
 }

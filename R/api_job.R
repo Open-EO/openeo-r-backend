@@ -4,11 +4,11 @@ createJobsEndpoint = function() {
   jobs = plumber$new()
   
   jobs$handle("GET",
-              "/<jobid>",
+              "/<job_id>",
               handler = .describeJob,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
-              "/<jobid>",
+              "/<job_id>",
               handler = .cors_option_bypass)
   
   jobs$handle("POST",
@@ -59,7 +59,7 @@ createJobsEndpoint = function() {
   jobs$handle("GET",
               "/<job_id>/download",
               handler = .createDownloadableFileList,
-              serializer = serializer_unboxed_json())
+              serializer = serializer_json())
   jobs$handle("OPTIONS",
               "/<job_id>/download",
               handler = .cors_option_bypass)
@@ -80,9 +80,11 @@ createJobsEndpoint = function() {
 # handler functions ====
 
 #* @get /api/jobs/<jobid>
-.describeJob = function(req,res,jobid) {
-  if (openeo.server$jobExists(jobid)) {
-    job = openeo.server$loadJob(jobid)
+.describeJob = function(req,res,job_id) {
+  if (exists.Job(job_id)) {
+    job = Job$new(job_id=job_id)
+    job$load()
+    
     tryCatch(
       {
         res$body = toJSON(job$detailedInfo(),na="null",null="null",auto_unbox = TRUE)
@@ -93,7 +95,7 @@ createJobsEndpoint = function() {
       }
     )
   } else {
-    error(res,404,paste("Job with id:",jobid,"cannot been found"))
+    error(res,404,paste("Job with id:",job_id,"cannot been found"))
   }
   
   return(res)
@@ -108,7 +110,7 @@ createJobsEndpoint = function() {
   # this means search for "args" lists if (names(...$args) == NULL) => unlist(...$args, recursive = FALSE)
   process_graph = .createSimpleArgList(process_graph)
   
-  job = openeo.server$createJob(user = req$user, process_graph = process_graph)
+  job = Job$new(user_id = req$user$user_id, process_graph = process_graph)
   submit_time = Sys.time()
   job$status = "submitted"
   job$submitted = submit_time
@@ -148,7 +150,7 @@ createJobsEndpoint = function() {
 }
 
 .createDownloadableFileList = function(req,res,job_id) {
-  if (!openeo.server$jobExists(job_id)) {
+  if (!exists.Job(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
     job_results = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
@@ -161,27 +163,29 @@ createJobsEndpoint = function() {
 }
 
 .deleteJob = function(req,res,job_id) {
-  success = openeo.server$deleteJob(job_id)
+  job = Job$new(job_id)
+  success = job$remove()
   
   if (success) {
     ok(res)
   } else {
-    error(res, "Cannot delete job. Either it is already deleted or the job_id is not valid.")
+    error(res, 404 ,"Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }
 }
 
 .performJob = function(req,res,job_id) {
   
-  if (!openeo.server$jobExists(job_id)) {
+  if (!exists.Job(job_id)) {
     stop("Job does not exist")
   }
-  path = req$user$getJobOutputFolder(job_id)
-  job = openeo.server$loadJob(job_id)
+  
+  job = Job$new(job_id=job_id)
+  job$load()
   
   plan(multiprocess)
   
   processing <- future({
-    openeo.server$runJob(job= job, outputPath=path)
+    openeo.server$runJob(job= job)
   }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
   
   sending = future({

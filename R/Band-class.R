@@ -6,7 +6,9 @@
 #' @export
 Band <- R6Class(
   "Band",
+  # public ----
   public = list(
+    # attributes ====
     band_id=NULL,
     name=NULL,
     wavelength_nm=NULL,
@@ -17,6 +19,7 @@ Band <- R6Class(
     unit=NULL,
     nodata=NULL,
     
+    # functions ====
     initialize= function(band_id=NA,name=NA,wavelength_nm=NA,res=NA,scale=NA,offset=NA,type=NA,unit=NA,nodata=NA) {
       self$band_id=band_id
       self$name=name

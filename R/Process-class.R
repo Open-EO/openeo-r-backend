@@ -17,6 +17,7 @@
 #' @export
 Process <- R6Class(
   "Process",
+  # public ----
   public = list(
     # attributes ====
     process_id = NULL,
@@ -24,7 +25,7 @@ Process <- R6Class(
     description = NULL,
     operation = NULL,
     
-    # public ====
+    # functions ====
     initialize = function(process_id = NA,
                           description = NA,
                           args = NA,
@@ -53,38 +54,6 @@ Process <- R6Class(
       return(res)
     },
     
-    as.executable = function(json, job) {
-      if (is.null(job)) {
-        stop("No job defined for this executable process")
-      }
-      #return a process where the arguments from the parsed json file are set for
-      #this "args". E.g. set a value for args[["from"]]$value
-      
-      # json at this point is the named list of the process graph provided by the json stored under jobs
-      args = json$args
-      
-      runner = self$clone(deep=TRUE)
-      
-      clonedArguments = list()
-      #deep copy also the arguments
-      for (arg in self$args) {
-        clonedArguments=append(clonedArguments,arg$clone(deep=TRUE))
-      }
-      runner$args = clonedArguments
-
-      for (key in names(args)) {
-        value = args[[key]]
-        
-        #TODO maybe add a handling for UDF or in the UDF class 
-        if (class(value) == "list" && "process_id" %in% names(value)) {
-          runner$setArgumentValue(key,job$loadProcess(value))
-        } else {
-          runner$setArgumentValue(key, value)
-        }
-      }
-      
-      return(ExecutableProcess$new(process=runner))
-    },
     
     setArgumentValue = function(name, value) {
       # arguments are unnamed so list(Argument) -> list(Argument:name)
@@ -111,6 +80,6 @@ Process <- R6Class(
 # statics ====
 
 #' @export
-isProcess = function(obj) {
+is.Process = function(obj) {
   return("Process" %in% class(obj))
 }

@@ -209,7 +209,8 @@ createUsersEndpoint = function() {
 
     possibleUserJobs = user$jobs
     jobRepresentation = lapply(possibleUserJobs, function(job_id){
-      job = openeo.server$loadJob(job_id)
+      job = Job$new(job_id)
+      job$load()
       return(job$shortInfo())
     })
     
@@ -227,10 +228,12 @@ createUsersEndpoint = function() {
     if (!is.null(req$postBody) && validate(req$postBody)) {
       process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
       process_graph = .createSimpleArgList(process_graph)
-      graph_id = openeo.server$createProcessGraph(process_graph, req$user$user_id)
+      
+      graph = ProcessGraph$new(process_graph = process_graph, user_id = req$user$user_id)
+      graph$store()
       
       res$status = 200
-      return(list(process_graph_id=graph_id))
+      return(list(process_graph_id=graph$graph_id))
     } else {
       return(error(res,400,"No data or malformed json was send"))
     }
@@ -307,7 +310,7 @@ createUsersEndpoint = function() {
   
   if (userid == "me" || userid == req$user$user_id) {
     lapply(req$user$services, function(service_id) {
-      return(Service$new()$load(service_id)$detailedInfo())
+      return(Service$new(service_id)$load()$detailedInfo())
     })
   }
 }
