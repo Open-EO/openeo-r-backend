@@ -133,7 +133,9 @@
       format = output$format
     } 
     
-    if (is.null(format) || !(format %in% openeo.server$outputGDALFormats || format %in% openeo.server$outputOGRFormats)) {
+    if (is.null(format) || 
+        !(format %in% openeo.server$outputGDALFormats || 
+          format %in% openeo.server$outputOGRFormats)) {
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     

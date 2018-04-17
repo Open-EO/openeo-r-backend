@@ -45,25 +45,37 @@ Job <- R6Class(
       self$consumed_credits = 0
       
       if (!is.null(process_graph)) {
-        self$process_graph = process_graph
+        if (!is.ProcessGraph(process_graph)) {
+          if (is.graph_id(process_graph[["process_graph"]])) {
+            #load graph id and overwrite user and grpah_id
+            private$pg = ProcessGraph$new(graph_id=process_graph[["process_graph"]])
+            private$pg$user_id = user_id
+            private$pg$graph_id = NULL # will be created on store
+          } else {
+            private$pg = ProcessGraph$new(process_graph = process_graph, user_id = user_id)
+          }
+        } else {
+          private$pg$process_graph = process_graph
+        }
+        
+        self$process_graph = private$pg$process_graph
+      } else {
+        stop("Found no process graph for job creation. Please state an id, a process_graph object or json text")
       }
       return(self)
     },
     
     store = function() {
-
       if (is.null(self$job_id)) {
         self$job_id = private$newJobId()
       }
-      
       if (!exists.Job(self$job_id)) {
         if (is.Process(self$process_graph)) {
           stop("Cannot store process_graph. For the database it has to be a key")
-        } else if (is.list(self$process_graph)) {
-          graph = ProcessGraph$new(self$process_graph, self$user_id)
-          graph$store()
+        } else if (!is.null(private$pg)) {
+          private$pg$store()
           
-          self$process_graph = graph$graph_id
+          self$process_graph = private$pg$graph_id
         }
         
         insertIntoQuery = "insert into job (
@@ -89,7 +101,7 @@ Job <- R6Class(
           job_id = self$job_id,
           user_id = self$user_id,
           status = self$status,
-          process_graph = self$process_graph,
+          process_graph = self$process_graph, # it is the graph_id at this point
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits
@@ -124,44 +136,13 @@ Job <- R6Class(
     },
     
     loadProcessGraph = function() {
-      if (!is.Process(self$process_graph)) {
-        
-        if (is.character(self$process_graph)) {
-          if (validate(self$process_graph) == TRUE) {
-            parsedJson = fromJSON(self$process_graph, simplifyDataFrame = FALSE)
-            if (!"process_graph" %in% names(parsedJson)) {
-              parsedJson = list(process_graph=parsedJson)
-            }
-          } else {
-            #should be a process_graph id
-            graph = ProcessGraph$new()
-            graph$graph_id = self$process_graph
-            graph$load()
-            parsedJson = graph$process_graph
-          }
-        } else if (is.list(self$process_graph)) {
-          if (!"process_graph" %in% names(self$process_graph)) {
-            parsedJson = list(process_graph=self$process_graph)
-          } else {
-            parsedJson = self$process_graph
-          }
-        } else {
-          # else it is assumed to be stored as plain text in job.process_graph ?! 
-          # - probably does not make sense
-          # - never used ?!
-          con = openeo.server$getConnection()
-          jsonText = dbGetQuery(con, "select process_graph from job where job_id = :id", param=list(id=self$job_id))[1,]
-          dbDisconnect(con)
-          
-          parsedJson = fromJSON(jsonText, simplifyDataFrame = FALSE)
-          if (!"process_graph" %in% names(parsedJson)) {
-            parsedJson = list(process_graph=self$process_graph)
-          }
+      if (is.null(self$process_graph) || !is.Process(self$process_graph)) {
+        if (is.null(private$pg)) {
+          stop("Job was initialized or loaded without a process graph")
         }
         
-        self$output = parsedJson[["output"]] # NULL if not exists
-        
-        self$process_graph = self$loadProcess(parsedJson[["process_graph"]])
+        self$output = private$pg$output
+        self$process_graph = self$loadProcess(private$pg$process_graph)
       } else {
         # do nothing, we already have a process graph
       }
@@ -188,11 +169,9 @@ Job <- R6Class(
       self$consumed_credits = job_info$consumed_credits
       
       # when stored in a db then all the time the graph is loaded from db, regardless if it is published or not
-      graph = ProcessGraph$new()
-      graph$graph_id = job_info$process_graph
-      graph$load()
+      private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
-      self$process_graph = graph$process_graph #from db
+      self$process_graph = private$pg$process_graph #from db
       self$persistent = TRUE
       
       self$loadProcessGraph() # create executable graph and store output on job$output
@@ -202,13 +181,13 @@ Job <- R6Class(
 
     },
 
-    loadProcess = function(parsedJson) {
-      processId = parsedJson[["process_id"]]
+    loadProcess = function(graph_list) {
+      processId = graph_list[["process_id"]]
       #TODO: add cases for udfs
       if (!is.null(processId) && processId %in% names(openeo.server$processes)) {
         process = openeo.server$processes[[processId]]
         
-        return(process$as.executable(parsedJson,self))
+        return(process$as.executable(graph_list,self))
       } else {
         stop(paste("Cannot load process",processId))
       }
@@ -246,19 +225,15 @@ Job <- R6Class(
     },
     
     detailedInfo = function() {
-      if (is.null(self$process_graph) || ! is.Process(self$process_graph)) {
-        self$loadProcessGraph()
+      if (is.null(private$pg)) {
+        stop("process_graph not loaded from db")
       }
-      
-      #process_graph and the nested processes are always ExecutableProcess
-      processGraphList = self$process_graph$detailedInfo()
-      
       info = list(
         job_id = self$job_id,
         user_id = self$user_id,
         status = self$status,
-        process_graph = processGraphList,
-        output = self$output,
+        process_graph = private$pg$process_graph,
+        output = private$pg$output,
         submitted = self$submitted,
         updated = self$last_update,
         consumed_credits = self$consumed_credits
@@ -268,7 +243,7 @@ Job <- R6Class(
     },
     
     run = function() {
-      if (!is.Process(self$process_graph)) {
+      if (is.null(self$process_graph) || !is.Process(self$process_graph)) {
           self$loadProcessGraph()
       }
       
@@ -328,6 +303,8 @@ Job <- R6Class(
   ), 
   # private ----
   private = list(
+    # attributes ====
+    pg = NULL,
     # functions ====
     newJobId = function() {
       randomString = createAlphaNumericId(n=1,length=15)

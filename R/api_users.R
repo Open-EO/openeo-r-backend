@@ -229,7 +229,7 @@ createUsersEndpoint = function() {
       process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
       process_graph = .createSimpleArgList(process_graph)
       
-      graph = ProcessGraph$new(process_graph,req$user$user_id)
+      graph = ProcessGraph$new(process_graph = process_graph, user_id = req$user$user_id)
       graph$store()
       
       res$status = 200
