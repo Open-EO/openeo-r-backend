@@ -88,6 +88,11 @@ ProcessGraph <- R6Class(
       dbDisconnect(con)
       
       return(success)
+    },
+    
+    buildExecutableProcessGraph = function() {
+      res = private$loadProcess(self$process_graph)
+      return(res)
     }
   ),
   # private ----
@@ -118,6 +123,53 @@ ProcessGraph <- R6Class(
       if ("output" %in% names(list)) {
         self$output = list[["output"]]
       }
+    },
+    loadProcess = function(graph_list) {
+      # from job
+      
+      processId = graph_list[["process_id"]]
+      #TODO: add cases for udfs
+      if (!is.null(processId) && processId %in% names(openeo.server$processes)) {
+        process = openeo.server$processes[[processId]]
+        
+        return(private$as.executable(graph_list,process))
+      } else {
+        stop(paste("Cannot load process",processId))
+      }
+    },
+    as.executable = function(graph_list, process) {
+      # from process
+      
+      if (is.null(process) && ! is.Process(process)) {
+        stop("No process defined to create executable from. Reason: null or no Process")
+      }
+      #return a process where the arguments from the parsed json file are set for
+      #this "args". E.g. set a value for args[["from"]]$value
+      
+      # graph_list: at this point is the named list of the process graph
+      args = graph_list$args
+      
+      runner = process$clone(deep=TRUE)
+      
+      clonedArguments = list()
+      #deep copy also the arguments
+      for (arg in process$args) {
+        clonedArguments=append(clonedArguments,arg$clone(deep=TRUE))
+      }
+      runner$args = clonedArguments
+      
+      for (key in names(args)) {
+        value = args[[key]]
+        
+        #TODO maybe add a handling for UDF or in the UDF class 
+        if (class(value) == "list" && "process_id" %in% names(value)) {
+          runner$setArgumentValue(key, private$loadProcess(value))
+        } else {
+          runner$setArgumentValue(key, value)
+        }
+      }
+      
+      return(ExecutableProcess$new(process=runner))
     }
   )
 )

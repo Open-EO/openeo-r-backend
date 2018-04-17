@@ -54,38 +54,6 @@ Process <- R6Class(
       return(res)
     },
     
-    as.executable = function(graph_list, job) {
-      if (is.null(job)) {
-        stop("No job defined for this executable process")
-      }
-      #return a process where the arguments from the parsed json file are set for
-      #this "args". E.g. set a value for args[["from"]]$value
-      
-      # graph_list: at this point is the named list of the process graph
-      args = graph_list$args
-      
-      runner = self$clone(deep=TRUE)
-      
-      clonedArguments = list()
-      #deep copy also the arguments
-      for (arg in self$args) {
-        clonedArguments=append(clonedArguments,arg$clone(deep=TRUE))
-      }
-      runner$args = clonedArguments
-
-      for (key in names(args)) {
-        value = args[[key]]
-        
-        #TODO maybe add a handling for UDF or in the UDF class 
-        if (class(value) == "list" && "process_id" %in% names(value)) {
-          runner$setArgumentValue(key,job$loadProcess(value))
-        } else {
-          runner$setArgumentValue(key, value)
-        }
-      }
-      
-      return(ExecutableProcess$new(process=runner))
-    },
     
     setArgumentValue = function(name, value) {
       # arguments are unnamed so list(Argument) -> list(Argument:name)

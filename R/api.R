@@ -147,7 +147,6 @@
   
   job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
   
-  job$loadProcessGraph()
   job = job$run()
   
   return(.create_output(res = res,result = job$results, format = format))
