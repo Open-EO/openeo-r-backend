@@ -3,6 +3,7 @@
 #' @export
 User <- R6Class(
   "User",
+  inherit = DatabaseEntity,
   public = list(
     # public ----
     # attributes ====

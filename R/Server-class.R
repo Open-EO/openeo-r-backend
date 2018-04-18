@@ -334,3 +334,24 @@ createServerInstance = function() {
   assign("openeo.server", OpenEOServer$new(),envir=.GlobalEnv)
   invisible()
 }
+
+
+# DatabaseEntity Interface ----
+#' Interface for all elements stored in a database
+#' 
+#' The class does not offer much functionality, but reserves some function names to be available to all
+#' inheriting classes. Usually the ineriting class should implement those functions in a proper way.
+DatabaseEntity = R6Class(
+  "DatabaseEntity",
+  public = list(
+    load = function() {
+      
+    },
+    store = function() {
+      
+    },
+    remove = function() {
+      
+    }
+  )
+)

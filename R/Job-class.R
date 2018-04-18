@@ -19,6 +19,7 @@
 #' @export
 Job <- R6Class(
   "Job",
+  inherit = DatabaseEntity,
   # public ====
   public = list(
     # attributes ----

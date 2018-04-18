@@ -1,6 +1,7 @@
 #' @export
 Service <- R6Class(
   "Service",
+  inherit = DatabaseEntity,
   # public ----
   public = list(
     # attributes ====

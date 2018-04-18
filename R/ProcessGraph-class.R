@@ -1,5 +1,6 @@
 ProcessGraph <- R6Class(
   "ProcessGraph",
+  inherit = DatabaseEntity,
   # public ----
   public = list(
     # attributes ====
