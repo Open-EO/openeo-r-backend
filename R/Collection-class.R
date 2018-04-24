@@ -83,8 +83,11 @@ Collection <- R6Class(
       return(match(band_id, self$getBandNames()))
     }
   ),
-  
+  # private ----
   private = list(
+    # attributes ====
+    data = NULL,
+    # functions ====
     filterbyband = function (granules,bands) {
       filteredGranules = list()
       for (i in 1:length(granules)) {

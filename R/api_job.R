@@ -175,7 +175,7 @@ createJobsEndpoint = function() {
 
 .performJob = function(req,res,job_id) {
   
-  if (!exists.Job(job_id)) {
+  if (is.null(job_id) || !exists.Job(job_id)) {
     stop("Job does not exist")
   }
   
@@ -187,10 +187,6 @@ createJobsEndpoint = function() {
   processing <- future({
     openeo.server$runJob(job= job)
   }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
-  
-  sending = future({
-    ok(res)
-  })
-  
-  value(sending)
+
+  ok(res)
 }
