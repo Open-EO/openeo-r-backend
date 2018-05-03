@@ -1,6 +1,6 @@
 FROM r-base:3.4.3
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="1.2"
+LABEL version="1.3"
 LABEL description="The basic configuration of the openeo r server image"
 
 # create the path for the user files
@@ -12,7 +12,7 @@ COPY ./ /opt/dockerfiles/
 # run commands to prepare the image
 # install dependencies
 RUN apt-get -y update
-RUN apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev
+RUN apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin
 
 # install R dependencies and install package
 RUN R -f /opt/dockerfiles/Dockerfiles/install_package_dependencies.R

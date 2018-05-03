@@ -4,7 +4,7 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE-base
-        image: openeo-baseserver:1.2
+        image: openeo-baseserver:1.3
     openeo-r-server:
         build: 
             context: .
