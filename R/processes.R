@@ -123,6 +123,7 @@ zonal_statistics = Process$new(
     
     colnames(values) = c(colnames(regions@data),timestamps)
     out = SpatialPolygonsDataFrame(polygonList,data=values)
+    crs(out) <- crs(regions)
     
     return(out)
     

@@ -107,6 +107,10 @@ createWFSEndpoint = function() {
   } else {
     job_folder = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
     files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
+    if (is.null(files) || length(files) == 0) {
+      stop("Cannot find SHP file to create WFS from.")
+    }
+    
     config = MapServerConfig$new()
     config = config$fromVector(obj = readOGR(files[1]),service=service,data.dir=job_folder)
     
