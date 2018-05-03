@@ -156,6 +156,7 @@ Job <- R6Class(
       private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
       self$process_graph = private$pg$buildExecutableProcessGraph() #from db
+      self$output = private$pg$output
       self$persistent = TRUE
       
       invisible(self)
