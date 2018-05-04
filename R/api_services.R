@@ -122,9 +122,8 @@ createWFSEndpoint = function() {
 }
 
 .referToMapserver = function(req,res,service_id) {
-  s = req$QUERY_STRING
+  s = URLdecode(req$QUERY_STRING)
   queryKVP = unlist(strsplit(substr(s,2,nchar(s)),"[&=]"))
-  
   keys = "map"
   values = list(paste("/maps/services/",service_id,".map",sep=""))
   
