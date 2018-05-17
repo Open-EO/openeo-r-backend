@@ -62,6 +62,8 @@ loadLandsat7Dataset = function() {
     createGranuleFromLS7NDVIFile(file)
   })
   
+  ls7.product$setDimensionality(create_dimensionality(space=TRUE,time=TRUE,band=TRUE,raster=TRUE))
+  
   ls7.product$deriveMetadata()
   openeo.server$register(ls7.product)
 }
@@ -169,6 +171,8 @@ loadSentinel2Data = function() {
     # add granule to product
     sentinel2.product$addGranule(granule)
   }
+  
+  sentinel2.product$setDimensionality(create_dimensionality(space=TRUE,time=TRUE,band=TRUE,raster=TRUE))
   
   sentinel2.product$deriveMetadata()
   openeo.server$register(sentinel2.product)

@@ -47,8 +47,11 @@ ExecutableProcess <- R6Class(
           }
 
         }
+        result = do.call(self$operation,parameter)
+        # modify dimensionality
+        result$dimensions = dim.apply(result$dimensions, self$dimensions_modifier)
         
-        return(do.call(self$operation,parameter))
+        return(result)
     },
     
     detailedInfo = function() {

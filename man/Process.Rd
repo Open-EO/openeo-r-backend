@@ -26,6 +26,9 @@ When the process is executable then the arguments will have values assigned to t
 
 \item{\code{description}}{The textual description of the process}
 
+\item{\code{dimensions_modifier}}{A DimensionModifier class that will be applied to the input data to describe how the data is changed during
+processing.}
+
 \item{\code{operation}}{A function that executes the operation in R described by this process}
 }}
 

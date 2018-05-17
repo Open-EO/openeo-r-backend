@@ -4,6 +4,7 @@
 #' intermediate results from one process to an other (the result of a process is a Collection).
 #' 
 #' @field granules A list of Granules that shall be sorted by time ascending
+#' @field dimensions A dimensionality object containing information about the existence of dimensions
 #' @include Granule-class.R
 #' @importFrom R6 R6Class
 #' @export
@@ -13,6 +14,7 @@ Collection <- R6Class(
   public = list(
     # attributes ====
     granules = NULL,
+    dimensions = NULL,
     
     # functions ====
     initialize = function() {

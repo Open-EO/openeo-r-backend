@@ -1,5 +1,6 @@
 #' @include Server-class.R
 #' @include Process-class.R
+#' @include dimensionality.R
 
 # filter_daterange ====
 filter_daterange = Process$new(
@@ -22,6 +23,7 @@ filter_daterange = Process$new(
       required = FALSE
     )
   ),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
     cat("Starting filter_daterange\n")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
@@ -62,6 +64,7 @@ filter_bands = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
     collection = NULL
     
@@ -92,6 +95,7 @@ zonal_statistics = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
     func = get(tolower(func))
     
@@ -141,6 +145,7 @@ find_min = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
     cat("Starting find_min\n")
     #get the collection of the imagery
@@ -151,7 +156,7 @@ find_min = Process$new(
     cat("Fetched related granules\n")
     #create a brick
     data = stack(rasters)
-    cat("Stacking data")
+    cat("Stacking data\n")
     
     #calculate
     minimum = calc(data,fun=min,na.rm=T)
@@ -161,8 +166,11 @@ find_min = Process$new(
     aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
     cat("creating single granule for minimum calculation\n")
     
+    dims = collection$dimensions
+    
     #create a collection
     collection = Collection$new()
+    collection$dimensions = dims
     collection$addGranule(aggregation)
     collection$sortGranulesByTime
     cat("Creating collection for single granule and setting meta data\n")
@@ -190,6 +198,7 @@ filter_bbox = Process$new(
               Argument$new(name = "top",
                            description = "The top value of a spatial extent",
                            required = TRUE)),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
@@ -225,6 +234,7 @@ calculate_ndvi = Process$new(
                description = "The band id of the visible red band",
                required = TRUE
              )),
+  modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
     collection = getCollectionFromImageryStatement(imagery)
@@ -251,6 +261,7 @@ calculate_ndvi = Process$new(
     cat("ndvi calculation applied on all granules\n")
     
     result.collection = Collection$new()
+    result.collection$dimensions = collection$dimensions # will be updated in $execute()
     result.collection$granules = rasters
     result.collection$sortGranulesByTime()
     cat("set metadata for newly calculated collection\n")

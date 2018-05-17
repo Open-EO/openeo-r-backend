@@ -10,11 +10,14 @@
 #' @field process_id The id or name of the process which will be used to be addressed from the webservice
 #' @field args The list of arguments for the underlying function
 #' @field description The textual description of the process
+#' @field dimensions_modifier A DimensionModifier class that will be applied to the input data to describe how the data is changed during
+#' processing.
 #' @field operation A function that executes the operation in R described by this process
 #' 
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export
+#' @include dimensionality.R
 Process <- R6Class(
   "Process",
   # public ----
@@ -23,18 +26,27 @@ Process <- R6Class(
     process_id = NULL,
     args = NULL,
     description = NULL,
-    operation = NULL,
+    dimensions_modifier = NULL,
     
     # functions ====
     initialize = function(process_id = NA,
                           description = NA,
                           args = NA,
-                          operation = NA) {
+                          operation = NULL,
+                          modifier=NULL) {
       self$process_id = process_id
       self$description = description
       self$args = args
       self$operation = operation
+      if (is.null(modifier) || class(modifier) != "DimensionalityModifier") {
+        self$dimensions_modifier = create_dimensionality_modifier()
+      } else {
+        self$dimensions_modifier = modifier
+      }
+      
     },
+    
+    operation = NULL, # will be assigned with a function during the initialization
     
     shortInfo = function() {
       list(process_id = self$process_id,

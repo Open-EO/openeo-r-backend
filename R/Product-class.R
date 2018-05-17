@@ -69,6 +69,11 @@ Product <- R6Class(
           },
           getCollection = function() {
             return(private$collection)
+          },
+          setDimensionality = function(dim) {
+            if (class(dim) != "Dimensionality") stop("Cannot assing non Dimensionality object to dimensions in collection")
+            
+            private$collection$dimensions = dim
           }
           
         ),
