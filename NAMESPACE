@@ -3,6 +3,7 @@
 export(Argument)
 export(Band)
 export(Collection)
+export(Collection2)
 export(ExecutableProcess)
 export(Granule)
 export(Job)

@@ -33,6 +33,8 @@ code = function(x, ...) {
 code.Dimensionality = function(x, ...) {
   return(paste(as.integer(x),sep="",collapse = ""))
 }
+
+
 # modifier ----
 create_dimensionality_modifier = function(add=NULL, remove=NULL) {
   modifier = list(

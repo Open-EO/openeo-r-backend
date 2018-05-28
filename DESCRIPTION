@@ -15,7 +15,10 @@ Depends:
     RSQLite (>= 2.0),
     future (>= 1.7.0),
     httr (>= 1.3.1),
-    httpuv (>= 1.3.6.2)
+    httpuv (>= 1.3.6.2),
+    tibble (>= 1.4.2),
+    dplyr (>= 0.7.5),
+    rgeos (>= 0.3-26)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -27,15 +30,19 @@ Imports:
     R6,
     raster,
     rgdal,
+    rgeos,
     gdalUtils,
     sodium,
     future,
-    httr
+    httr,
+    tibble,
+    dplyr
 Collate: 
     'Argument-class.R'
     'Band-class.R'
     'Granule-class.R'
     'Collection-class.R'
+    'Collection2-class.R'
     'dimensionality.R'
     'Process-class.R'
     'ExecutableProcess-class.R'
