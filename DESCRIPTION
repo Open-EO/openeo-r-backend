@@ -18,7 +18,9 @@ Depends:
     httpuv (>= 1.3.6.2),
     tibble (>= 1.4.2),
     dplyr (>= 0.7.5),
-    rgeos (>= 0.3-26)
+    rgeos (>= 0.3-26),
+    magrittr (>= 1.5),
+    purrr (>= 0.2.4)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -36,13 +38,15 @@ Imports:
     future,
     httr,
     tibble,
-    dplyr
+    dplyr,
+    magrittr,
+    purrr
 Collate: 
     'Argument-class.R'
     'Band-class.R'
     'Granule-class.R'
     'Collection-class.R'
-    'Collection2-class.R'
+    'Collection_old-class.R'
     'dimensionality.R'
     'Process-class.R'
     'ExecutableProcess-class.R'

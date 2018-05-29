@@ -111,12 +111,10 @@ zonal_statistics = Process$new(
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
     
     collection = getCollectionFromImageryStatement(imagery)
-    rasterList = lapply(collection$granules, function(granule) {
-      return(granule$data)
-    })
-    timestamps = sapply(collection$granules, function(granule) {
-      return(as.character(granule$time))
-    })
+    rasterList = as.list(collection$getData() %>% select("data"))
+    
+    timestamps = (collection$getData() %>% select("time"))[[1]]
+
     b = brick(rasterList)
     
     values = raster::extract(b,
@@ -152,7 +150,8 @@ find_min = Process$new(
     collection = getCollectionFromImageryStatement(imagery)
     
     #get a list of the data (raster objects)
-    rasters = lapply(collection$granules, function(obj){obj$data})
+    rasters = as.list(collection$getData() %>% select("data"))
+    
     cat("Fetched related granules\n")
     #create a brick
     data = stack(rasters)
@@ -169,8 +168,7 @@ find_min = Process$new(
     dims = collection$dimensions
     
     #create a collection
-    collection = Collection$new()
-    collection$dimensions = dims
+    collection = Collection$new(dimensions = dims) #modified afterwards
     collection$addGranule(aggregation)
     collection$sortGranulesByTime
     cat("Creating collection for single granule and setting meta data\n")
@@ -203,14 +201,17 @@ filter_bbox = Process$new(
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
-    cropped_granules = lapply(collection$granules, function(granule) {
-      granule$data = crop(granule$data,e)
-      granule$extent = extent(granule$data)
-      return(granule)
-    })
-    output = collection$clone(deep=TRUE)
+    srs = collection$getSRS()
     
-    output$granules = cropped_granules
+    data_table = collection$getData()
+    
+    #TODO filter for intersection first!!! also calculate intersections
+    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=e)),
+                                                space = list(extent2polygon(e,srs)))
+    
+    output = collection$clone(deep=TRUE)
+    output$setData(cropped_data)
+    
     return(output)
   }
 )
@@ -237,33 +238,37 @@ calculate_ndvi = Process$new(
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
+    
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
     cat("Fetched indices for bands\n")
     
+    if (self$dimensions$time) {
+      group = private$data_table %>% group_by(time) 
+    } else {
+      group = private$data_table
+    }
+    
+    ndvi_calculation = group %>% 
+      filter(band %in% c(red.index,nir.index)) %>% 
+      arrange(band) %>% 
+      dplyr::summarise(space = list(first(space)), data= tibble(data) %>% (function(x,...){
+        s = stack(x$data)
+        ndvi = calc(s, fun= function(x) {
+          (x[2] - x[1])/(x[2] + x[1])
+        })
+        return(list(ndvi))
+      }))
+    
     # fetch the data elements and simultanously calculate ndvi
-    rasters = lapply(collection$granules, function(obj){
-      data = obj$data
-      ndvi = calc(data, fun= function(x) {
-        (x[nir.index] - x[red.index])/(x[nir.index] + x[red.index])
-      })
-      
-      granule = Granule$new(time = obj$time,
-                            data = ndvi,
-                            bands = list(
-                              ndvi = Band$new(
-                                band_id = "ndvi"
-                              )
-                            ))
-      return(granule)
-    })
+
     cat("ndvi calculation applied on all granules\n")
     
     result.collection = Collection$new()
     result.collection$dimensions = collection$dimensions # will be updated in $execute()
-    result.collection$granules = rasters
-    result.collection$sortGranulesByTime()
+ 
+    result.collection$setDate(ndvi_calculation)
     cat("set metadata for newly calculated collection\n")
     
     return(result.collection)
