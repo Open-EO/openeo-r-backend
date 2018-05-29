@@ -201,7 +201,7 @@ filter_bbox = Process$new(
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
-    srs = collection$getSRS()
+    srs = collection$getGlobalSRS()
     
     data_table = collection$getData()
     

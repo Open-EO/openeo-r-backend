@@ -203,9 +203,6 @@ Collection <- R6Class(
     },
     getBandIndex = function(band_id) {
       return(match(band_id, names(self$getBandNames())))
-    },
-    getSRS = function() {
-      return(private$srs)
     }
   ),
   # private ----

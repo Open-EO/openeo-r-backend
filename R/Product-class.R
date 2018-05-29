@@ -67,6 +67,7 @@ Product <- R6Class(
           }
           
         ),
+        # actives ----
         active = list(
           bands = function() {
             return(private$collection$getBandsMetadata())
