@@ -203,6 +203,127 @@ Collection <- R6Class(
     },
     getBandIndex = function(band_id) {
       return(match(band_id, names(self$getBandNames())))
+    },
+    toFile = function(dir=NULL, format=NULL,temp=FALSE) {
+      if (is.null(dir)) {
+        dir = getwd()
+      }
+      dir = gsub(pattern = "^(.*[^/])/+$", "\\1",dir) #remove tailing slashes
+      
+      if (self$dimensions$raster) {
+        # collection contains raster data
+        if (is.null(format)) {
+          format = "GTiff"
+        }
+        
+        # group by time if time is present
+        if (self$dimensions$time) {
+          # order by bands if present, stack single bands into one file
+          
+          # space is fixed (for now)
+          # TODO rework the holding of spatial extents in a spatial* data.frame where we store the feature and
+          # state the IDs in the table
+          if (self$dimensions$band) {
+            private$data_table = private$data_table %>% 
+            group_by(time) %>% 
+            arrange(band) %>% 
+            dplyr::summarise(
+              space=list(first(space)),
+              data= tibble(data) %>% (function(x,...){
+                s = stack(x$data)
+                return(list(s))
+              }))
+          }
+            
+          # at least time and data should be there (probably also space)
+          private$data_table = private$data_table %>%
+            group_by(time) %>%
+            mutate(output.file = tibble(time,data,space) %>% (
+              function(x, ...) {
+                rasters = x$data
+                file.names = paste("output",format(x$time,format="%Y%m%dT%H%M%S"),1:length(x$space),sep="_")
+                
+                for (i in 1:length(rasters)) {
+                  if (temp) {
+                    file.path = tempfile()
+                  } else {
+                    file.path = paste(dir,file.names[[1]],sep="/")
+                  }
+                  
+                  # TODO think about "bylayer" in cases formats do not support multilayer 
+                  written_file = writeRaster(rasters[[i]],filename=file.path, format=format)
+                  file.names[[i]] = written_file@file@name
+                  
+                  if (temp) break;
+                }
+                if (temp) {
+                  return(file.names[1])
+                } else {
+                  return(file.names)
+                }
+                
+              }
+            )) 
+        } else {
+          #no time dimension
+          if (self$dimensions$band) {
+            private$data_table = private$data_table %>% 
+              arrange(band) %>% 
+              dplyr::summarise(
+                space=list(first(space)),
+                data= tibble(data) %>% (function(x,...){
+                  s = stack(x$data)
+                  return(list(s))
+                }))
+          }
+          
+          private$data_table = private$data_table %>%
+            mutate(output.file = tibble(data,space) %>% (
+              function(x, ...) {
+                rasters = x$data
+
+                file.names = paste("output",1:length(x$space),sep="_")
+                
+                for (i in 1:length(rasters)) {
+                  if (temp) {
+                    file.path = tempfile()
+                  } else {
+                    file.path = paste(dir,file.names[[1]],sep="/")
+                  }
+                  
+                  # TODO think about "bylayer" in cases formats do not support multilayer 
+                  written_file = writeRaster(rasters[[i]],filename=file.path, format=format)
+                  file.names[[i]] = written_file@file@name
+                  
+                  if (tempfile) {
+                    break;
+                  }
+                }
+                if (tempfile) {
+                  return(file.names[1])
+                } else {
+                  return(file.names)
+                }
+                
+              }
+            )) 
+        } 
+          
+        return(invisible(self))  
+      }
+      
+      if (self$dimensions$feature) {
+        stop("Not implemented yet")
+        if (self$dimensions$time) {
+          
+        } else {
+          #no time dimension
+        }
+        
+        return(invisible(self))
+      }
+      
+      # it should be a vector, maybe just write a csv
     }
   ),
   # private ----

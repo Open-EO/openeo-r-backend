@@ -19,8 +19,7 @@ Depends:
     tibble (>= 1.4.2),
     dplyr (>= 0.7.5),
     rgeos (>= 0.3-26),
-    magrittr (>= 1.5),
-    purrr (>= 0.2.4)
+    magrittr (>= 1.5)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
@@ -39,8 +38,7 @@ Imports:
     httr,
     tibble,
     dplyr,
-    magrittr,
-    purrr
+    magrittr
 Collate: 
     'Argument-class.R'
     'Band-class.R'

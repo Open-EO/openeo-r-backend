@@ -184,16 +184,7 @@
     
   } else {
     cat("Creating raster file with GDAL\n")
-    
-    for (index in 1:length(result$granules)) {
-      rasterdata = result$granules[[index]]$data
-  
-      filename = paste(dir,paste("output",index,sep="_"),sep="/") #TODO use the time stamp somehow
-  
-      
-      cat(paste("storing file for granule[[",index,"]] at ",filename,"\n",sep=""))
-      rasterfile = writeRaster(x=rasterdata,filename=filename,format=format)
-    }
+    result$toFile(dir,format=format)
   }
 }
 
@@ -224,21 +215,18 @@
     
   } else {
     cat("Creating raster file with GDAL\n")
-    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
     
-    filename=tempfile()
-    cat(paste("storing file at",filename,"\n"))
-    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
-    
+    temp = result$toFile(format=format, temp=TRUE)
 
     tryCatch({
+      first = temp$getData()$output.file[[1]]
       sendFile(res, 
                status=200, 
                file.name="output", 
                contentType=paste("application/x-gdal-",format,sep=""),
-               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
+               data=readBin(first, "raw", n=file.info(rasterfile@file@name)$size))
     },finally = function(rasterfile) {
-      unlink(rasterfile@file@name)
+      unlink(temp$getData()$output.file)
     })
   }
 }
