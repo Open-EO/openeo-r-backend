@@ -22,7 +22,6 @@ Collection <- R6Class(
       self$dimensions = dimensions
       
       private$init_tibble()
-      private$data = list()
     },
     
     getData = function() {
@@ -67,7 +66,6 @@ Collection <- R6Class(
           data = readOGR(dsn = data, layer = dot_args$layer)
         }
       }
-      private$data = append(private$data, data)
       
       if (is.null(private$srs)) {
         private$srs = crs(data)
@@ -202,14 +200,13 @@ Collection <- R6Class(
       return(names(private$bands_metadata))
     },
     getBandIndex = function(band_id) {
-      return(match(band_id, names(self$getBandNames())))
+      return(match(band_id, self$getBandNames()))
     },
     toFile = function(dir=NULL, format=NULL,temp=FALSE) {
       if (is.null(dir)) {
         dir = getwd()
       }
       dir = gsub(pattern = "^(.*[^/])/+$", "\\1",dir) #remove tailing slashes
-      
       if (self$dimensions$raster) {
         # collection contains raster data
         if (is.null(format)) {
@@ -277,11 +274,11 @@ Collection <- R6Class(
                 }))
           }
           
+          
           private$data_table = private$data_table %>%
-            mutate(output.file = tibble(data,space) %>% (
+            dplyr::mutate(output.file = tibble(data,space) %>% (
               function(x, ...) {
                 rasters = x$data
-
                 file.names = paste("output",1:length(x$space),sep="_")
                 
                 for (i in 1:length(rasters)) {
@@ -295,11 +292,11 @@ Collection <- R6Class(
                   written_file = writeRaster(rasters[[i]],filename=file.path, format=format)
                   file.names[[i]] = written_file@file@name
                   
-                  if (tempfile) {
+                  if (temp) {
                     break;
                   }
                 }
-                if (tempfile) {
+                if (temp) {
                   return(file.names[1])
                 } else {
                   return(file.names)
@@ -330,7 +327,6 @@ Collection <- R6Class(
   private = list(
     # attributes ====
     srs = NULL,
-    data = NULL, # references to files (complete Raster* or Spatial* object)
     data_table = NULL,
     bands_metadata = NULL, # named list of Band
     

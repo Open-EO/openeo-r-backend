@@ -224,8 +224,8 @@
                status=200, 
                file.name="output", 
                contentType=paste("application/x-gdal-",format,sep=""),
-               data=readBin(first, "raw", n=file.info(rasterfile@file@name)$size))
-    },finally = function(rasterfile) {
+               data=readBin(first, "raw", n=file.info(first)$size))
+    },finally = {
       unlink(temp$getData()$output.file)
     })
   }

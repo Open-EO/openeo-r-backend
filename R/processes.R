@@ -149,31 +149,36 @@ find_min = Process$new(
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
-    #get a list of the data (raster objects)
-    rasters = as.list(collection$getData() %>% select("data"))
-    
-    cat("Fetched related granules\n")
-    #create a brick
-    data = stack(rasters)
-    cat("Stacking data\n")
-    
-    #calculate
-    minimum = calc(data,fun=min,na.rm=T)
-    cat("calculating the minimum\n")
-    
-    #create a granule
-    aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
-    cat("creating single granule for minimum calculation\n")
-    
-    dims = collection$dimensions
-    
-    #create a collection
-    collection = Collection$new(dimensions = dims) #modified afterwards
-    collection$addGranule(aggregation)
-    collection$sortGranulesByTime
-    cat("Creating collection for single granule and setting meta data\n")
-    
-    return(collection)
+    if (!collection$dimensions$band) {
+      #get a list of the data (raster objects)
+      rasters = collection$getData()$data
+      
+      cat("Fetched related granules\n")
+      #create a brick
+      data = stack(rasters)
+      cat("Stacking data\n")
+      
+      #calculate
+      minimum = calc(data,fun=min,na.rm=T)
+      cat("calculating the minimum\n")
+      
+      #create a granule
+      # aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
+      cat("creating single granule for minimum calculation\n")
+      
+      dims = collection$dimensions
+      dims$time = FALSE
+      
+      #create a collection
+
+      result = Collection$new(dimensions = dims) #modified afterwards
+      result$addGranule(data=minimum)
+      cat("Creating collection for single granule and setting meta data\n")
+      
+      return(result)
+    } else {
+      stop("Not implemented yet. Group by band and apply function, or reduce band dimension")
+    }
   }
 )
 
@@ -238,16 +243,16 @@ calculate_ndvi = Process$new(
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
-    
+
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
     cat("Fetched indices for bands\n")
     
-    if (self$dimensions$time) {
-      group = private$data_table %>% group_by(time) 
+    if (collection$dimensions$time) {
+      group = collection$getData() %>% group_by(time) 
     } else {
-      group = private$data_table
+      group = collection$getData()
     }
     
     ndvi_calculation = group %>% 
@@ -265,10 +270,9 @@ calculate_ndvi = Process$new(
 
     cat("ndvi calculation applied on all granules\n")
     
-    result.collection = Collection$new()
-    result.collection$dimensions = collection$dimensions # will be updated in $execute()
+    result.collection = collection$clone(deep=TRUE)
  
-    result.collection$setDate(ndvi_calculation)
+    result.collection$setData(ndvi_calculation)
     cat("set metadata for newly calculated collection\n")
     
     return(result.collection)

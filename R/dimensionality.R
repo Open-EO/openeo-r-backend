@@ -145,11 +145,7 @@ dim.apply = function(x,y) {
   # apply remove dimension
   remove_dimensions = y$remove_dimension[unlist(y$remove_dimension)] #selects all dimensions that shall be modified to TRUE
   for (name in names(remove_dimensions)) {
-    if (x[[name]]) {
-      x[[name]] = FALSE
-    } else {
-      stop("Trying to remove a dimension that is not existing")
-    }
+    x[[name]] = FALSE
   }
   
   return(x)
