@@ -13,6 +13,7 @@ Collection <- R6Class(
   public = list(
     # attributes ====
     dimensions = NULL,
+    space = NULL,
     
     # functions ====
     initialize = function(dimensions) {
@@ -74,9 +75,7 @@ Collection <- R6Class(
       if (self$dimensions$space && is.null(space)) {
         if (!(self$dimensions$feature || self$dimensions$raster)) {
           stop("Dimension space is specified with no default")
-        } else {
-          space = extent2polygon(extent(data),crs(data))
-        }
+        } 
       }
       
       if (self$dimensions$time && is.null(time) && class(time) != "POSIXct") {
@@ -103,7 +102,12 @@ Collection <- R6Class(
         adding = add_column(adding,data=layer)
         
         if (self$dimensions$space) {
-          adding = add_column(adding,space = lapply(bands,function(band) extent2polygon(extent(band),crs(band))))
+          if (self$dimensions$raster) {
+            adding = add_column(adding,space = private$registerSpace.raster(data))
+          } else if (self$dimension$feature) {
+            adding = add_column(adding,space = private$registerSpace.feature(data))
+          }
+          
         }
         
         private$data_table = rbind(private$data_table,adding)
@@ -116,10 +120,15 @@ Collection <- R6Class(
         if (self$dimensions$time) {
           adding = add_column(adding,time=time)
         }
-        if (!is.list(space)) space = list(space)
+        # if (!is.list(space)) space = list(space)
         
         if (self$dimensions$space) {
-          adding = add_column(adding,space=space)
+          if (self$dimensions$raster) {
+            adding = add_column(adding,space=private$registerSpace.raster(data))
+          } else if (self$dimensions$feature){
+            adding = add_column(adding,space=private$registerSpace.feature(data))
+          }
+          
         }
         
         if (self$dimensions$band) {
@@ -188,10 +197,10 @@ Collection <- R6Class(
       if (!self$dimensions$space) {
         stop("Cannot create an extent, since there are not spatial components")
       }
-      all_polygons = do.call(bind,private$data_table[["space"]])
-      globalExtent = extent(all_polygons)
+      # all_polygons = do.call(bind,private$data_table[["space"]])
+      # globalExtent = extent(all_polygons)
       
-      return(globalExtent)
+      return(extent(self$space))
     },
     getGlobalSRS = function() {
       return(private$srs)
@@ -343,7 +352,7 @@ Collection <- R6Class(
       }
       
       if (self$dimensions$space) {
-        init = add_column(init, space=list())
+        init = add_column(init, space=integer(0))
       }
       
       if (self$dimensions$band) {
@@ -353,6 +362,42 @@ Collection <- R6Class(
       init = add_column(init, data=list())
       
       private$data_table = init
+    },
+    # stores the spatial component in self$space and returns the spatial ID of the feature in self$space
+    registerSpace.raster = function(elem) {
+      if (!is.list(elem)) {
+        elem = list(elem)
+      }
+      
+      .addSpace = function(elem) {
+        crs = crs(elem)
+        geom = extent(elem)
+        sf_elem = extent2sf(geom,crs)
+        
+        if (is.null(self$spatial)) {
+          self$space = cbind(sf_elem, ID = 1)
+          return(1)
+        }
+        
+        equals = st_equals(self$space,sf_elem)
+        elemAlreadyContained = any(as.logical(equals))
+        
+        if (elemAlreadyContained) {
+          index = which(as.logical(equals))
+          return(self$space[index,][["ID"]])
+        } else {
+          lastID = length(self$space) + 1
+          #add element to spatial with new ID and return ID
+          self$space = rbind(self$space, cbind(sf_elem, ID = lastID))
+          return(lastID)
+        }
+      }
+      return(sapply(elem,.addSpace))
+      
+    },
+    
+    registerSpace.feature = function(elem) {
+      stop("registerSpace.feature is not yet implemented.")
     }
   )
   
@@ -368,6 +413,12 @@ extent2polygon = function(extent,crs) {
   polygon = as(extent,"SpatialPolygons")
   crs(polygon) <- crs
   return(polygon)
+}
+
+extent2sf = function(extent, crs) {
+  polygon = as(extent,"SpatialPolygons")
+  crs(polygon) <- crs
+  return(st_as_sf(polygon,crs=crs))
 }
 
 #' @export
