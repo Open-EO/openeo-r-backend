@@ -270,6 +270,39 @@ calculate_ndvi = Process$new(
   }
 )
 
+# reduce_time ====
+reduce_time = Process$new(
+  process_id = "reduce_time",
+  description = "Applies UDF of type reduce_time on an object of class Collection",
+  args = list(Argument$new(
+                name = "imagery",
+                description = "the spatio-temporal dataset/collection",
+                required = TRUE
+                ),
+              Argument$new(
+                name = "script",
+                description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
+                required = TRUE
+                )
+  ),
+  modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
+  operation = function(imagery, script)
+  {
+    collection = getCollectionFromImageryStatement(imagery)
+    if (startsWith(script, "/"))
+    {
+      script = gsub("^/", "", script)
+    }
+    file.path = paste(openeo.server$workspaces.path, regions, sep="/")
+    results.file.path = paste(file.path, "results", sep = "/")
+    source(file = file.path)#, local = TRUE)
+    
+    # Now read back results present at results.file.path
+    # To be implemented once classes for data I/O have been re-written
+    
+  }
+)
+
 # Resolves imagery statement
 # 
 # This function resolves the imagery statement defined in a process. It can be
