@@ -97,6 +97,7 @@ zonal_statistics = Process$new(
   ),
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
+    func_name = func
     func = get(tolower(func))
     
     if (startsWith(regions,"/")) {
@@ -111,23 +112,29 @@ zonal_statistics = Process$new(
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
     
     collection = getCollectionFromImageryStatement(imagery)
-    rasterList = as.list(collection$getData() %>% select("data"))
     
-    timestamps = (collection$getData() %>% select("time"))[[1]]
+    rasterList = unlist(collection$getData() %>% dplyr::select("data"))
+    
+    timestamps = unlist(collection$getData() %>% dplyr::select("time") %>% dplyr::transmute(as.character(time)))
 
     b = brick(rasterList)
-    
     values = raster::extract(b,
                              regions,
                              na.rm=TRUE,
                              fun=func,
-                             df=TRUE)
+                             df=FALSE)
     
-    colnames(values) = c(colnames(regions@data),timestamps)
-    out = SpatialPolygonsDataFrame(polygonList,data=values)
-    crs(out) <- crs(regions)
     
-    return(out)
+    # colnames(values) = c(colnames(regions@data),timestamps)
+    # out = SpatialPolygonsDataFrame(polygonList,data=values)
+    # crs(out) <- crs(regions)
+    
+    old_dimensionality = collection$dimensions
+    result = Collection$new(old_dimensionality)
+    result$addFeature(space = polygonList,time=(collection$getData() %>% dplyr::select("time")),band=func_name,data=values)
+    
+    
+    return(result)
     
   }
 )

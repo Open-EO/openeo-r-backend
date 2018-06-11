@@ -56,6 +56,51 @@ Collection <- R6Class(
     getBandsMetadata = function() {
       return(private$bands_metadata)
     },
+    addFeature = function(space=NULL,time=NULL,band=NULL,data,...) {
+      # space: spatial features
+      # time: time stamps (1D tibble)
+      # band: maybe the attribute name
+      # data: a data.frame (each row is the spatial feature)
+      if (!is.null(band) && length(band) > 1) {
+        stop("Cannot process more than one attribute in one addFeature call")
+      }
+      
+      table = NULL
+      if (!is.null(time)) {
+        # table = tibble(time=time)
+        table = time
+      }
+      
+      for (i in 1:length(space)) {
+        polygon = polygons(space)[i,]
+        spatial_id = private$registerSpace.feature(elem=polygon)
+        if (is.null(table)) {
+          table = tibble(space=spatial_id)
+        } else {
+          if (is.null(time)) {
+            table=tibble(space=spatial_id)
+          } else {
+            if (i == 1) {
+              table = table %>% add_column(space=i)
+            } else {
+              table = rbind(table, time %>% add_column(space=spatial_id))
+            }
+          }
+        }
+      }
+      
+      if (!is.null(band)) {
+        table = table %>% add_column(band = band)
+      }
+      
+      values= as.numeric(t(data))
+      table = table %>% add_column(data=values)
+      
+      private$data_table = table
+      
+      invisible(self)
+    },
+    
     addGranule = function(space=NULL,time=NULL, band=NULL, data, ...) {
       
       dot_args = list(...)
@@ -231,10 +276,9 @@ Collection <- R6Class(
           # state the IDs in the table
           if (self$dimensions$band) {
             private$data_table = private$data_table %>% 
-            group_by(time) %>% 
+            group_by(time,space) %>% 
             arrange(band) %>% 
             dplyr::summarise(
-              space=list(first(space)),
               data= tibble(data) %>% (function(x,...){
                 s = stack(x$data)
                 return(list(s))
@@ -243,7 +287,7 @@ Collection <- R6Class(
             
           # at least time and data should be there (probably also space)
           private$data_table = private$data_table %>%
-            group_by(time) %>%
+            group_by(time,space) %>%
             mutate(output.file = tibble(time,data,space) %>% (
               function(x, ...) {
                 rasters = x$data
@@ -274,9 +318,9 @@ Collection <- R6Class(
           #no time dimension
           if (self$dimensions$band) {
             private$data_table = private$data_table %>% 
+              group_by(space) %>% 
               arrange(band) %>% 
               dplyr::summarise(
-                space=list(first(space)),
                 data= tibble(data) %>% (function(x,...){
                   s = stack(x$data)
                   return(list(s))
@@ -285,6 +329,7 @@ Collection <- R6Class(
           
           
           private$data_table = private$data_table %>%
+            group_by(space) %>% 
             dplyr::mutate(output.file = tibble(data,space) %>% (
               function(x, ...) {
                 rasters = x$data
@@ -374,7 +419,7 @@ Collection <- R6Class(
         geom = extent(elem)
         sf_elem = extent2sf(geom,crs)
         
-        if (is.null(self$spatial)) {
+        if (is.null(self$space)) {
           self$space = cbind(sf_elem, ID = 1)
           return(1)
         }
@@ -386,7 +431,7 @@ Collection <- R6Class(
           index = which(as.logical(equals))
           return(self$space[index,][["ID"]])
         } else {
-          lastID = length(self$space) + 1
+          lastID = nrow(self$space) + 1
           #add element to spatial with new ID and return ID
           self$space = rbind(self$space, cbind(sf_elem, ID = lastID))
           return(lastID)
@@ -397,7 +442,36 @@ Collection <- R6Class(
     },
     
     registerSpace.feature = function(elem) {
-      stop("registerSpace.feature is not yet implemented.")
+      # elem is a spatial polygons 
+      if (!is.list(elem)) {
+        elem = list(elem)
+      }
+      
+      
+      .addSpace = function(elem) {
+        # crs = crs(elem)
+        # geom = extent(elem)
+        sf_elem = st_as_sf(elem)
+        
+        if (is.null(self$space)) {
+          self$space = cbind(sf_elem, ID = 1)
+          return(1)
+        }
+        equals = st_equals(self$space,sf_elem)
+        elemAlreadyContained = any(as.logical(equals))
+        
+        if (!is.na(elemAlreadyContained) && elemAlreadyContained) {
+          index = which(as.logical(equals))
+          return(self$space[index,][["ID"]])
+        } else {
+          lastID = nrow(self$space) + 1
+          #add element to spatial with new ID and return ID
+          self$space = rbind(self$space, cbind(sf_elem, ID = lastID))
+          return(lastID)
+        }
+      }
+      
+      return(sapply(elem,.addSpace))
     }
   )
   
