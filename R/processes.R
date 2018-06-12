@@ -110,6 +110,7 @@ zonal_statistics = Process$new(
     regions = readOGR(dsn=file.path,layer = layername)
     
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
+    crs(polygonList) = crs(regions)
     
     collection = getCollectionFromImageryStatement(imagery)
     

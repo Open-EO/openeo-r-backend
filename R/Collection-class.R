@@ -61,6 +61,10 @@ Collection <- R6Class(
       # time: time stamps (1D tibble)
       # band: maybe the attribute name
       # data: a data.frame (each row is the spatial feature)
+      if (is.null(private$srs) && !is.null(space)) {
+        private$srs = crs(space)
+      }
+      
       if (!is.null(band) && length(band) > 1) {
         stop("Cannot process more than one attribute in one addFeature call")
       }
@@ -261,7 +265,9 @@ Collection <- R6Class(
         dir = getwd()
       }
       dir = gsub(pattern = "^(.*[^/])/+$", "\\1",dir) #remove tailing slashes
+      # to raster data file ====
       if (self$dimensions$raster) {
+        cat("Creating raster file with GDAL\n")
         # collection contains raster data
         if (is.null(format)) {
           format = "GTiff"
@@ -363,18 +369,52 @@ Collection <- R6Class(
         return(invisible(self))  
       }
       
+      # to vector data file ====
       if (self$dimensions$feature) {
-        stop("Not implemented yet")
+        cat("Creating vector file with OGR\n")
+        
+        if (is.null(format)) {
+          format = "GeoJSON"
+        }
+
+        if (temp) {
+          file.name = tempfile(tmpdir=dir)
+        } else {
+          file.name = paste(dir,"/","output",".",.ogrExtension(format),sep="")
+        }
+        
         if (self$dimensions$time) {
+          # TODO group also by band! currently assuming that we have only one attribute--hmm maybe it doesn't matter
+          out = private$data_table %>% dplyr::group_by(space) %>% dplyr::arrange(time) %>% dplyr::summarise(data=tibble(band,time,data) %>% (function(x, ...){
+            values = unlist(x$data)
+            names = paste(x$band,as.character(x$time), sep=".")
+            names(values) = names
+            
+            return(list(values))
+          }))
           
         } else {
           #no time dimension
+          out = private$data_table %>% dplyr::group_by(space) %>% dplyr::summarise(data=tibble(band,data) %>% (function(x, ...){
+            values = unlist(x$data)
+            names = x$band
+            names(values) = names
+            
+            return(list(values))
+          }))
         }
+        data = as_tibble(t(as.data.frame(out$data)))
+        data = data %>% rowid_to_column("ID")
+        out_data = self$space %>% inner_join(data,by="ID")
+        st_write(out_data,dsn=file.name,driver=format)
+        
+        private$data_table = private$data_table %>% add_column(output.file=file.name)
         
         return(invisible(self))
       }
       
       # it should be a vector, maybe just write a csv
+      stop("Non raster or vector output is not implemented yet")
     }
   ),
   # private ----
