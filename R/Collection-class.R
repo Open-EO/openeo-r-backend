@@ -4,7 +4,6 @@
 #' intermediate results from one process to an other (the result of a process is a Collection).
 #' 
 #' @field dimensions A dimensionality object containing information about the existence of dimensions
-#' @include Granule-class.R
 #' @importFrom R6 R6Class
 #' @export
 Collection <- R6Class(

@@ -44,9 +44,7 @@ Imports:
 Collate: 
     'Argument-class.R'
     'Band-class.R'
-    'Granule-class.R'
     'Collection-class.R'
-    'Collection_old-class.R'
     'dimensionality.R'
     'Process-class.R'
     'ExecutableProcess-class.R'

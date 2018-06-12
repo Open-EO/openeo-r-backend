@@ -3,7 +3,6 @@
 # loads this script and creates the api. any functions / variables
 # or else defined at package level is not visible here elsewise.
 # 
-#' @include Granule-class.R
 #' @include Collection-class.R
 #' @include Product-class.R
 #' @include Job-class.R
