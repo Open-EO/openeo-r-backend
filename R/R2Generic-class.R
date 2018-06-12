@@ -26,12 +26,12 @@ R2Generic = R6Class(
       self$legend = matrix(ncol = 10, nrow = length(granules) * t_bands) # For extents, filename, timestamp and band - more could be added later by increasing the value of ncol
       colnames(self$legend) = c("xmin", "xmax", "ymin", "ymax", "filename", "time_index", "timestamp", "band_index", "band", "whether_raster")
       self$legend = as.data.frame(self$legend)
-      dir.create("disk")
+      # dir.create("disk")
     },
     
     legend_to_disk = function(dir_name)
     {
-      write.csv(x = self$legend, file = paste(dirname, "legend.csv", sep = "/"))
+      write.csv(x = self$legend, file = paste(dir_name, "legend.csv", sep = "/"))
     },
     
     write_time = function(time_observation, t_num, out_path)
@@ -43,6 +43,7 @@ R2Generic = R6Class(
       
       dir_name = paste(out_path, "/t_", t_num, sep = "")
       dir.create(dir_name)
+      dir_basename = paste("t_", t_num, sep = "") #path relative to legend file
       
       writeRaster(time_observation$data, filename = paste(dir_name, "/b", sep = ""), format = "GTiff", bylayer = TRUE, suffix = "numbers", overwrite = TRUE) #progress = "text",
       
@@ -61,7 +62,7 @@ R2Generic = R6Class(
       
       for(j in 1:bands_num)
       {
-        filename = paste(dir_name, "/b_", j, ".tif", sep = "")
+        filename = paste(dir_basename, "/b_", j, ".tif", sep = "")
         self$legend[self$legend_counter + j,] = c(space_extent, filename, time_index, timestamp, j, band_names[j], whether_raster)
       }
       self$legend_counter = self$legend_counter + bands_num
@@ -78,14 +79,15 @@ R2Generic = R6Class(
       save(band_id, resolution, scale, wavelength, file = paste(out_path, "/", dir_name, "/", "meta_", band_id, ".txt", sep = ""), ascii = TRUE)
     },
     
-    write_granules = function(granule_list = self$granules, dir_name)
+    write_granules = function(granule_list = self$granules, dir_name = "disk")
     {
+      dir.create(dir_name)
       t_num = length(granule_list)
       for(i in 1:length(granule_list))
       {
         print(paste("Writing observations at t = ", i, sep = ""))
         # cat(i)
-        self$write_time(time_observation = granule_list[[i]], i, dir_name)
+        self$write_time(time_observation = granule_list[[i]], t_num = i, out_path = dir_name)
       }
       cat("Writing legend file to disk...")
       self$legend_to_disk(dir_name)

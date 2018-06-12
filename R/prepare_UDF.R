@@ -10,7 +10,7 @@
 #'
 #' @export
 #'
-write_generics = function(collection_obj, dir_name) #dir_name could be obtained if it is defined while registering the UDF
+write_generics = function(collection_obj, dir_name = "disk") #dir_name could be obtained if it is defined while registering the UDF
 {
   granules_obj = collection_obj$granules #granules_obj is a list where each element's $data has the raster obj
   R2G_obj = R2Generic$new(granules = granules_obj) #Instantiate an object of class R2Generic

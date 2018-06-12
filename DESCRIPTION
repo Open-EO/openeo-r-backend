@@ -1,11 +1,11 @@
-Package: openEO.R.Backend
+Package: openEO.R.Backend.test
 Title: Reference backend implementation for openEO conformant backend with a local filesystem
 Version: 0.2.3
 Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre"))
 Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
     the file backend solution is the local file system containing some raster data collections.
 Depends: 
-    R (>= 3.3),
+    R (>= 3.4),
     rgdal (>= 1.2-16),
     gdalUtils (>= 2.0.1.7),
     raster (>= 2.6-7),
@@ -60,3 +60,5 @@ Collate:
     'api_data.R'
     'api.R'
     'serializer_proxy.R'
+    'R2Generic-class.R'
+    'prepare_UDF.R'
