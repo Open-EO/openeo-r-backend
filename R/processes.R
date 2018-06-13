@@ -97,6 +97,7 @@ zonal_statistics = Process$new(
   ),
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
+    func_name = func
     func = get(tolower(func))
     
     if (startsWith(regions,"/")) {
@@ -109,27 +110,32 @@ zonal_statistics = Process$new(
     regions = readOGR(dsn=file.path,layer = layername)
     
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
+    crs(polygonList) = crs(regions)
     
     collection = getCollectionFromImageryStatement(imagery)
-    rasterList = lapply(collection$granules, function(granule) {
-      return(granule$data)
-    })
-    timestamps = sapply(collection$granules, function(granule) {
-      return(as.character(granule$time))
-    })
-    b = brick(rasterList)
     
+    rasterList = unlist(collection$getData() %>% dplyr::select("data"))
+    
+    timestamps = unlist(collection$getData() %>% dplyr::select("time") %>% dplyr::transmute(as.character(time)))
+
+    b = brick(rasterList)
     values = raster::extract(b,
                              regions,
                              na.rm=TRUE,
                              fun=func,
-                             df=TRUE)
+                             df=FALSE)
     
-    colnames(values) = c(colnames(regions@data),timestamps)
-    out = SpatialPolygonsDataFrame(polygonList,data=values)
-    crs(out) <- crs(regions)
     
-    return(out)
+    # colnames(values) = c(colnames(regions@data),timestamps)
+    # out = SpatialPolygonsDataFrame(polygonList,data=values)
+    # crs(out) <- crs(regions)
+    
+    old_dimensionality = collection$dimensions
+    result = Collection$new(old_dimensionality)
+    result$addFeature(space = polygonList,time=(collection$getData() %>% dplyr::select("time")),band=func_name,data=values)
+    
+    
+    return(result)
     
   }
 )
@@ -151,31 +157,36 @@ find_min = Process$new(
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
-    #get a list of the data (raster objects)
-    rasters = lapply(collection$granules, function(obj){obj$data})
-    cat("Fetched related granules\n")
-    #create a brick
-    data = stack(rasters)
-    cat("Stacking data\n")
-    
-    #calculate
-    minimum = calc(data,fun=min,na.rm=T)
-    cat("calculating the minimum\n")
-    
-    #create a granule
-    aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
-    cat("creating single granule for minimum calculation\n")
-    
-    dims = collection$dimensions
-    
-    #create a collection
-    collection = Collection$new()
-    collection$dimensions = dims
-    collection$addGranule(aggregation)
-    collection$sortGranulesByTime
-    cat("Creating collection for single granule and setting meta data\n")
-    
-    return(collection)
+    if (!collection$dimensions$band) {
+      #get a list of the data (raster objects)
+      rasters = collection$getData()$data
+      
+      cat("Fetched related granules\n")
+      #create a brick
+      data = stack(rasters)
+      cat("Stacking data\n")
+      
+      #calculate
+      minimum = calc(data,fun=min,na.rm=T)
+      cat("calculating the minimum\n")
+      
+      #create a granule
+      # aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
+      cat("creating single granule for minimum calculation\n")
+      
+      dims = collection$dimensions
+      dims$time = FALSE
+      
+      #create a collection
+
+      result = Collection$new(dimensions = dims) #modified afterwards
+      result$addGranule(data=minimum)
+      cat("Creating collection for single granule and setting meta data\n")
+      
+      return(result)
+    } else {
+      stop("Not implemented yet. Group by band and apply function, or reduce band dimension")
+    }
   }
 )
 
@@ -203,14 +214,17 @@ filter_bbox = Process$new(
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
-    cropped_granules = lapply(collection$granules, function(granule) {
-      granule$data = crop(granule$data,e)
-      granule$extent = extent(granule$data)
-      return(granule)
-    })
-    output = collection$clone(deep=TRUE)
+    srs = collection$getGlobalSRS()
     
-    output$granules = cropped_granules
+    data_table = collection$getData()
+    
+    #TODO filter for intersection first!!! also calculate intersections
+    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=e)),
+                                                space = list(extent2polygon(e,srs)))
+    
+    output = collection$clone(deep=TRUE)
+    output$setData(cropped_data)
+    
     return(output)
   }
 )
@@ -237,33 +251,36 @@ calculate_ndvi = Process$new(
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
+
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
     cat("Fetched indices for bands\n")
     
+    if (collection$dimensions$time) {
+      group = collection$getData() %>% group_by(time) 
+    } else {
+      group = collection$getData()
+    }
+    
+    ndvi_calculation = group %>% 
+      filter(band %in% c(red.index,nir.index)) %>% 
+      arrange(band) %>% 
+      dplyr::summarise(space = list(first(space)), data= tibble(data) %>% (function(x,...){
+        s = stack(x$data)
+        ndvi = calc(s, fun= function(x) {
+          (x[2] - x[1])/(x[2] + x[1])
+        })
+        return(list(ndvi))
+      }))
+    
     # fetch the data elements and simultanously calculate ndvi
-    rasters = lapply(collection$granules, function(obj){
-      data = obj$data
-      ndvi = calc(data, fun= function(x) {
-        (x[nir.index] - x[red.index])/(x[nir.index] + x[red.index])
-      })
-      
-      granule = Granule$new(time = obj$time,
-                            data = ndvi,
-                            bands = list(
-                              ndvi = Band$new(
-                                band_id = "ndvi"
-                              )
-                            ))
-      return(granule)
-    })
+
     cat("ndvi calculation applied on all granules\n")
     
-    result.collection = Collection$new()
-    result.collection$dimensions = collection$dimensions # will be updated in $execute()
-    result.collection$granules = rasters
-    result.collection$sortGranulesByTime()
+    result.collection = collection$clone(deep=TRUE)
+ 
+    result.collection$setData(ndvi_calculation)
     cat("set metadata for newly calculated collection\n")
     
     return(result.collection)
