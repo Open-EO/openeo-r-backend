@@ -5,3 +5,6 @@
 ^Dockerfiles$
 ^DOCKERFILE$
 ^README.md$
+^DOCKERFILE$
+^DOCKERFILE-base$
+^docker-compose.yml$
