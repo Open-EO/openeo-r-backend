@@ -69,3 +69,5 @@ Collate:
     'api_data.R'
     'api.R'
     'serializer_proxy.R'
+    'R2Generic-class.R'
+    'prepare_UDF.R'
