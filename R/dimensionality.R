@@ -1,4 +1,5 @@
 # dimensionality ----
+#' @export
 create_dimensionality = function(space=NULL,time=NULL,band=NULL,raster=NULL,feature=NULL) {
   dimensionality = list(
     space = .arg_logical(space),
@@ -11,6 +12,37 @@ create_dimensionality = function(space=NULL,time=NULL,band=NULL,raster=NULL,feat
   return(dimensionality)
 }
 
+#' Reads dimensionality from a binary code string
+#' 
+#' The function reads and interpretes a code string containing 1 and 0 for each dimension.
+#' 
+#' @param code code string or integer value that represents a value in 0 to 2^5-1 at most
+#' @return Dimensionality object
+read_dimensionality = function(code) {
+  dims = create_dimensionality()
+  
+  if (is.integer(as.integer(code))) {
+    code = paste(rev(as.integer(intToBits(code))[1:length(dims)]),sep="",collapse = "")
+  }
+  
+  if (!is.character(code)) {
+    stop("code statement is no character string")
+  }
+  
+  if (length(dims) != nchar(code) || !grepl(paste("[01]{",length(dims),"}",sep=""),code)) {
+    stop("Cannot interprete code string since it can not be matched to the appropriate dimensions or contains bad chars")
+  }
+  
+  for (i in 1:nchar(code)) {
+    val = substr(code,i,i)
+    if (val == "1") {
+      dims[[i]] = TRUE
+    }
+  }
+  
+  return(dims)
+}
+
 .arg_logical = function(val) {
   if (is.null(val)) return(FALSE)
   
@@ -20,20 +52,31 @@ create_dimensionality = function(space=NULL,time=NULL,band=NULL,raster=NULL,feat
   return(log)
 }
 
+#' @export
 format.Dimensionality = function(x, ...) {
   n = names(x)
   val = as.integer(unlist(x))
   return(paste(n,val, sep=":",collapse = " "))
 }
 
+#' @export
 code = function(x, ...) {
   UseMethod("code",x)
 }
 
+#' @export
 code.Dimensionality = function(x, ...) {
   return(paste(as.integer(x),sep="",collapse = ""))
 }
+
+#' @export
+code.Collection = function(x, ...) {
+  return(code(x$dimensions))
+}
+
+
 # modifier ----
+#' @export
 create_dimensionality_modifier = function(add=NULL, remove=NULL) {
   modifier = list(
     add_dimension = create_dimensionality(),
@@ -116,6 +159,7 @@ create_dimensionality_modifier = function(add=NULL, remove=NULL) {
   return(modifier)
 }
 
+#' @export
 dim.apply = function(x,y) {
   if (class(x) != "Dimensionality") stop("x is no Dimensionality object")
   if (class(y) != "DimensionalityModifier") stop("y is no DimensionalityModifier object")
@@ -132,11 +176,7 @@ dim.apply = function(x,y) {
   # apply remove dimension
   remove_dimensions = y$remove_dimension[unlist(y$remove_dimension)] #selects all dimensions that shall be modified to TRUE
   for (name in names(remove_dimensions)) {
-    if (x[[name]]) {
-      x[[name]] = FALSE
-    } else {
-      stop("Trying to remove a dimension that is not existing")
-    }
+    x[[name]] = FALSE
   }
   
   return(x)

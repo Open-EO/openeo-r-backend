@@ -3,7 +3,6 @@
 # loads this script and creates the api. any functions / variables
 # or else defined at package level is not visible here elsewise.
 # 
-#' @include Granule-class.R
 #' @include Collection-class.R
 #' @include Product-class.R
 #' @include Job-class.R
@@ -170,77 +169,34 @@
 
 # creates files for batch processing
 .create_output_no_response = function(result, format, dir) {
-  #store the job? even though it is completed?
-  if (!is.Collection(result)) {
-    cat("Creating vector file with OGR\n")
-    # assuming that we don't have a collection as a result
-    layername = 1 # TODO change to something meaningful
-    extension = .ogrExtension(format)
-    
-    filename = paste(dir,"/output.",extension,sep="")
-
-    cat(paste("storing file at",filename,"\n"))
-    writeOGR(result,dsn=filename,layer=layername,driver=format)
-    
-  } else {
-    cat("Creating raster file with GDAL\n")
-    
-    for (index in 1:length(result$granules)) {
-      rasterdata = result$granules[[index]]$data
-  
-      filename = paste(dir,paste("output",index,sep="_"),sep="/") #TODO use the time stamp somehow
-  
-      
-      cat(paste("storing file for granule[[",index,"]] at ",filename,"\n",sep=""))
-      rasterfile = writeRaster(x=rasterdata,filename=filename,format=format)
-    }
-  }
+    result$toFile(dir,format=format)
 }
+
+
 
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  if (!is.Collection(result)) {
-    cat("Creating vector file with OGR\n")
-    # assuming that we don't have a collection as a result
-    layername = 1 # TODO change to something meaningful
-
-    filename = tempfile()
-
-    cat(paste("storing file at",filename,"\n"))
-    writeOGR(result,dsn=filename,layer=layername,driver=format)
-    
-
-    tryCatch({
-      sendFile(res, 
-               status=200, 
-               file.name="output", 
-               contentType=paste("application/x-ogr-",format,sep=""),
-               data=readBin(filename, "raw", n=file.info(filename)$size))
-    },finally = function(filename) {
-      unlink(filename)
-    })
-
-    
+  browser()
+  if (result$dimensions$feature) {
+    contentType = paste("application/x-ogr-",format,sep="")
   } else {
-    cat("Creating raster file with GDAL\n")
-    rasterdata = result$granules[[1]]$data #TODO handle multi granules...
-    
-    filename=tempfile()
-    cat(paste("storing file at",filename,"\n"))
-    rasterfile = writeRaster(x=rasterdata,filename=tempfile(),format=format)
-    
-
-    tryCatch({
-      sendFile(res, 
-               status=200, 
-               file.name="output", 
-               contentType=paste("application/x-gdal-",format,sep=""),
-               data=readBin(rasterfile@file@name, "raw", n=file.info(rasterfile@file@name)$size))
-    },finally = function(rasterfile) {
-      unlink(rasterfile@file@name)
-    })
+    contentType = paste("application/x-gdal-",format,sep="")
   }
+    
+  tryCatch({
+    temp = result$toFile(format=format, temp=TRUE)
+    first = temp$getData()$output.file[[1]]
+    sendFile(res, 
+             status=200, 
+             file.name="output", 
+             contentType=contentType,
+             data=readBin(first, "raw", n=file.info(first)$size))
+  },error=function(e){
+    openEO.R.Backend:::error(res,500,e)
+  },finally = {
+    unlink(temp$getData()$output.file)
+  })
 }
 
 #

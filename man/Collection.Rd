@@ -15,8 +15,6 @@ intermediate results from one process to an other (the result of a process is a 
 \section{Fields}{
 
 \describe{
-\item{\code{granules}}{A list of Granules that shall be sorted by time ascending}
-
 \item{\code{dimensions}}{A dimensionality object containing information about the existence of dimensions}
 }}
 

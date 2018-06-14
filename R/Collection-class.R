@@ -3,9 +3,7 @@
 #' This class represents the collections, which contain a set of Granules. Collections are also used to transfer
 #' intermediate results from one process to an other (the result of a process is a Collection).
 #' 
-#' @field granules A list of Granules that shall be sorted by time ascending
 #' @field dimensions A dimensionality object containing information about the existence of dimensions
-#' @include Granule-class.R
 #' @importFrom R6 R6Class
 #' @export
 Collection <- R6Class(
@@ -13,21 +11,247 @@ Collection <- R6Class(
   # public ----
   public = list(
     # attributes ====
-    granules = NULL,
     dimensions = NULL,
+    space = NULL,
     
     # functions ====
-    initialize = function() {
-      self$granules = list()
+    initialize = function(dimensions) {
+      if (is.na(dimensions) || class(dimensions) != "Dimensionality") {
+        stop("Cannot initialize Collection without proper Dimensionality object")
+      }
+      self$dimensions = dimensions
+      
+      private$init_tibble()
     },
-    addGranule = function(granule) {
-      self$granules = append(self$granules,granule)
+    
+    getData = function() {
+      return(private$data_table)
+    },
+    setData = function(table) {
+      if (!"tbl" %in% class(table)) {
+        stop("Cannot set data table")
+      }
+      private$data_table = table
+    },
+    setBandsMetadata = function(bands) {
+      if (!self$dimensions$band) {
+        warning("Setting band metadata without band dimension being present.")
+      }
+      
+      if (is.list(bands)) {
+        if (is.null(names(bands))) {
+          # create a named list
+          names = sapply(bands, function(band) {return(paste(band$band_id,sep=""))})
+          names(bands) <- names
+        }
+      } else if (class(bands)[1] == "Band") {
+        band_id = bands$band_id
+        bands = list(bands)
+        names(bands) <- c(band_id)
+      }
+      
+      private$bands_metadata = bands
+    },
+    getBandsMetadata = function() {
+      return(private$bands_metadata)
+    },
+    addFeature = function(space=NULL,time=NULL,band=NULL,data,...) {
+      # space: spatial features
+      # time: time stamps (1D tibble)
+      # band: maybe the attribute name
+      # data: a data.frame (each row is the spatial feature)
+      if (is.null(private$srs) && !is.null(space)) {
+        private$srs = crs(space)
+      }
+      
+      if (!is.null(band) && length(band) > 1) {
+        stop("Cannot process more than one attribute in one addFeature call")
+      }
+      
+      table = NULL
+      if (!is.null(time)) {
+        # table = tibble(time=time)
+        table = time
+      }
+      
+      for (i in 1:length(space)) {
+        polygon = polygons(space)[i,]
+        spatial_id = private$registerSpace.feature(elem=polygon)
+        if (is.null(table)) {
+          table = tibble(space=spatial_id)
+        } else {
+          if (is.null(time)) {
+            table=tibble(space=spatial_id)
+          } else {
+            if (i == 1) {
+              table = table %>% add_column(space=i)
+            } else {
+              table = rbind(table, time %>% add_column(space=spatial_id))
+            }
+          }
+        }
+      }
+      
+      if (!is.null(band)) {
+        table = table %>% add_column(band = band)
+      }
+      
+      values= as.numeric(t(data))
+      table = table %>% add_column(data=values)
+      
+      private$data_table = table
+      
+      invisible(self)
+    },
+    
+    addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL) {
+      
+      dot_args = list(...)
+      
+      if (is.character(data)) {
+        if (self$dimensions$raster) {
+          data = brick(data)
+        } else if (self$dimensions$feature) {
+          data = readOGR(dsn = data, layer = dot_args$layer)
+        }
+      }
+      
+      if (is.null(private$srs)) {
+        private$srs = crs(data)
+      }
+      
+      if (self$dimensions$space && is.null(space)) {
+        if (!(self$dimensions$feature || self$dimensions$raster)) {
+          stop("Dimension space is specified with no default")
+        } 
+      }
+      
+      if (self$dimensions$time && is.null(time) && class(time) != "POSIXct") {
+        stop("Parameter 'time' is missing or is not POSIXct")
+      }
+      
+      if (self$dimensions$band && is.null(band)) {
+        if (self$dimensions$raster && nbands(data) > 0) {
+          band = 1:nbands(data)
+        } else {
+          stop("Band dimension is required, but neither a value is given nor can it be derived")
+        }
+      }
+      
+      if (self$dimensions$band && !is.null(band)) {
+        #meta_band is a list, containing band_id and name, or wavelength for all bands
+        
+        
+        if (is.null(private$bands_metadata)) {
+          private$bands_metadata = list()
+        }
+        
+        if (!is.null(band) && (length(private$bands_metadata) < band || is.null(private$bands_metadata[[band]]))) {
+          filePath = data@file@name
+        
+          md = GDALinfo(filePath,silent=TRUE)
+          scale = attr(md,"ScaleOffset")[,"scale"]
+          offset = attr(md,"ScaleOffset")[,"offset"]
+          type = tolower(attr(md,"df")[1,"GDType"])
+          nodata=attr(md,"df")[1,"NoDataValue"]
+          resolution = list(x=md["res.x"],y=md["res.y"])
+          
+          if (!is.null(meta_band$band_id) && length(meta_band$band_id) > 0) {
+            band_id = meta_band$band_id[[band]]
+          } else {
+            band_id = as.character(band)
+          }
+          
+          if (!is.null(meta_band$name) && length(meta_band$name) > 0) {
+            name = meta_band$name[[band]]
+          } else {
+            name = NA
+          }
+          
+          if (!is.null(meta_band$wavelengths) && length(meta_band$wavelengths) > 0) {
+            wavelength = meta_band$wavelengths[[band]]
+          } else {
+            wavelength = NA
+          }
+          
+          bandObj = Band$new(band_id=band_id,
+                               name=name,
+                               type = type,
+                               scale = scale, 
+                               offset = offset,
+                               nodata=nodata,
+                               wavelength_nm = wavelength,
+                               res=resolution)
+          
+          private$bands_metadata[[band]] = bandObj
+        }
+          
+      } else {
+        stop("Expecting band dimension but not specifying a band index")
+      }
+      
+      if (!is.null(band) && length(band) > 1) {
+        # add multiple bands
+        bands = unstack(data)
+        adding = tibble(band = band)
+        if (self$dimensions$time) {
+          adding = add_column(adding,time = time)
+        }
+        
+        layer = unstack(data)
+        adding = add_column(adding,data=layer)
+        
+        if (self$dimensions$space) {
+          if (self$dimensions$raster) {
+            adding = add_column(adding,space = private$registerSpace.raster(data))
+          } else if (self$dimension$feature) {
+            adding = add_column(adding,space = private$registerSpace.feature(data))
+          }
+          
+        }
+        
+        private$data_table = rbind(private$data_table,adding)
+
+      } else {
+        # add only one entry
+        if (!is.list(data)) data = list(data)
+        
+        adding = tibble(data=data)
+        if (self$dimensions$time) {
+          adding = add_column(adding,time=time)
+        }
+        # if (!is.list(space)) space = list(space)
+        
+        if (self$dimensions$space) {
+          if (self$dimensions$raster) {
+            adding = add_column(adding,space=private$registerSpace.raster(data))
+          } else if (self$dimensions$feature){
+            adding = add_column(adding,space=private$registerSpace.feature(data))
+          }
+          
+        }
+        
+        if (self$dimensions$band) {
+          adding = add_column(adding,band=band)
+        }
+        
+        private$data_table = rbind(private$data_table,adding)
+      }
+      
     },
     getMinTime = function() {
-      self$granules[[1]]$time
+      if (self$dimensions$time) {
+        return(min(private$data_table$time,na.rm=TRUE))
+      } else {
+        stop("No time dimension declared on data set")
+      }
     },
     getMaxTime = function() {
-      self$granules[[length(self$granules)]]$time
+      if (self$dimensions$time) {
+        return(max(private$data_table$time,na.rm=TRUE))
+      } else {
+        stop("No time dimension declared on data set")
+      }
     },
     filterByTime = function(from=NA,to=NA) {
       if (is.na(from)) {
@@ -37,101 +261,308 @@ Collection <- R6Class(
         to = self$getMaxTime()
       }
       
-      indices = private$filterbytime(self$granules,from,to)
-      
-      res = self$clone(deep=TRUE)
-      res$granules = res$granules[indices$min : indices$max]
-      return(res)
-    },
-    filterByBands = function(bands) {
-      res = self$clone(deep=TRUE)
-      res$granules = private$filterbyband(res$granules,bands)
-      
-      return(res)
-    },
-    sortGranulesByTime= function () {
-      self$granules = self$granules[
-        order(
-          sapply(
-            self$granules,
-            function(g){
-              as.POSIXct(g$time)
-            }
-          )
-        )]
-    },
-    calculateExtent = function() {
-      globalExtent = self$granules[[1]]$extent
-      
-      lapply(self$granules, function(g) {
-        globalExtent <<- union(globalExtent,g$extent)
-      })
-      
-      return(globalExtent)
-    },
-    getGlobalSRS = function() {
-      if(length(self$granules) >= 1) {
-        return(self$granules[[1]]$srs)
-      } else {
-        return(NULL)
-      }
-      
-    },
-    getBandNames = function() {
-      firstGranule = self$granules[[1]]
-      return(names(firstGranule$bands))
-    },
-    getBandIndex = function(band_id) {
-      return(match(band_id, self$getBandNames()))
-    }
-  ),
-  # private ----
-  private = list(
-    # attributes ====
-    data = NULL,
-    # functions ====
-    filterbyband = function (granules,bands) {
-      filteredGranules = list()
-      for (i in 1:length(granules)) {
-        currentGranule = granules[[i]]$clone(deep=TRUE)
-        
-        bandIndices = currentGranule$getBandIndices(bands)
-        currentGranule$data = subset(currentGranule$data, subset = bandIndices)
-        currentGranule$bands = currentGranule$bands[bandIndices]
-        
-        filteredGranules[[i]] = currentGranule    
-      }
-      
-      return(filteredGranules)
-    },
-    
-    filterbytime = function (granules,from,to) {
-      minpos = -1
-      maxpos = -1
       if (from > to) {
         old <- to
         to <- from
         from <- old
       }
       
-      if (length(granules) == 0) return(NULL)
+      table = filter(private$data_table, time >= from & time <= to)
       
-      for (i in 1:length(granules)) {
-        currentGranule = granules[[i]]
-        if (!is.null(currentGranule)) {
-          if (currentGranule$time >= from && minpos < 0) {
-            minpos = i
+      res = self$clone(deep=TRUE)
+      res$setData(table)
+      
+      return(res)
+    },
+    filterByBands = function(bands) {
+      # bands shall refer to the band indices!
+      if (!self$dimensions$band) {
+        stop("Cannot select by bands. Collection does not contain a band dimension")
+      }
+      
+      res = self$clone(deep=TRUE)
+      res$setData(private$data_table %>% dplyr::filter(band %in% bands))
+      
+      return(res)
+    },
+    sortGranulesByTime= function () {
+      
+      if (!self$dimensions$time) {
+        stop("Cannot sort by time, no temporal dimension in data collection")
+      }
+      
+      private$data_table = arrange(private$data_table ,time)
+    },
+    calculateExtent = function() {
+      if (!self$dimensions$space) {
+        stop("Cannot create an extent, since there are not spatial components")
+      }
+      # all_polygons = do.call(bind,private$data_table[["space"]])
+      # globalExtent = extent(all_polygons)
+      
+      return(extent(self$space))
+    },
+    getGlobalSRS = function() {
+      return(private$srs)
+    },
+    getBandNames = function() {
+      return(names(private$bands_metadata))
+    },
+    getBandIndex = function(band_id) {
+      return(match(band_id, self$getBandNames()))
+    },
+    toFile = function(dir=NULL, format=NULL,temp=FALSE) {
+      if (is.null(dir)) {
+        dir = getwd()
+      }
+      dir = gsub(pattern = "^(.*[^/])/+$", "\\1",dir) #remove tailing slashes
+      # to raster data file ====
+      if (self$dimensions$raster) {
+        cat("Creating raster file with GDAL\n")
+        # collection contains raster data
+        if (is.null(format)) {
+          format = "GTiff"
+        }
+        
+        # group by time if time is present
+        if (self$dimensions$time) {
+          # order by bands if present, stack single bands into one file
+          
+          # space is fixed (for now)
+          # TODO rework the holding of spatial extents in a spatial* data.frame where we store the feature and
+          # state the IDs in the table
+          if (self$dimensions$band) {
+            private$data_table = private$data_table %>% 
+            group_by(time,space) %>% 
+            arrange(band) %>% 
+            dplyr::summarise(
+              data= tibble(data) %>% (function(x,...){
+                s = stack(x$data)
+                return(list(s))
+              }))
+          }
+            
+          # at least time and data should be there (probably also space)
+          private$data_table = private$data_table %>%
+            group_by(time,space) %>%
+            mutate(output.file = tibble(time,data,space) %>% (
+              function(x, ...) {
+                rasters = x$data
+                file.names = paste("output",format(x$time,format="%Y%m%dT%H%M%S"),1:length(x$space),sep="_")
+                
+                for (i in 1:length(rasters)) {
+                  if (temp) {
+                    file.path = tempfile()
+                  } else {
+                    file.path = paste(dir,file.names[[1]],sep="/")
+                  }
+                  
+                  # TODO think about "bylayer" in cases formats do not support multilayer 
+                  written_file = writeRaster(rasters[[i]],filename=file.path, format=format)
+                  file.names[[i]] = written_file@file@name
+                  
+                  if (temp) break;
+                }
+                if (temp) {
+                  return(file.names[1])
+                } else {
+                  return(file.names)
+                }
+                
+              }
+            )) 
+        } else {
+          #no time dimension
+          if (self$dimensions$band) {
+            private$data_table = private$data_table %>% 
+              group_by(space) %>% 
+              arrange(band) %>% 
+              dplyr::summarise(
+                data= tibble(data) %>% (function(x,...){
+                  s = stack(x$data)
+                  return(list(s))
+                }))
           }
           
-          if (currentGranule$time > to && maxpos < 0) {
-            maxpos = i-1
-          }
+          
+          private$data_table = private$data_table %>%
+            group_by(space) %>% 
+            dplyr::mutate(output.file = tibble(data,space) %>% (
+              function(x, ...) {
+                rasters = x$data
+                file.names = paste("output",1:length(x$space),sep="_")
+                
+                for (i in 1:length(rasters)) {
+                  if (temp) {
+                    file.path = tempfile()
+                  } else {
+                    file.path = paste(dir,file.names[[1]],sep="/")
+                  }
+                  
+                  # TODO think about "bylayer" in cases formats do not support multilayer 
+                  written_file = writeRaster(rasters[[i]],filename=file.path, format=format)
+                  file.names[[i]] = written_file@file@name
+                  
+                  if (temp) {
+                    break;
+                  }
+                }
+                if (temp) {
+                  return(file.names[1])
+                } else {
+                  return(file.names)
+                }
+                
+              }
+            )) 
+        } 
+          
+        return(invisible(self))  
+      }
+      
+      # to vector data file ====
+      if (self$dimensions$feature) {
+        cat("Creating vector file with OGR\n")
+        
+        if (is.null(format)) {
+          format = "GeoJSON"
         }
-        if (minpos >= 0 && maxpos >= 0) {
-          break
+
+        if (temp) {
+          file.name = tempfile(tmpdir=dir)
+        } else {
+          file.name = paste(dir,"/","output",".",.ogrExtension(format),sep="")
+        }
+        
+        if (self$dimensions$time) {
+          # TODO group also by band! currently assuming that we have only one attribute--hmm maybe it doesn't matter
+          out = private$data_table %>% dplyr::group_by(space) %>% dplyr::arrange(time) %>% dplyr::summarise(data=tibble(band,time,data) %>% (function(x, ...){
+            values = unlist(x$data)
+            names = paste(x$band,as.character(x$time), sep=".")
+            names(values) = names
+            
+            return(list(values))
+          }))
+          
+        } else {
+          #no time dimension
+          out = private$data_table %>% dplyr::group_by(space) %>% dplyr::summarise(data=tibble(band,data) %>% (function(x, ...){
+            values = unlist(x$data)
+            names = x$band
+            names(values) = names
+            
+            return(list(values))
+          }))
+        }
+        data = as_tibble(t(as.data.frame(out$data)))
+        data = data %>% rowid_to_column("ID")
+        out_data = self$space %>% inner_join(data,by="ID")
+        st_write(out_data,dsn=file.name,driver=format)
+        
+        private$data_table = private$data_table %>% add_column(output.file=file.name)
+        
+        return(invisible(self))
+      }
+      
+      # it should be a vector, maybe just write a csv
+      stop("Non raster or vector output is not implemented yet")
+    }
+  ),
+  # private ----
+  private = list(
+    # attributes ====
+    srs = NULL,
+    data_table = NULL,
+    bands_metadata = NULL, # named list of Band
+    
+    # functions ====
+    init_tibble = function() {
+      # space contains the spatial extent if applicable
+      # time contains POSIXct
+      # band contains a discrete number for the band reference
+      # data contains the attribute values as either raster* or spatial* objects
+      init = tibble()
+      
+      if (self$dimensions$time) {
+        init = add_column(init, time=.POSIXct(integer(0)))
+      }
+      
+      if (self$dimensions$space) {
+        init = add_column(init, space=integer(0))
+      }
+      
+      if (self$dimensions$band) {
+        init = add_column(init, band=integer(0))
+      }
+      
+      init = add_column(init, data=list())
+      
+      private$data_table = init
+    },
+    # stores the spatial component in self$space and returns the spatial ID of the feature in self$space
+    registerSpace.raster = function(elem) {
+      if (!is.list(elem)) {
+        elem = list(elem)
+      }
+      
+      .addSpace = function(elem) {
+        crs = crs(elem)
+        geom = extent(elem)
+        sf_elem = extent2sf(geom,crs)
+        
+        if (is.null(self$space)) {
+          self$space = cbind(sf_elem, ID = 1)
+          return(1)
+        }
+        
+        equals = st_equals(self$space,sf_elem)
+        elemAlreadyContained = any(as.logical(equals))
+        
+        if (elemAlreadyContained) {
+          index = which(as.logical(equals))
+          return(self$space[index,][["ID"]])
+        } else {
+          lastID = nrow(self$space) + 1
+          #add element to spatial with new ID and return ID
+          self$space = rbind(self$space, cbind(sf_elem, ID = lastID))
+          return(lastID)
         }
       }
-      return(list(min = minpos, max = maxpos))
+      return(sapply(elem,.addSpace))
+      
+    },
+    
+    registerSpace.feature = function(elem) {
+      # elem is a spatial polygons 
+      if (!is.list(elem)) {
+        elem = list(elem)
+      }
+      
+      
+      .addSpace = function(elem) {
+        # crs = crs(elem)
+        # geom = extent(elem)
+        sf_elem = st_as_sf(elem)
+        
+        if (is.null(self$space)) {
+          self$space = cbind(sf_elem, ID = 1)
+          return(1)
+        }
+        equals = st_equals(self$space,sf_elem)
+        elemAlreadyContained = any(as.logical(equals))
+        
+        if (!is.na(elemAlreadyContained) && elemAlreadyContained) {
+          index = which(as.logical(equals))
+          return(self$space[index,][["ID"]])
+        } else {
+          lastID = nrow(self$space) + 1
+          #add element to spatial with new ID and return ID
+          self$space = rbind(self$space, cbind(sf_elem, ID = lastID))
+          return(lastID)
+        }
+      }
+      
+      return(sapply(elem,.addSpace))
     }
   )
   
@@ -139,9 +570,80 @@ Collection <- R6Class(
 
 # statics ----
 
-
-
-
 is.Collection = function(obj) {
   return("Collection" %in% class(obj))
+}
+
+extent2polygon = function(extent,crs) {
+  polygon = as(extent,"SpatialPolygons")
+  crs(polygon) <- crs
+  return(polygon)
+}
+
+extent2sf = function(extent, crs) {
+  polygon = as(extent,"SpatialPolygons")
+  crs(polygon) <- crs
+  return(st_as_sf(polygon,crs=crs))
+}
+
+#' @export
+setOldClass(c("Collection", "R6"))
+
+#' @export
+setMethod("extent", signature="Collection", function(x, ...) {
+  return(x$calculateExtent())
+})
+
+#' Reads a legend file and creates a Collection
+#' 
+#' The function uses a legend.csv file as described in 
+#' https://github.com/pramitghosh/OpenEO.R.UDF/blob/master/data/example_udf_out/out_legend.csv and a dimensionality code
+#' as well as optional additional parameters for band metadata.
+#' 
+#' @param legend.path Absolute file path to the legend file
+#' @param code A dimensionality code or an integer that represents the binary code
+#' @param ... contains attributes that are passed on to addGranule as meta_band
+#' @return a Collection object
+#' 
+#' @export
+read_legend = function(legend.path,code, ...) {
+  dots = list(...)
+  
+  collection = Collection$new(read_dimensionality(code))
+  
+  table=as_tibble(read.csv(legend.path,header = TRUE,as.is = TRUE))
+  
+  if (! "timestamp" %in% names(table) && collection$dimensions$time) {
+    stop("Expecting temporal dimension, but none found in input")
+  }
+  
+  if ("timestamp" %in% names(table)) {
+    # cast timestamp to POSIXct
+    
+    table$timestamp = as_datetime(table$timestamp)
+  }
+  
+  # ignoring xmin,xmax,ymin,ymax for now since we do not have a reference system
+  
+  # prepareBands
+  parentFolder = dirname(legend.path)
+  
+  bandinfo = table %>% group_by(band_index) %>% summarise(band = first(band), data = first(filename)) %>% arrange(band_index)
+  # use band as band_index
+  dots$band_id = bandinfo$band
+  
+  
+  
+  for (i in 1:nrow(table)) {
+    row = table[i,]
+    if (as.integer(row$whether_raster) == 1) {
+      absolute.filepath = paste(parentFolder,row$filename,sep="/")
+      collection$addGranule(time=table[i,]$timestamp,band=row$band_index,data=raster(absolute.filepath), meta_band = dots)
+    } else {
+      stop("Importing a vector feture collection is not yet supported by this function")
+    }
+  }
+  
+  
+  return(collection)
 }
