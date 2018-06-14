@@ -104,7 +104,7 @@ Collection <- R6Class(
       invisible(self)
     },
     
-    addGranule = function(space=NULL,time=NULL, band=NULL, data, ...) {
+    addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL) {
       
       dot_args = list(...)
       
@@ -136,6 +136,58 @@ Collection <- R6Class(
         } else {
           stop("Band dimension is required, but neither a value is given nor can it be derived")
         }
+      }
+      
+      if (self$dimensions$band && !is.null(band)) {
+        #meta_band is a list, containing band_id and name, or wavelength for all bands
+        
+        
+        if (is.null(private$bands_metadata)) {
+          private$bands_metadata = list()
+        }
+        
+        if (!is.null(band) && (length(private$bands_metadata) < band || is.null(private$bands_metadata[[band]]))) {
+          filePath = data@file@name
+        
+          md = GDALinfo(filePath,silent=TRUE)
+          scale = attr(md,"ScaleOffset")[,"scale"]
+          offset = attr(md,"ScaleOffset")[,"offset"]
+          type = tolower(attr(md,"df")[1,"GDType"])
+          nodata=attr(md,"df")[1,"NoDataValue"]
+          resolution = list(x=md["res.x"],y=md["res.y"])
+          
+          if (!is.null(meta_band$band_id) && length(meta_band$band_id) > 0) {
+            band_id = meta_band$band_id[[band]]
+          } else {
+            band_id = as.character(band)
+          }
+          
+          if (!is.null(meta_band$name) && length(meta_band$name) > 0) {
+            name = meta_band$name[[band]]
+          } else {
+            name = NA
+          }
+          
+          if (!is.null(meta_band$wavelengths) && length(meta_band$wavelengths) > 0) {
+            wavelength = meta_band$wavelengths[[band]]
+          } else {
+            wavelength = NA
+          }
+          
+          bandObj = Band$new(band_id=band_id,
+                               name=name,
+                               type = type,
+                               scale = scale, 
+                               offset = offset,
+                               nodata=nodata,
+                               wavelength_nm = wavelength,
+                               res=resolution)
+          
+          private$bands_metadata[[band]] = bandObj
+        }
+          
+      } else {
+        stop("Expecting band dimension but not specifying a band index")
       }
       
       if (!is.null(band) && length(band) > 1) {
@@ -541,3 +593,57 @@ setOldClass(c("Collection", "R6"))
 setMethod("extent", signature="Collection", function(x, ...) {
   return(x$calculateExtent())
 })
+
+#' Reads a legend file and creates a Collection
+#' 
+#' The function uses a legend.csv file as described in 
+#' https://github.com/pramitghosh/OpenEO.R.UDF/blob/master/data/example_udf_out/out_legend.csv and a dimensionality code
+#' as well as optional additional parameters for band metadata.
+#' 
+#' @param legend.path Absolute file path to the legend file
+#' @param code A dimensionality code or an integer that represents the binary code
+#' @param ... contains attributes that are passed on to addGranule as meta_band
+#' @return a Collection object
+#' 
+#' @export
+read_legend = function(legend.path,code, ...) {
+  dots = list(...)
+  
+  collection = Collection$new(read_dimensionality(code))
+  
+  table=as_tibble(read.csv(legend.path,header = TRUE,as.is = TRUE))
+  
+  if (! "timestamp" %in% names(table) && collection$dimensions$time) {
+    stop("Expecting temporal dimension, but none found in input")
+  }
+  
+  if ("timestamp" %in% names(table)) {
+    # cast timestamp to POSIXct
+    
+    table$timestamp = as_datetime(table$timestamp)
+  }
+  
+  # ignoring xmin,xmax,ymin,ymax for now since we do not have a reference system
+  
+  # prepareBands
+  parentFolder = dirname(legend.path)
+  
+  bandinfo = table %>% group_by(band_index) %>% summarise(band = first(band), data = first(filename)) %>% arrange(band_index)
+  # use band as band_index
+  dots$band_id = bandinfo$band
+  
+  
+  
+  for (i in 1:nrow(table)) {
+    row = table[i,]
+    if (as.integer(row$whether_raster) == 1) {
+      absolute.filepath = paste(parentFolder,row$filename,sep="/")
+      collection$addGranule(time=table[i,]$timestamp,band=row$band_index,data=raster(absolute.filepath), meta_band = dots)
+    } else {
+      stop("Importing a vector feture collection is not yet supported by this function")
+    }
+  }
+  
+  
+  return(collection)
+}
