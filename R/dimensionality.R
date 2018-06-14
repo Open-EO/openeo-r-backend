@@ -12,6 +12,37 @@ create_dimensionality = function(space=NULL,time=NULL,band=NULL,raster=NULL,feat
   return(dimensionality)
 }
 
+#' Reads dimensionality from a binary code string
+#' 
+#' The function reads and interpretes a code string containing 1 and 0 for each dimension.
+#' 
+#' @param code code string or integer value that represents a value in 0 to 2^5-1 at most
+#' @return Dimensionality object
+read_dimensionality = function(code) {
+  dims = create_dimensionality()
+  
+  if (is.integer(as.integer(code))) {
+    code = paste(rev(as.integer(intToBits(code))[1:length(dims)]),sep="",collapse = "")
+  }
+  
+  if (!is.character(code)) {
+    stop("code statement is no character string")
+  }
+  
+  if (length(dims) != nchar(code) || !grepl(paste("[01]{",length(dims),"}",sep=""),code)) {
+    stop("Cannot interprete code string since it can not be matched to the appropriate dimensions or contains bad chars")
+  }
+  
+  for (i in 1:nchar(code)) {
+    val = substr(code,i,i)
+    if (val == "1") {
+      dims[[i]] = TRUE
+    }
+  }
+  
+  return(dims)
+}
+
 .arg_logical = function(val) {
   if (is.null(val)) return(FALSE)
   

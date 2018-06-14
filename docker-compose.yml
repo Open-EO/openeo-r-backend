@@ -4,12 +4,12 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE-base
-        image: openeo-baseserver:1.3
+        image: openeo-baseserver:1.4
     openeo-r-server:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.2.3
+        image: openeo-r-backend:0.2.4
         container_name: openeo-r-server
         ports:
             - "8000:8000"
