@@ -138,9 +138,8 @@ Collection <- R6Class(
         }
       }
       
-      if (self$dimensions$band && !is.null(band)) {
+      if (self$dimensions$band && !is.null(band) && !is.null(meta_band)) {
         #meta_band is a list, containing band_id and name, or wavelength for all bands
-        
         
         if (is.null(private$bands_metadata)) {
           private$bands_metadata = list()
@@ -186,9 +185,7 @@ Collection <- R6Class(
           private$bands_metadata[[band]] = bandObj
         }
           
-      } else {
-        stop("Expecting band dimension but not specifying a band index")
-      }
+      } 
       
       if (!is.null(band) && length(band) > 1) {
         # add multiple bands
