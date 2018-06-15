@@ -229,7 +229,7 @@ createUsersEndpoint = function() {
       process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
       process_graph = .createSimpleArgList(process_graph)
       
-      graph = ProcessGraph$new(process_graph = process_graph, user_id = req$user$user_id)
+      graph = ProcessGraph$new(process_graph = list(process_graph=process_graph), user_id = req$user$user_id)
       graph$store()
       
       res$status = 200
@@ -286,7 +286,7 @@ createUsersEndpoint = function() {
 #PUT /users/<userid>/process_graphs/<graph_id>
 .modifyProcessGraph = function(req,res,userid,graph_id) {
   user_id = req$user$user_id
-  parsedGraph = fromJson(req$postBody,simplifyDataFrame = FALSE)
+  parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   parsedGraph = .createSimpleArgList(parsedGraph)
   
   #fetch old one from db... contains process_graph and output...
@@ -300,7 +300,7 @@ createUsersEndpoint = function() {
   binary_processgraph = encodeProcessGraph(toJSON(oldGraph,auto_unbox=TRUE,pretty = TRUE))
   
   query = "update process_graph set process_graph = :binary_graph where graph_id = :gid and user_id = :uid"
-  dbExecute(con, query, param = list(binary_graph = binary_graph, gid = graph_id, uid = user_id))
+  dbExecute(con, query, param = list(binary_graph = binary_processgraph, gid = graph_id, uid = user_id))
   dbDisconnect(con)
   
   return(ok(res))
