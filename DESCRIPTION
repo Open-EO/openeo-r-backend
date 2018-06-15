@@ -20,6 +20,7 @@ Depends:
     dplyr (>= 0.7.5),
     rgeos (>= 0.3-26),
     magrittr (>= 1.5),
+    units (>= 0.5-1),
     sf (>= 0.6-3),
     lubridate (>= 1.7.4)
 Encoding: UTF-8
