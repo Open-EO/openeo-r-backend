@@ -75,6 +75,9 @@ loadLandsat7Dataset = function() {
   openeo.server$register(ls7.product)
 }
 
+
+
+#' @export
 loadSentinel2Data = function() {
   sentinel2.folder = openeo.server$data.path
   if (endsWith(sentinel2.folder,"/")) {

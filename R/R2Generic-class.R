@@ -13,17 +13,18 @@ R2Generic = R6Class(
   "R2Generic",
   
   public = list(
-    granules = NULL,
+    scenes = NULL,
     legend_counter = NULL,
     legend = NULL,
     
-    initialize = function(granules = NULL, legend_counter = NULL, legend = NULL)
+    initialize = function(scenes = NULL, legend_counter = NULL, legend = NULL)
     {
-      self$granules = granules
+      self$scenes = scenes
       self$legend_counter = 0
-      t_bands = max(as.numeric(lapply(X = granules, FUN = function(X){length(X$bands)})))
+      # t_bands = max(as.numeric(lapply(X = granules, FUN = function(X){length(X$bands)})))
+      t_bands = length(unique(scenes$band))
       
-      self$legend = matrix(ncol = 10, nrow = length(granules) * t_bands) # For extents, filename, timestamp and band - more could be added later by increasing the value of ncol
+      self$legend = matrix(ncol = 10, nrow = dim(scenes)[1] * t_bands) # For extents, filename, timestamp and band - more could be added later by increasing the value of ncol
       colnames(self$legend) = c("xmin", "xmax", "ymin", "ymax", "filename", "time_index", "timestamp", "band_index", "band", "whether_raster")
       self$legend = as.data.frame(self$legend)
       # dir.create("disk")
@@ -79,19 +80,27 @@ R2Generic = R6Class(
       save(band_id, resolution, scale, wavelength, file = paste(out_path, "/", dir_name, "/", "meta_", band_id, ".txt", sep = ""), ascii = TRUE)
     },
     
-    write_granules = function(granule_list = self$granules, dir_name = "disk")
+    write_scenes = function(scene_table = self$scenes, dir_name = "disk")
     {
       dir.create(dir_name)
-      t_num = length(granule_list)
-      for(i in 1:length(granule_list))
+      t_num = length(unique(scene_table$time))
+      for(i in 1:t_num)
       {
         print(paste("Writing observations at t = ", i, sep = ""))
-        # cat(i)
-        self$write_time(time_observation = granule_list[[i]], t_num = i, out_path = dir_name)
+        dir.create(paste(dir_name, "/t_", t_num, sep = ""))
+        b_num = scene_table$band[scene_table$time == t_num]
+        for(j in 1:length(b_num))
+        {
+          s = scene_table$data[scene_table$band == b_num && scene_table$time == t_num]
+          writeRaster(s, filename = paste(dir_name, "/t_", t_num, "/b_", j, sep = ""), format = "GTiff", bylayer = TRUE, suffix = "numbers", overwrite = TRUE) #progress = "text",
+          space_extent = c(s$extent@xmin, s$extent@xmax, s$extent@ymin, s$extent@ymax)
+        }
       }
       cat("Writing legend file to disk...")
       self$legend_to_disk(dir_name)
       cat("Done!")
     }
+    
+    
   )
 )

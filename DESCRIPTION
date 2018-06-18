@@ -1,4 +1,4 @@
-Package: openEO.R.Backend
+Package: openEO.R.Backend.udf
 Title: Reference backend implementation for openEO conformant backend with a local filesystem
 Version: 0.2.4
 Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre"))
