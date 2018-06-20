@@ -618,7 +618,7 @@ read_legend = function(legend.path,code, ...) {
   if ("timestamp" %in% names(table)) {
     # cast timestamp to POSIXct
     
-    table$timestamp = as_datetime(table$timestamp)
+    table$timestamp = as_datetime(table$timestamp, format = "%d/%m/%Y  %r")
   }
   
   # ignoring xmin,xmax,ymin,ymax for now since we do not have a reference system

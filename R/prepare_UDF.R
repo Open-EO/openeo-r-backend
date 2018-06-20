@@ -12,10 +12,7 @@
 #'
 write_generics = function(collection_obj, dir_name = "disk") #dir_name could be obtained if it is defined while registering the UDF
 {
-  granules_obj = collection_obj$granules #granules_obj is a list where each element's $data has the raster obj
-  R2G_obj = R2Generic$new(granules = granules_obj) #Instantiate an object of class R2Generic
-  R2G_obj$write_granules(dir_name = dir_name) #Write granules to disk in a generic GeoTIFF format
-  
   scene_table = collection_object$getData()
   R2G_obj = R2Generic$new(scenes = scene_table)
+  R2G_obj$write_scenes(dir_name = dir_name)
 }
