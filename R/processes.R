@@ -287,10 +287,10 @@ calculate_ndvi = Process$new(
   }
 )
 
-# reduce_time ====
-reduce_time = Process$new(
-  process_id = "reduce_time",
-  description = "Applies UDF of type reduce_time on an object of class Collection",
+# aggregate_time ====
+aggregate_time = Process$new(
+  process_id = "aggregate_time",
+  description = "Applies UDF of type aggregate_time on an object of class Collection",
   args = list(Argument$new(
                 name = "imagery",
                 description = "the spatio-temporal dataset/collection",
@@ -310,13 +310,17 @@ reduce_time = Process$new(
     {
       script = gsub("^/", "", script)
     }
-    file.path = paste(openeo.server$workspaces.path, regions, sep="/")
+    file.path = paste(openeo.server$workspaces.path, script, sep="/")
     results.file.path = paste(file.path, "results", sep = "/")
+    write_generics(collection)
     source(file = file.path)#, local = TRUE)
     
     # Now read back results present at results.file.path
     # To be implemented once classes for data I/O have been re-written
+    # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier"
+    result.collection = read_legend(legend.path = paste(results.file.path, "legend.csv", sep = "/"), code = "11110")
     
+    return(result.collection)
   }
 )
 
