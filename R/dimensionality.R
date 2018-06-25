@@ -16,12 +16,12 @@ create_dimensionality = function(space=NULL,time=NULL,band=NULL,raster=NULL,feat
 #' 
 #' The function reads and interpretes a code string containing 1 and 0 for each dimension.
 #' 
-#' @param code code string or integer value that represents a value in 0 to 2^5-1 at most
+#' @param code code string or a single integer value that represents a value in 0 to 2^5-1 at most
 #' @return Dimensionality object
 read_dimensionality = function(code) {
   dims = create_dimensionality()
   
-  if (is.integer(as.integer(code))) {
+  if (is.integer(code)) {
     code = paste(rev(as.integer(intToBits(code))[1:length(dims)]),sep="",collapse = "")
   }
   
