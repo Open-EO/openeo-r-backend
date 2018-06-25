@@ -287,6 +287,7 @@ OpenEOServer <- R6Class(
         self$register(filter_bands)
         self$register(zonal_statistics)
         self$register(filter_bbox)
+        self$register(aggregate_time)
 
       }
       
