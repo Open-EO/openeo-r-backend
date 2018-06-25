@@ -58,17 +58,26 @@ OpenEOServer <- R6Class(
         }
         self$host = host_name
         
+        # fill missing environment variables
+        self$initEnvironmentDefault()
+        
+        # create folders if they don't exist already
         batch_job_download_dir = paste(openeo.server$workspaces.path,"jobs",sep="/")
         
         if (! dir.exists(batch_job_download_dir)) {
           dir.create(batch_job_download_dir,recursive = TRUE)
         }
         
-        self$initEnvironmentDefault()
+        udf_temp_dir = paste(openeo.server$workspaces.path,"udf",sep="/")
         
+        if (! dir.exists(udf_temp_dir)) {
+          dir.create(udf_temp_dir,recursive = TRUE)
+        }
+        
+        # TODO revise this... probably we don't need to migrate any longer
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|udf|services]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|udf|jobs|services]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))

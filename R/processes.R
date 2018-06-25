@@ -305,15 +305,44 @@ aggregate_time = Process$new(
   modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
   operation = function(imagery, script)
   {
+    parent = parent.frame()
+    job = parent$job
+    user = parent$user
+    
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
     {
       script = gsub("^/", "", script)
     }
-    file.path = paste(openeo.server$workspaces.path, script, sep="/")
-    results.file.path = paste(file.path, "results", sep = "/")
-    write_generics(collection)
-    source(file = file.path)#, local = TRUE)
+    # fla: if the file is hosted at this backend
+    # else we need to download it first.
+    file.path = paste(user$workspace,"files", script, sep="/")
+    
+    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    udf_export_folder = paste(udf_transaction_folder,"export",sep="/")
+    
+    if (!dir.exists(udf_export_folder)) {
+      dir.create(udf_export_folder,recursive = TRUE)
+    }
+    
+    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
+    if (!dir.exists(results.file.path)) {
+      dir.create(results.file.path,recursive = TRUE)
+    }
+    
+    write_generics(collection,dir_name = udf_export_folder)
+    
+    oldwd = getwd()
+    setwd(results.file.path) # TODO revise this, this is and can be only temporary! this can only work
+    # as long we run the code in this server application. if we create another process, this might fail
+    
+    source(file = file.path)#, local = TRUE) # we need to specify where to store the results here
+    # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
+    # blind at this point. There is nothing fix where the backend can find the results!
+    
+    setwd(oldwd)
+    # cleanup at this point the results should been written to disk already, clear export!
+    # unlink(udf_export_folder,recursive = TRUE)
     
     # Now read back results present at results.file.path
     # To be implemented once classes for data I/O have been re-written
