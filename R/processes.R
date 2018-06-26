@@ -335,7 +335,7 @@ aggregate_time = Process$new(
     oldwd = getwd()
     
     tryCatch({
-      setwd(results.file.path) # TODO revise this, this is and can be only temporary! this can only work
+      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
       # as long we run the code in this server application. if we create another process, this might fail
       
       source(file = file.path)#, local = TRUE) 
