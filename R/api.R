@@ -143,7 +143,7 @@
     return(error(res,400,"No process graph specified."))
     
   }
-  
+
   job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
   
   job = job$run()

@@ -15,4 +15,7 @@ write_generics = function(collection_obj, dir_name = "disk") #dir_name could be 
   scene_table = collection_obj$getData()
   R2G_obj = R2Generic$new(scenes = scene_table)
   R2G_obj$write_scenes(dir_name = dir_name)
+  
+  R2G_obj$legend_to_disk(dir_name)
+
 }

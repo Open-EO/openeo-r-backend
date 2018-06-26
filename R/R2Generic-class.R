@@ -12,31 +12,45 @@
 R2Generic = R6Class(
   "R2Generic",
   
+  # public ----
   public = list(
+    # attributes ====
     scenes = NULL,
     legend_counter = NULL,
     legend = NULL,
     
+    # functions ====
     initialize = function(scenes = NULL, legend_counter = NULL, legend = NULL)
     {
       self$scenes = scenes
       self$legend_counter = 0
-      # t_bands = max(as.numeric(lapply(X = granules, FUN = function(X){length(X$bands)})))
-      # t_bands = length(unique(scenes$band))
       
       self$legend = matrix(ncol = 10, nrow = dim(scenes)[1]) # For extents, filename, timestamp and band - more could be added later by increasing the value of ncol
       colnames(self$legend) = c("xmin", "xmax", "ymin", "ymax", "filename", "time_index", "timestamp", "band_index", "band", "whether_raster")
       self$legend = as.data.frame(self$legend)
-      # dir.create("disk")
     },
     
     legend_to_disk = function(dir_name)
     {
-      write.csv(x = self$legend, file = paste(dir_name, "legend.csv", sep = "/"))
+      cat("Writing legend file to disk...\n")
+      tryCatch( {
+        legend_file_path = paste(dir_name, "legend.csv", sep = "/")
+        if (!file.exists(legend_file_path)) {
+          file.create(legend_file_path)
+        }
+        
+        con = file(legend_file_path)
+        write.csv(x = self$legend, file = con)
+      }, finally = function() {
+        close(con)
+        cat("Done!\n")
+      })
+      
     },
     
     write_scenes = function(scene_table = self$scenes, dir_name = "disk")
     {
+      cat("Writing scenes to disk...\n")
       if (!dir.exists(dir_name)) {
         dir.create(dir_name,recursive = TRUE)  
       }
@@ -48,13 +62,12 @@ R2Generic = R6Class(
       
       for(i in 1:length(t_num))
       {
-        print_statement = paste("Writing observations at t = ", i, "\n", sep = "")
+        print_statement = paste("\tWriting observations at t = ", i, "\n", sep = "")
         cat(print_statement)
         dir.create(paste(dir_name, "/t_", i, sep = ""))
         b_num = scene_table$band[scene_table$time == t_num[i]]
         for(j in 1:length(b_num))
         {
-          # s = scene_table$data[scene_table$band == b_num[j] && scene_table$time == t_num[i]]
           s = subset(x = scene_table, subset = scene_table$band == b_num[j] & scene_table$time == t_num[i])
           file_path_rel = paste("t_", i, "/b_", j, sep = "")
           file_path_str = paste(dir_name, file_path_rel, sep = "/")
@@ -67,8 +80,6 @@ R2Generic = R6Class(
           self$legend[self$legend_counter, ] = c(space_extent, paste(file_path_rel, ".tif", sep = ""), i, as.character.Date(t_num[i]), j, b_num[j], 1)
         }
       }
-      cat("Writing legend file to disk...\n")
-      self$legend_to_disk(dir_name)
       cat("Done!\n")
     }
     
