@@ -335,7 +335,7 @@ aggregate_time = Process$new(
     oldwd = getwd()
     
     tryCatch({
-      setwd(results.file.path) # TODO revise this, this is and can be only temporary! this can only work
+      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
       # as long we run the code in this server application. if we create another process, this might fail
       
       source(file = file.path)#, local = TRUE) 
@@ -351,7 +351,7 @@ aggregate_time = Process$new(
       # -> modification is applied afterwards
       
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(results.file.path, "output_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
       
       return(result.collection)
     }, 

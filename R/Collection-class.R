@@ -352,7 +352,7 @@ Collection <- R6Class(
                   if (temp) {
                     file.path = tempfile()
                   } else {
-                    file.path = paste(dir,file.names[[1]],sep="/")
+                    file.path = paste(dir,file.names[[i]],sep="/")
                   }
                   
                   # TODO think about "bylayer" in cases formats do not support multilayer 
