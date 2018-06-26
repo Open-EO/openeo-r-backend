@@ -37,7 +37,10 @@ R2Generic = R6Class(
     
     write_scenes = function(scene_table = self$scenes, dir_name = "disk")
     {
-      dir.create(dir_name)
+      if (!dir.exists(dir_name)) {
+        dir.create(dir_name,recursive = TRUE)  
+      }
+      
       t_num = unique(scene_table$time)
       table_cols = colnames(scene_table)
       scene_table = cbind(scene_table, NA)
@@ -45,7 +48,8 @@ R2Generic = R6Class(
       
       for(i in 1:length(t_num))
       {
-        print(paste("Writing observations at t = ", i, sep = ""))
+        print_statement = paste("Writing observations at t = ", i, "\n", sep = "")
+        cat(print_statement)
         dir.create(paste(dir_name, "/t_", i, sep = ""))
         b_num = scene_table$band[scene_table$time == t_num[i]]
         for(j in 1:length(b_num))
@@ -63,9 +67,9 @@ R2Generic = R6Class(
           self$legend[self$legend_counter, ] = c(space_extent, paste(file_path_rel, ".tif", sep = ""), i, as.character.Date(t_num[i]), j, b_num[j], 1)
         }
       }
-      cat("Writing legend file to disk...")
+      cat("Writing legend file to disk...\n")
       self$legend_to_disk(dir_name)
-      cat("Done!")
+      cat("Done!\n")
     }
     
   )

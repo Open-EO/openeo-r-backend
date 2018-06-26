@@ -12,7 +12,7 @@
 #'
 write_generics = function(collection_obj, dir_name = "disk") #dir_name could be obtained if it is defined while registering the UDF
 {
-  scene_table = collection_object$getData()
+  scene_table = collection_obj$getData()
   R2G_obj = R2Generic$new(scenes = scene_table)
   R2G_obj$write_scenes(dir_name = dir_name)
 }

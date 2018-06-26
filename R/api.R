@@ -177,7 +177,6 @@
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  browser()
   if (result$dimensions$feature) {
     contentType = paste("application/x-ogr-",format,sep="")
   } else {

@@ -58,8 +58,9 @@ Job <- R6Class(
         } else {
           private$pg$process_graph = process_graph
         }
-        
-        self$process_graph = private$pg$buildExecutableProcessGraph()
+
+        user = User$new()$load(user_id=user_id)
+        self$process_graph = private$pg$buildExecutableProcessGraph(user=user,job=self)
       } 
       return(self)
     },
@@ -155,7 +156,7 @@ Job <- R6Class(
       # when stored in a db then all the time the graph is loaded from db, regardless if it is published or not
       private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
-      self$process_graph = private$pg$buildExecutableProcessGraph() #from db
+      self$process_graph = private$pg$buildExecutableProcessGraph(user = User$new()$load(user_id=self$user_id), job=self) #from db
       self$output = private$pg$output
       self$persistent = TRUE
       

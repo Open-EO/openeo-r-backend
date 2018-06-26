@@ -6,6 +6,9 @@ ExecutableProcess <- R6Class(
   inherit = Process,
   # public ----
   public = list(
+    # attributes ====
+    job = NULL,
+    user = NULL,
     # functions ====
     initialize= function(process_id = NA,
                         description = NA,
@@ -24,7 +27,7 @@ ExecutableProcess <- R6Class(
             self[[key]] = value
           }
         }
-        self$operation <- process$operation
+        self$operation = process$operation
       } else {
         self$process_id = process_id
         self$description = description
@@ -47,7 +50,7 @@ ExecutableProcess <- R6Class(
           }
 
         }
-        result = do.call(self$operation,parameter)
+        result = do.call(self$operation,parameter,envir = self)
         # modify dimensionality
         result$dimensions = dim.apply(result$dimensions, self$dimensions_modifier)
         
