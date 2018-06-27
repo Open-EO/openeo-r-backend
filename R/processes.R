@@ -338,7 +338,7 @@ aggregate_time = Process$new(
       setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
       # as long we run the code in this server application. if we create another process, this might fail
       
-      source(file = file.path)#, local = TRUE) 
+      source(file = file.path, local = TRUE) 
       # we need to specify where to store the results here
       # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
       # blind at this point. There is nothing fix where the backend can find the results!
