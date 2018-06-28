@@ -148,6 +148,11 @@
   
   job = job$run()
   
+  result = job$result
+  if (is.null(result)) {
+    openEO.R.Backend:::error(res,status = 500,msg = "The result was NULL due to an internal error during processing.")
+  }
+  
   return(.create_output(res = res,result = job$results, format = format))
 }
 

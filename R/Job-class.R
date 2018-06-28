@@ -248,6 +248,7 @@ Job <- R6Class(
       }, error=function (e) {
         cat("Error. Aborting execution.\n")
         self$status = "error"
+        self$results = NULL
         if (self$persistent) {
           con = openeo.server$getConnection()
           updateJobQuery = "update job set last_update = :time, status = :status where job_id = :job_id"
