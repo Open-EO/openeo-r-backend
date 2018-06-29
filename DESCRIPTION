@@ -1,9 +1,12 @@
 Package: openEO.R.Backend
 Title: Reference backend implementation for openEO conformant backend with a local filesystem
-Version: 0.2.4
-Authors@R: person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre"))
+Version: 0.2.5
+Authors@R: c(person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre")),
+  person("Pramit","Ghosh",email = "pramitghosh@uni-muenster.de", role = c("aut","ctb")))
 Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
     the file backend solution is the local file system containing some raster data collections.
+URL: https://github.com/Open-EO/openeo-r-backend
+BugReports: https://github.com/Open-EO/openeo-r-backend/issues
 Depends: 
     R (>= 3.3),
     rgdal (>= 1.2-16),
@@ -27,7 +30,7 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.0.1
 VignetteBuilder: knitr
-License: Apache License
+License: Apache License 2.0
 Imports:
     plumber,
     jsonlite,
@@ -58,6 +61,7 @@ Collate:
     'MapServerWeb-class.R'
     'ProcessGraph-class.R'
     'Product-class.R'  
+    'R2Generic-class.R'
     'data.R'
     'processes.R'
     'Server-class.R'
@@ -71,4 +75,5 @@ Collate:
     'api_job.R'
     'api_data.R'
     'api.R'
+    'prepare_UDF.R'
     'serializer_proxy.R'

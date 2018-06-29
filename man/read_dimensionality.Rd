@@ -7,7 +7,7 @@
 read_dimensionality(code)
 }
 \arguments{
-\item{code}{code string or integer value that represents a value in 0 to 2^5-1 at most}
+\item{code}{code string or a single integer value that represents a value in 0 to 2^5-1 at most}
 }
 \value{
 Dimensionality object

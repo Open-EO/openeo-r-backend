@@ -91,8 +91,8 @@ ProcessGraph <- R6Class(
       return(success)
     },
     
-    buildExecutableProcessGraph = function() {
-      res = private$loadProcess(self$process_graph)
+    buildExecutableProcessGraph = function(user=NULL,job=NULL) {
+      res = private$loadProcess(self$process_graph,user=user, job=job)
       return(res)
     }
   ),
@@ -125,7 +125,8 @@ ProcessGraph <- R6Class(
         self$output = list[["output"]]
       }
     },
-    loadProcess = function(graph_list) {
+    # dots for user and job
+    loadProcess = function(graph_list, ...) {
       # from job
       
       processId = graph_list[["process_id"]]
@@ -133,12 +134,12 @@ ProcessGraph <- R6Class(
       if (!is.null(processId) && processId %in% names(openeo.server$processes)) {
         process = openeo.server$processes[[processId]]
         
-        return(private$as.executable(graph_list,process))
+        return(private$as.executable(graph_list=graph_list,process=process, ...))
       } else {
         stop(paste("Cannot load process",processId))
       }
     },
-    as.executable = function(graph_list, process) {
+    as.executable = function(graph_list, process, ...) {
       # from process
       
       if (is.null(process) && ! is.Process(process)) {
@@ -169,8 +170,11 @@ ProcessGraph <- R6Class(
           runner$setArgumentValue(key, value)
         }
       }
-      
-      return(ExecutableProcess$new(process=runner))
+      dots = list(...)
+      result = ExecutableProcess$new(process=runner)
+      result$job = dots$job
+      result$user = dots$user
+      return(result)
     }
   )
 )

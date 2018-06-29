@@ -143,10 +143,15 @@
     return(error(res,400,"No process graph specified."))
     
   }
-  
+
   job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
   
   job = job$run()
+  
+  result = job$result
+  if (is.null(result)) {
+    openEO.R.Backend:::error(res,status = 500,msg = "The result was NULL due to an internal error during processing.")
+  }
   
   return(.create_output(res = res,result = job$results, format = format))
 }
@@ -177,7 +182,6 @@
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format) {
   #store the job? even though it is completed?
-  browser()
   if (result$dimensions$feature) {
     contentType = paste("application/x-ogr-",format,sep="")
   } else {
