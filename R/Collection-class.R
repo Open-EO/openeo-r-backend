@@ -645,3 +645,41 @@ read_legend = function(legend.path,code, ...) {
   
   return(collection)
 }
+
+#' Function to export a collection for the UDF webservice
+#' 
+#' The function currently transforms the data and extent into lists that can be transformed with toJSON() into
+#' the required JSON object for "data"
+#'
+udf_export = function(collection) {
+  data = collection$getData()
+  result = list()
+  result[["id"]] = "test1"
+  
+  
+  b = st_bbox(collection$space[data %>% select(space) %>% unique() %>% unlist() %>% unname(),])
+  result[["extent"]] = list(
+    top = b[["ymax"]],
+    bottom = b[["ymin"]],
+    left = b[["xmin"]],
+    right = b[["xmax"]]
+  )
+  result[["data"]] = data %>% apply(MARGIN=1,FUN= function(row) {
+    
+    return(list(raster::values(x=row$data, format="matrix")))
+    
+  })
+  
+  result[["data"]] = lapply(result[["data"]], function(arr_list) {
+    arr_list[[1]]
+  })
+  
+  udfData = list()
+  udfData[["proj"]] = as.character(collection$getGlobalSRS())
+  
+  if (collection$dimensions$raster) {
+    udfData[["raster_collection_tiles"]] = result
+  }
+  
+  return(udfData)
+}
