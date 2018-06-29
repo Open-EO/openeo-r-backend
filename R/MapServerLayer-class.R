@@ -14,6 +14,7 @@ MapServerLayer <- R6Class(
     CONNECTIONTYPE = NULL,
     CONNECTION = NULL,
     
+    # functions ====
     initialize = function() {
       
     },

@@ -1,5 +1,6 @@
 #' @include Server-class.R
 #' @include Process-class.R
+#' @include dimensionality.R
 
 # filter_daterange ====
 filter_daterange = Process$new(
@@ -22,6 +23,7 @@ filter_daterange = Process$new(
       required = FALSE
     )
   ),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
     cat("Starting filter_daterange\n")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
@@ -62,6 +64,7 @@ filter_bands = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
     collection = NULL
     
@@ -92,7 +95,9 @@ zonal_statistics = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
+    func_name = func
     func = get(tolower(func))
     
     if (startsWith(regions,"/")) {
@@ -105,26 +110,32 @@ zonal_statistics = Process$new(
     regions = readOGR(dsn=file.path,layer = layername)
     
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
+    crs(polygonList) = crs(regions)
     
     collection = getCollectionFromImageryStatement(imagery)
-    rasterList = lapply(collection$granules, function(granule) {
-      return(granule$data)
-    })
-    timestamps = sapply(collection$granules, function(granule) {
-      return(as.character(granule$time))
-    })
-    b = brick(rasterList)
     
+    rasterList = unlist(collection$getData() %>% dplyr::select("data"))
+    
+    timestamps = unlist(collection$getData() %>% dplyr::select("time") %>% dplyr::transmute(as.character(time)))
+
+    b = brick(rasterList)
     values = raster::extract(b,
                              regions,
                              na.rm=TRUE,
                              fun=func,
-                             df=TRUE)
+                             df=FALSE)
     
-    colnames(values) = c(colnames(regions@data),timestamps)
-    out = SpatialPolygonsDataFrame(polygonList,data=values)
     
-    return(out)
+    # colnames(values) = c(colnames(regions@data),timestamps)
+    # out = SpatialPolygonsDataFrame(polygonList,data=values)
+    # crs(out) <- crs(regions)
+    
+    old_dimensionality = collection$dimensions
+    result = Collection$new(old_dimensionality)
+    result$addFeature(space = polygonList,time=(collection$getData() %>% dplyr::select("time")),band=func_name,data=values)
+    
+    
+    return(result)
     
   }
 )
@@ -140,33 +151,42 @@ find_min = Process$new(
       required = TRUE
     )
   ),
+  modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
     cat("Starting find_min\n")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
-    #get a list of the data (raster objects)
-    rasters = lapply(collection$granules, function(obj){obj$data})
-    cat("Fetched related granules\n")
-    #create a brick
-    data = stack(rasters)
-    cat("Stacking data")
-    
-    #calculate
-    minimum = calc(data,fun=min,na.rm=T)
-    cat("calculating the minimum\n")
-    
-    #create a granule
-    aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
-    cat("creating single granule for minimum calculation\n")
-    
-    #create a collection
-    collection = Collection$new()
-    collection$addGranule(aggregation)
-    collection$sortGranulesByTime
-    cat("Creating collection for single granule and setting meta data\n")
-    
-    return(collection)
+    if (!collection$dimensions$band) {
+      #get a list of the data (raster objects)
+      rasters = collection$getData()$data
+      
+      cat("Fetched related granules\n")
+      #create a brick
+      data = stack(rasters)
+      cat("Stacking data\n")
+      
+      #calculate
+      minimum = calc(data,fun=min,na.rm=T)
+      cat("calculating the minimum\n")
+      
+      #create a granule
+      # aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
+      cat("creating single granule for minimum calculation\n")
+      
+      dims = collection$dimensions
+      dims$time = FALSE
+      
+      #create a collection
+
+      result = Collection$new(dimensions = dims) #modified afterwards
+      result$addGranule(data=minimum)
+      cat("Creating collection for single granule and setting meta data\n")
+      
+      return(result)
+    } else {
+      stop("Not implemented yet. Group by band and apply function, or reduce band dimension")
+    }
   }
 )
 
@@ -189,18 +209,22 @@ filter_bbox = Process$new(
               Argument$new(name = "top",
                            description = "The top value of a spatial extent",
                            required = TRUE)),
+  modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
-    cropped_granules = lapply(collection$granules, function(granule) {
-      granule$data = crop(granule$data,e)
-      granule$extent = extent(granule$data)
-      return(granule)
-    })
-    output = collection$clone(deep=TRUE)
+    srs = collection$getGlobalSRS()
     
-    output$granules = cropped_granules
+    data_table = collection$getData()
+    
+    #TODO filter for intersection first!!! also calculate intersections
+    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=e)),
+                                                space = list(extent2polygon(e,srs)))
+    
+    output = collection$clone(deep=TRUE)
+    output$setData(cropped_data)
+    
     return(output)
   }
 )
@@ -224,37 +248,121 @@ calculate_ndvi = Process$new(
                description = "The band id of the visible red band",
                required = TRUE
              )),
+  modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
+
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
     cat("Fetched indices for bands\n")
     
+    if (collection$dimensions$time) {
+      group = collection$getData() %>% group_by(time) 
+    } else {
+      group = collection$getData()
+    }
+    
+    ndvi_calculation = group %>% 
+      filter(band %in% c(red.index,nir.index)) %>% 
+      arrange(band) %>% 
+      dplyr::summarise(space = list(first(space)), data= tibble(data) %>% (function(x,...){
+        s = stack(x$data)
+        ndvi = calc(s, fun= function(x) {
+          (x[2] - x[1])/(x[2] + x[1])
+        })
+        return(list(ndvi))
+      }))
+    
     # fetch the data elements and simultanously calculate ndvi
-    rasters = lapply(collection$granules, function(obj){
-      data = obj$data
-      ndvi = calc(data, fun= function(x) {
-        (x[nir.index] - x[red.index])/(x[nir.index] + x[red.index])
-      })
-      
-      granule = Granule$new(time = obj$time,
-                            data = ndvi,
-                            bands = list(
-                              ndvi = Band$new(
-                                band_id = "ndvi"
-                              )
-                            ))
-      return(granule)
-    })
+
     cat("ndvi calculation applied on all granules\n")
     
-    result.collection = Collection$new()
-    result.collection$granules = rasters
-    result.collection$sortGranulesByTime()
+    result.collection = collection$clone(deep=TRUE)
+ 
+    result.collection$setData(ndvi_calculation)
     cat("set metadata for newly calculated collection\n")
     
     return(result.collection)
+  }
+)
+
+# aggregate_time ====
+aggregate_time = Process$new(
+  process_id = "aggregate_time",
+  description = "Applies UDF of type aggregate_time on an object of class Collection",
+  args = list(Argument$new(
+                name = "imagery",
+                description = "the spatio-temporal dataset/collection",
+                required = TRUE
+                ),
+              Argument$new(
+                name = "script",
+                description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
+                required = TRUE
+                )
+  ),
+  modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
+  operation = function(imagery, script)
+  {
+    parent = parent.frame()
+    job = parent$job
+    user = parent$user
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    if (startsWith(script, "/"))
+    {
+      script = gsub("^/", "", script)
+    }
+    
+    # fla: if the file is hosted at this backend
+    # else we need to download it first.
+    file.path = paste(user$workspace,"files", script, sep="/")
+    
+    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    
+    if (!dir.exists(udf_transaction_folder)) {
+      dir.create(udf_transaction_folder,recursive = TRUE)
+    }
+    
+    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
+    if (!dir.exists(results.file.path)) {
+      dir.create(results.file.path,recursive = TRUE)
+    }
+    
+    write_generics(collection,dir_name = udf_transaction_folder)
+    
+    oldwd = getwd()
+    
+    tryCatch({
+      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
+      # as long we run the code in this server application. if we create another process, this might fail
+      
+      source(file = file.path, local = TRUE) 
+      # we need to specify where to store the results here
+      # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
+      # blind at this point. There is nothing fix where the backend can find the results!
+      
+      
+      
+      # Now read back results present at results.file.path
+      # To be implemented once classes for data I/O have been re-written
+      # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
+      # -> modification is applied afterwards
+      
+      # TODO replace code with something that is read from a global meta data file
+      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
+      
+      return(result.collection)
+    }, 
+    error = function(e) {
+      cat(paste("ERROR:",e))
+    },finally= function(){
+      setwd(oldwd)
+      # cleanup at this point the results should been written to disk already, clear export!
+      # unlink(udf_export_folder,recursive = TRUE)
+    })
+    
   }
 )
 
@@ -266,13 +374,13 @@ calculate_ndvi = Process$new(
 #' @export
 getCollectionFromImageryStatement = function (imagery) {
   collection = NULL
-  if (isProduct(imagery)) {
+  if (is.Product(imagery)) {
     collection = imagery$getCollection()
-  } else if (isCollection(imagery)) {
+  } else if (is.Collection(imagery)) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
-  } else if (isExecutableProcess(imagery)) {
+  } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
     if ("product_id" %in% names(imagery)) {

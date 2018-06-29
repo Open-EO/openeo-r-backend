@@ -12,7 +12,6 @@ Product <- R6Class(
           source= NULL,
           extent = NULL,
           time = NULL,
-          bands = NULL,
           srs=NULL,
           
           # functions ====
@@ -20,8 +19,6 @@ Product <- R6Class(
             self$product_id = product_id
             self$description= description
             self$source=source
-            private$collection = Collection$new()
-            self$bands = list()
           },
           shortInfo = function() {
             list(
@@ -42,9 +39,6 @@ Product <- R6Class(
               bands=self$getBandList()
             )
           },
-          addGranule = function(granule) {
-            private$collection$addGranule(granule=granule)
-          },
           deriveMetadata = function() {
             private$collection$sortGranulesByTime()
             
@@ -53,12 +47,6 @@ Product <- R6Class(
             
             self$extent = private$collection$calculateExtent()
             self$srs = private$collection$getGlobalSRS()
-            
-            firstGranule = self$getCollection()$granules[[1]]
-            if (is.null(self$bands) || length(self$bands) == 0) {
-              self$bands = firstGranule$bands
-            }
-            
           },
           getBandList = function() {
             bands = self$bands
@@ -69,8 +57,21 @@ Product <- R6Class(
           },
           getCollection = function() {
             return(private$collection)
+          },
+          setCollection = function(collection) {
+            if (!is.Collection(collection)) {
+              stop("Cannot assign non Collection parameter as collection.")
+            }
+            
+            private$collection = collection
           }
           
+        ),
+        # actives ----
+        active = list(
+          bands = function() {
+            return(private$collection$getBandsMetadata())
+          }
         ),
         # private ----
         private = list(
@@ -82,6 +83,6 @@ Product <- R6Class(
 # statics ====
 
 #' @export
-isProduct = function(obj) {
+is.Product = function(obj) {
   return("Product" %in% class(obj))
 }

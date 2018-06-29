@@ -4,8 +4,12 @@
 ExecutableProcess <- R6Class(
   "ExecutableProcess",
   inherit = Process,
+  # public ----
   public = list(
-    
+    # attributes ====
+    job = NULL,
+    user = NULL,
+    # functions ====
     initialize= function(process_id = NA,
                         description = NA,
                         args = NA,
@@ -23,7 +27,7 @@ ExecutableProcess <- R6Class(
             self[[key]] = value
           }
         }
-        self$operation <- process$operation
+        self$operation = process$operation
       } else {
         self$process_id = process_id
         self$description = description
@@ -39,15 +43,18 @@ ExecutableProcess <- R6Class(
           name = self$args[[key]]$name
           value = self$args[[key]]$value
       
-          if (isExecutableProcess(value)) {
+          if (is.ExecutableProcess(value)) {
             parameter[[name]] = value$execute()
           } else {
             parameter[[name]] = value
           }
 
         }
+        result = do.call(self$operation,parameter,envir = self)
+        # modify dimensionality
+        result$dimensions = dim.apply(result$dimensions, self$dimensions_modifier)
         
-        return(do.call(self$operation,parameter))
+        return(result)
     },
     
     detailedInfo = function() {
@@ -65,6 +72,7 @@ ExecutableProcess <- R6Class(
   )
 )
 
-isExecutableProcess = function(obj) {
+# statics ----
+is.ExecutableProcess = function(obj) {
   return(all(c("ExecutableProcess", "Process") %in% class(obj)) )
 }

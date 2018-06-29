@@ -1,11 +1,10 @@
-FROM openeo-baseserver:1.2
+FROM openeo-baseserver:1.5
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.2.2"
+LABEL version="0.2.5"
 LABEL description="A simple openeo (almost) conformant backend for frontend development"
 
 # create the path for the user files
-RUN mkdir -p /opt/dockerfiles/
-RUN mkdir -p /var/openeo/workspace/
+RUN mkdir -p /opt/dockerfiles/ && mkdir -p /var/openeo/workspace/
 
 COPY ./ /opt/dockerfiles/
 

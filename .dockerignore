@@ -2,4 +2,6 @@
 .Rhistory
 .RData
 *.Rproj
+.git
+data
 openeo.sqlite

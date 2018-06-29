@@ -58,17 +58,26 @@ OpenEOServer <- R6Class(
         }
         self$host = host_name
         
+        # fill missing environment variables
+        self$initEnvironmentDefault()
+        
+        # create folders if they don't exist already
         batch_job_download_dir = paste(openeo.server$workspaces.path,"jobs",sep="/")
         
         if (! dir.exists(batch_job_download_dir)) {
           dir.create(batch_job_download_dir,recursive = TRUE)
         }
         
-        self$initEnvironmentDefault()
+        udf_temp_dir = paste(openeo.server$workspaces.path,"udf",sep="/")
         
+        if (! dir.exists(udf_temp_dir)) {
+          dir.create(udf_temp_dir,recursive = TRUE)
+        }
+        
+        # TODO revise this... probably we don't need to migrate any longer
         # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|services]")
+        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|udf|services]",full.names = TRUE)
+        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|udf|jobs|services]")
         if (length(user_ids) > 0) {
           if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
             dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
@@ -92,7 +101,7 @@ OpenEOServer <- R6Class(
         listName = NULL
         newObj = NULL
         
-        if (isProcess(obj)) {
+        if (is.Process(obj)) {
           if (is.null(self$processes)) {
             self$processes = list()
           }
@@ -101,7 +110,7 @@ OpenEOServer <- R6Class(
           newObj = list(obj)
           names(newObj) = obj$process_id
           
-        } else if (isProduct(obj)) {
+        } else if (is.Product(obj)) {
           if (is.null(self$data)) {
             self$data = list()
           }
@@ -118,86 +127,19 @@ OpenEOServer <- R6Class(
         self[[listName]] = append(self[[listName]],newObj)
         
       },
-      
-      delete = function(obj) {
-        con = self$getConnection()
-        if (isJob(obj)) {
-          # unlink(obj$filePath, recursive = TRUE,force=TRUE)
-          dbExecute(con, "delete from job where job_id = :id",param=list(id=obj$job_id))
-        } else if (isUser(obj)) {
-          unlink(obj$workspace,recursive = TRUE)
-          dbExecute(con, "delete from user where user_id = :id",param=list(id=obj$user_id))
-        }
-        dbDisconnect(con)
-        
-      },
-      
-      createJob = function(user,job_id = NULL, process_graph = process_graph, storeProcessGraph = TRUE) {
-        if (is.null(job_id)) {
-          job_id = private$newJobId()
-        }
-        if (!is.null(process_graph) && is.list(process_graph) && storeProcessGraph) {
-          # get graph_id
-          process_graph = self$createProcessGraph(process_graph, user$user_id)
-        }
-        
-        job = Job$new(job_id = job_id, process_graph = process_graph,user_id = user$user_id)
-        
-        
-        return(job)
-      },
 
       createUser = function(user_name, password, silent=FALSE) {
-        files.folder = "files"
-        
-        if (!self$userExists(user_name=user_name)) {
-        id = private$newUserId()
-        
-        user = User$new(user_id = id)
+        user = User$new()
         user$user_name = user_name
         user$password = password
         
-        user_info = data.frame(user_id = id, user_name=user_name, password = password, login_secret = "")
+        user$store()
         
-        con = self$getConnection()
-        if (dbGetQuery(con, "select count(*) from user where user_id=:id",
-                       param=list(id = id)) == 0) {
-          dbWriteTable(con,"user",as.data.frame(user_info),append=TRUE)
-        }
-        dbDisconnect(con)
-        
-        dir.create(user$workspace, showWarnings = FALSE)
-        dir.create(paste(user$workspace, files.folder, sep="/"), showWarnings = FALSE)
-        
-          if (!silent) {
-            return(user)
-          }
+        if (silent) {
+          invisible(user)
         } else {
-          user = self$loadUser(user_name=user_name)
-          
-          if (!silent) {
-            return(user)
-          }
+          return(user)
         }
-        
-      },
-      
-      createProcessGraph = function(process_graph, user_id) {
-        pgid = private$newProcessGraphId()
-        
-        if (is.list(process_graph)) {
-          process_graph = toJSON(process_graph,auto_unbox=TRUE,pretty=TRUE)
-        } else {
-          stop("process_graph is no list object")
-        }
-        process_graph = encodeProcessGraph(process_graph)
-        
-        con = self$getConnection()
-        dbExecute(con, "insert into process_graph (graph_id, user_id, process_graph) values (:graphId, :userId, :graph)",
-                  param = list(graphId = pgid, userId = user_id, graph = process_graph))
-        dbDisconnect(con)
-        
-        return(pgid)
       },
 
       
@@ -277,121 +219,15 @@ OpenEOServer <- R6Class(
           self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
-      
-      loadUser = function(user_id=NULL,user_name=NULL) {
-        userExists = self$userExists(user_id=user_id, user_name = user_name)
-        
-        if (userExists) {
-          
-          con = self$getConnection()
-          if (!is.null(user_id)) {
-            
-            user_info = dbGetQuery(con, "select * from user where user_id = :id"
-                                   ,param = list(id=user_id))
-            
-            
-          } else if (!is.null(user_name)){
-            user_info = dbGetQuery(con, "select * from user where user_name = :name"
-                                   ,param = list(name=user_name))
-          } 
-          dbDisconnect(con)  
-        
-          user = User$new(user_info$user_id)
-          user$user_name = user_info$user_name
-          return(user)
-        } else {
-          stop("Cannot load user. It doesn't exists or too many user entries.")
-        }
-        
-      },
-      loadJob = function(job_id) {
-        if (self$jobExists(job_id)) {
-          con = self$getConnection()
-          job_info = dbGetQuery(con, "select * from job where job_id = :id"
-                                 ,param = list(id=job_id))
-          dbDisconnect(con)
-          
-          job = Job$new(job_id)
-          job$user_id = job_info$user_id
-          job$status = job_info$status
-          job$submitted = job_info$submitted
-          job$last_update = job_info$last_update
-          job$consumed_credits = job_info$consumed_credits
-          job$process_graph = self$loadProcessGraph(job_info$process_graph) #from db
-          job$persistent = TRUE
-          
-          job$loadProcessGraph() # create executable graph and store output on job$output
-          
-          
-          return(job)
-        }
-      },
-      loadProcessGraph = function(graph_id) {
-        # note: this is a function to load the process graph from db; NOT the one where the process graph is created
-        if (self$graphExists(graph_id)) {
-          con = self$getConnection()
-          graph_binary = dbGetQuery(con, "select process_graph from process_graph where graph_id = :id",
-                                    param = list(id = graph_id))[1,]
-          dbDisconnect(con)
-          graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
-          return(graph_list)
-        } else {
-          return(NULL)
-        }
-        
-      },
-      jobExists = function(job_id) {
-        if (nchar(job_id) == 15) {
-          con = self$getConnection()
-          result = dbGetQuery(con, "select count(*) from job where job_id = :id"
-                              ,param = list(id=job_id)) == 1
-          dbDisconnect(con)
-          return(result)
-        } else {
-          return(FALSE)
-        }
-      },
-      graphExists = function(graph_id) {
-        if (nchar(graph_id) == 18) {
-          con = self$getConnection()
-          result = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id"
-                              ,param = list(id=graph_id)) == 1
-          dbDisconnect(con)
-          return(result)
-        } else {
-          return(FALSE)
-        }
-      },
-      userExists = function(user_id = NULL, user_name=NULL) {
-        if (is.null(user_id) && is.null(user_name)) {
-          stop("Cannot search for user without any information.")
-        }
-        con = self$getConnection()
-        if (is.null(user_id)) {
-          #search by name
-          exists = dbGetQuery(con,"select count(user_id) from user where user_name = :name",param=list(name=user_name)) == 1
-        } else {
-          #search by id
-          exists = dbGetQuery(con,"select count(user_id) from user where user_id = :id",param=list(id = user_id)) == 1
-        }
-        dbDisconnect(con)
-        return(exists)
-      },
-      deleteJob = function(job_id) {
-        con = openeo.server$getConnection()
-        success = dbExecute(con,"delete from job where job_id = :id",param=list(id = job_id)) == 1
-        dbDisconnect(con)
-        
-        return(success)
-      },
-      runJob = function(job, outputPath,format=NULL) {
+
+      runJob = function(job, format=NULL) {
           job_id = job$job_id
           
-          if (!dir.exists(outputPath)) {
-            dir.create(outputPath,recursive = TRUE)
+          if (!dir.exists(job$output.folder)) {
+            dir.create(job$output.folder,recursive = TRUE)
           }
           
-          log = paste(outputPath, "process.log",sep="/")
+          log = paste(job$output.folder, "process.log",sep="/")
           
           logToFile(file=log)
           tryCatch({
@@ -412,7 +248,7 @@ OpenEOServer <- R6Class(
             }
 
             cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = outputPath)
+            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
             cat("Output finished\n")
           }, error = function(e) {
             cat(str(e))
@@ -460,48 +296,13 @@ OpenEOServer <- R6Class(
         self$register(filter_bands)
         self$register(zonal_statistics)
         self$register(filter_bbox)
+        self$register(aggregate_time)
 
-      },
-      
-      newJobId = function() {
-        randomString = createAlphaNumericId(n=1,length=15)
-        
-        
-        if (self$jobExists(randomString)) {
-          # if id exists get a new one (recursive)
-          return(private$newJobId())
-        } else {
-          return(randomString)
-        }
-      },
-      
-      newUserId = function() {
-        id = runif(1, 10^8, (10^9-1))
-        
-        con = self$getConnection()
-        userIdExists = dbGetQuery(con, "select count(*) from user where user_id = :id", param=list(id=id)) == 1
-        dbDisconnect(con)
-        
-        if (userIdExists) {
-          return(private$newUserId())
-        } else {
-          return(floor(id))
-        }
-      },
-      
-      newProcessGraphId = function() {
-        randomString = createAlphaNumericId(n=1,length=18)
-        
-        con = self$getConnection()
-        userIdExists = dbGetQuery(con, "select count(*) from process_graph where graph_id = :id", param=list(id=randomString)) == 1
-        dbDisconnect(con)
-        
-        if (userIdExists) {
-          return(private$newProcessGraphId())
-        } else {
-          return(randomString)
-        }
       }
+      
+
+      
+      
     )
 )
 
@@ -544,55 +345,23 @@ createServerInstance = function() {
   invisible()
 }
 
-#' Migration tool
+
+# DatabaseEntity Interface ----
+#' Interface for all elements stored in a database
 #' 
-#' This functions migrates the old file based information storage into the sqlite solution.
-#' 
-#' @param db sqlite database connection
-#' @param workspace the user workspace, where to find the user folders
-#' 
-#' @export
-migrateFilesToDB = function(db, workspace) {
-  df = data.frame(user_id=list.files(workspace),workspace=list.files(workspace,full.names = TRUE))
-  df$jobs_workspace = paste(df$workspace,"jobs",sep="/")
-  df$files_workspace = paste(df$workspace,"files",sep="/")
-  df$user_file = paste(df$workspace, "user.json",sep="/")
-  
-  for (row_no in 1:nrow(df)) {
-    row = df[row_no,]
-    # read user.json
-    if (file.exists(row$user_file)) {
-      user_info = fromJSON(row$user_file)
-      user_info$login_secret = ""
-      if (dbGetQuery(db,"select count(*) from user where user_id=:id",param=list(id=user_info$user_id))==0) {
-        dbWriteTable(db,"user",as.data.frame(user_info),append=TRUE)
-      }
+#' The class does not offer much functionality, but reserves some function names to be available to all
+#' inheriting classes. Usually the ineriting class should implement those functions in a proper way.
+DatabaseEntity = R6Class(
+  "DatabaseEntity",
+  public = list(
+    load = function() {
+      
+    },
+    store = function() {
+      
+    },
+    remove = function() {
+      
     }
-    
-    # make job list
-    if (dir.exists(row$jobs_workspace)) {
-      jobs = data.frame(job_id = paste(list.files(row$jobs_workspace)), 
-                        job_path = paste(list.files(row$jobs_workspace, full.names=TRUE),"process_graph.json",sep="/"),
-                        stringsAsFactors=FALSE)
-      for(job_row_no in 1:nrow(jobs)) {
-        job_row = jobs[job_row_no,]
-        
-        if (file.exists(job_row$job_path)) {
-          
-          if (dbExistsTable(db,"job") && 
-              dbGetQuery(db, "select count(*) from job where job_id = :id",param=list(id=job_row$job_id)) == 0) {
-            job = fromJSON(paste(job_row$job_path))
-            job$job_id = job_row$job_id
-            process_graph = job$process_graph
-            job$submitted = job$submitted
-            job$process_graph = as.character(toJSON(process_graph,auto_unbox = TRUE))
-            
-            
-            columns = dbListFields(db,"job")
-            dbWriteTable(db,"job",as.data.frame(job)[,columns],append=TRUE)
-          }  
-        }
-      }
-    }
-  }
-}
+  )
+)
