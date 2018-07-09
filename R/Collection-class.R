@@ -188,7 +188,7 @@ Collection <- R6Class(
       } 
       
       
-      if (!is.null(band) && length(band) > 1) {
+      if (!is.null(band) && length(band) >= 1) { #unstack also one banded images
         # add multiple bands
         bands = unstack(data)
         adding = tibble(band = band)
