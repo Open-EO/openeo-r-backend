@@ -353,9 +353,15 @@ aggregate_time = Process$new(
     error = function(e) {
       cat(paste("ERROR:",e))
     },finally= function(){
-      setwd(oldwd)
       # cleanup at this point the results should been written to disk already, clear export!
-      # unlink(udf_transaction$input,recursive = TRUE)
+      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
+      unlink(files[!grepl("result",files)],recursive = TRUE)
+      
+      dirs=list.dirs(".")
+      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      
+      setwd(oldwd)
+      
     })
     
   }

@@ -329,9 +329,6 @@ Collection <- R6Class(
         if (self$dimensions$time) {
           # order by bands if present, stack single bands into one file
           
-          # space is fixed (for now)
-          # TODO rework the holding of spatial extents in a spatial* data.frame where we store the feature and
-          # state the IDs in the table
           if (self$dimensions$band) {
             private$data_table = private$data_table %>% 
             group_by(time,space) %>% 
@@ -436,7 +433,6 @@ Collection <- R6Class(
         }
         
         if (self$dimensions$time) {
-          # TODO group also by band! currently assuming that we have only one attribute--hmm maybe it doesn't matter
           out = private$data_table %>% dplyr::group_by(space) %>% dplyr::arrange(time) %>% dplyr::summarise(data=tibble(band,time,data) %>% (function(x, ...){
             values = unlist(x$data)
             names = paste(x$band,as.character(x$time), sep=".")
