@@ -26,9 +26,10 @@ write_generics = function(collection_obj, dir_name = "disk") #dir_name could be 
 #' to the specified UDF REST processing service. Currently implemented only for raster timeserires collections.
 #' 
 #' @param collection Collection object
+#' @param strategy the tiling strategy (not implemented yet)
 #' @return list that can be transformed into "UdfData" JSON
 #' @export
-udf_export = function(collection) {
+udf_export = function(collection,strategy) {
   if (! is.Collection(collection)) {
     stop("Passed object is not a Collection object")
   }
@@ -46,6 +47,19 @@ udf_export = function(collection) {
     stop("Not yet implemented")
   }
   
+}
+
+udf_request = function(collection,strategy=NULL,udf_transaction) {
+  # TODO remove the hard coded backend selection
+  request = list(
+    code = list(
+      language = "R",
+      source = readChar(udf_transaction$script, file.info(udf_transaction$script)$size)
+    ),
+    data = udf_export(collection = collection, strategy = strategy)
+  )
+  
+  return(request)
 }
 
 #' Creates RasterCollectionTile representation
@@ -104,4 +118,42 @@ raster_collection_export = function(collection) {
     })
   )
   return(modified[["exported"]])
+}
+
+prepare_udf_transaction = function(user,script) {
+  # TODO mayb script is URL
+  isURL = FALSE
+  
+  # <workspace>/udf/<transactionid>/
+  transaction_id = createAlphaNumericId(n=1,length=18)
+  
+  if (isURL) {
+    # download the script and store it in the user workspace
+    script.url = script
+  } else {
+    # then we need to make the script accessable as URL
+    file.path = paste(user$workspace,"files", script, sep="/")
+  }
+  
+  
+  udf_transaction_folder = paste(openeo.server$udf_transactions.path,transaction_id,sep="/")
+  
+  if (!dir.exists(udf_transaction_folder)) {
+    dir.create(udf_transaction_folder,recursive = TRUE)
+  }
+  
+  results.file.path = paste(udf_transaction_folder, "results", sep = "/")
+  if (!dir.exists(results.file.path)) {
+    dir.create(results.file.path,recursive = TRUE)
+  }
+  
+  udf_transaction = list(
+    id = transaction_id,
+    script = file.path,
+    input = udf_transaction_folder,
+    result = results.file.path
+  )
+  class(udf_transaction) = "udf_transaction"
+  
+  return(udf_transaction)
 }

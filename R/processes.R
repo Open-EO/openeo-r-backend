@@ -315,30 +315,25 @@ aggregate_time = Process$new(
       script = gsub("^/", "", script)
     }
     
+    
     # fla: if the file is hosted at this backend
     # else we need to download it first.
-    file.path = paste(user$workspace,"files", script, sep="/")
     
-    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    # prepare paths
+    udf_transaction = prepare_udf_transaction(user,script)
     
-    if (!dir.exists(udf_transaction_folder)) {
-      dir.create(udf_transaction_folder,recursive = TRUE)
-    }
-    
-    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
-    if (!dir.exists(results.file.path)) {
-      dir.create(results.file.path,recursive = TRUE)
-    }
-    
-    write_generics(collection,dir_name = udf_transaction_folder)
+    # export data
+    write_generics(collection,dir_name = udf_transaction$input)
+    #testing
+    write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$input,"udf_request.json",sep="/"))
     
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
+      setwd(udf_transaction$input) # TODO revise this, this is and can be only temporary! this can only work
       # as long we run the code in this server application. if we create another process, this might fail
       
-      source(file = file.path, local = TRUE) 
+      source(file = udf_transaction$script, local = TRUE) 
       # we need to specify where to store the results here
       # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
       # blind at this point. There is nothing fix where the backend can find the results!
@@ -351,7 +346,7 @@ aggregate_time = Process$new(
       # -> modification is applied afterwards
       
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(udf_transaction$result, "out_legend.csv", sep = "/"), code = "11110")
       
       return(result.collection)
     }, 
@@ -360,7 +355,7 @@ aggregate_time = Process$new(
     },finally= function(){
       setwd(oldwd)
       # cleanup at this point the results should been written to disk already, clear export!
-      # unlink(udf_export_folder,recursive = TRUE)
+      # unlink(udf_transaction$input,recursive = TRUE)
     })
     
   }

@@ -31,8 +31,11 @@ OpenEOServer <- R6Class(
       workspaces.path = NULL,
       sqlite.path = NULL,
       
+      udf_transactions.path = NULL,
+      
       api.port = NULL,
       host = NULL,
+      baseserver.url = "http:localhost:8000/api/",
       mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
       
       processes = NULL,
@@ -195,13 +198,21 @@ OpenEOServer <- R6Class(
         if (is.null(self$workspaces.path)) {
           self$workspaces.path <- getwd()
         }
+        
         if (is.null(self$data.path)) {
           self$data.path <- paste(self$workspaces.path,"data",sep="/")
-          
-          if (!dir.exists(self$data.path)) {
-            dir.create(self$data.path,recursive = TRUE)
-          }
         }
+        if (!dir.exists(self$data.path)) {
+          dir.create(self$data.path,recursive = TRUE)
+        }
+        
+        if (is.null(self$udf_transactions.path)) {
+          self$udf_transactions.path = paste(self$workspaces.path,"udf",sep="/")
+        }
+        if (!dir.exists(self$udf_transactions.path)) {
+          dir.create(self$udf_transactions.path, recursive = TRUE)
+        }
+        
         if (is.null(self$secret.key)) {
           self$secret.key <- sha256(charToRaw("openEO-R"))
         }

@@ -105,7 +105,6 @@ Collection <- R6Class(
     },
     
     addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL) {
-      
       dot_args = list(...)
       
       if (is.character(data)) {
@@ -190,13 +189,17 @@ Collection <- R6Class(
       
       if (!is.null(band) && length(band) >= 1) { #unstack also one banded images
         # add multiple bands
-        bands = unstack(data)
         adding = tibble(band = band)
         if (self$dimensions$time) {
           adding = add_column(adding,time = time)
         }
         
-        layer = unstack(data)
+        if (class(data) != "RasterLayer") {
+          layer = unstack(data)
+        } else {
+          layer = list(data)
+        }
+        
         adding = add_column(adding,data=layer)
         
         if (self$dimensions$space) {
@@ -626,11 +629,9 @@ read_legend = function(legend.path,code, ...) {
   # prepareBands
   parentFolder = dirname(legend.path)
   
-  bandinfo = table %>% group_by(band_index) %>% summarise(band = first(band), data = first(filename)) %>% arrange(band_index)
+  bandinfo = table %>% group_by(band_index) %>% dplyr::summarise(band = first(band), data = first(filename)) %>% dplyr::arrange(band_index)
   # use band as band_index
   dots$band_id = bandinfo$band
-  
-  
   
   for (i in 1:nrow(table)) {
     row = table[i,]
