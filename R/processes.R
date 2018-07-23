@@ -322,6 +322,7 @@ aggregate_time = Process$new(
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script)
     
+    
     # export data
     write_generics(collection,dir_name = udf_transaction$input)
     #testing
@@ -338,8 +339,6 @@ aggregate_time = Process$new(
       # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
       # blind at this point. There is nothing fix where the backend can find the results!
       
-      
-      
       # Now read back results present at results.file.path
       # To be implemented once classes for data I/O have been re-written
       # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
@@ -352,11 +351,11 @@ aggregate_time = Process$new(
     }, 
     error = function(e) {
       cat(paste("ERROR:",e))
-    },finally= function(){
+    },finally = {
       # cleanup at this point the results should been written to disk already, clear export!
       files = list.files(path=".", recursive = TRUE,full.names = TRUE)
       unlink(files[!grepl("result",files)],recursive = TRUE)
-      
+
       dirs=list.dirs(".")
       unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
       
