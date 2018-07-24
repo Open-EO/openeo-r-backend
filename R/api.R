@@ -41,6 +41,7 @@
     "/data/",
     "/data/{product_id}",
     "/jobs/",
+    "/jobs/{job_id}",
     "/jobs/{job_id}/download",
     "/jobs/{job_id}/queue",
     "/processes/",
