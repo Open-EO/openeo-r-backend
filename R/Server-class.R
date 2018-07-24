@@ -308,7 +308,7 @@ OpenEOServer <- R6Class(
         self$register(zonal_statistics)
         self$register(filter_bbox)
         self$register(aggregate_time)
-
+        self$register(apply_pixel)
       }
       
 

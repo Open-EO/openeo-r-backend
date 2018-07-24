@@ -331,14 +331,9 @@ aggregate_time = Process$new(
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction$input) # TODO revise this, this is and can be only temporary! this can only work
-      # as long we run the code in this server application. if we create another process, this might fail
+      setwd(udf_transaction$input) 
       
       source(file = udf_transaction$script, local = TRUE) 
-      # we need to specify where to store the results here
-      # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
-      # blind at this point. There is nothing fix where the backend can find the results!
-      
       # Now read back results present at results.file.path
       # To be implemented once classes for data I/O have been re-written
       # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
@@ -361,6 +356,79 @@ aggregate_time = Process$new(
       
       setwd(oldwd)
       
+    })
+    
+  }
+)
+
+# apply_pixel ====
+apply_pixel = Process$new(
+  process_id = "apply_pixel",
+  description = "Applies UDF of type apply_pixel on an object of class Collection",
+  args = list(Argument$new(
+    name = "imagery",
+    description = "the spatio-temporal dataset/collection",
+    required = TRUE
+  ),
+  Argument$new(
+    name = "script",
+    description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
+    required = TRUE
+  )
+  ),
+  modifier = create_dimensionality_modifier(remove = list(band = TRUE)),
+  operation = function(imagery, script)
+  {
+    parent = parent.frame()
+    job = parent$job
+    user = parent$user
+    
+    collection = getCollectionFromImageryStatement(imagery)
+    if (startsWith(script, "/"))
+    {
+      script = gsub("^/", "", script)
+    }
+    
+    # fla: if the file is hosted at this backend
+    # else we need to download it first.
+    file.path = paste(user$workspace,"files", script, sep="/")
+    
+    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    
+    if (!dir.exists(udf_transaction_folder)) {
+      dir.create(udf_transaction_folder,recursive = TRUE)
+    }
+    
+    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
+    if (!dir.exists(results.file.path)) {
+      dir.create(results.file.path,recursive = TRUE)
+    }
+    
+    write_generics(collection,dir_name = udf_transaction_folder)
+    
+    oldwd = getwd()
+    
+    tryCatch({
+      setwd(udf_transaction_folder)
+      
+      source(file = file.path, local = TRUE) 
+
+      # TODO replace code with something that is read from a global meta data file
+      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
+      
+      return(result.collection)
+    }, 
+    error = function(e) {
+      cat(paste("ERROR:",e))
+    },finally= function(){
+      # cleanup at this point the results should been written to disk already, clear export!
+      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
+      unlink(files[!grepl("result",files)],recursive = TRUE)
+      
+      dirs=list.dirs(".")
+      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      
+      setwd(oldwd)
     })
     
   }
