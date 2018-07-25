@@ -275,6 +275,7 @@ OpenEOServer <- R6Class(
           }, error = function(e) {
             cat(str(e))
           }, finally={
+            removeJobsUdfData(job)
             logToConsole()
           })
 

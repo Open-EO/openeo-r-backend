@@ -184,3 +184,32 @@ exists.Udf = function(udf_id) {
 is.Udf = function(obj) {
   return("Udf" %in% class(obj))
 }
+
+udfIdsByJobId = function(jobid) {
+  tryCatch({
+    query = "select udf_id from udf where job_id = :jid"
+    
+    db = openeo.server$getConnection()
+    result = dbGetQuery(db, query, param = list(jid=jobid))
+    return(result)
+    
+  },finally = {
+    dbDisconnect(db)
+  })
+}
+
+removeJobsUdfData = function(job) {
+  if (openeo.server$udf_cleanup) {
+    udfids = udfIdsByJobId(job$job_id)
+    
+    if (length(udfids)>0) {
+      for (id in udfids) {
+        udf = Udf$new()
+        udf$udf_id = id
+        udf$load()
+        udf$remove()
+        udf=NULL
+      }
+    }
+  }
+}

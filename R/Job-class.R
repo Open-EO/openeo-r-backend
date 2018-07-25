@@ -305,3 +305,15 @@ exists.Job = function(job_id) {
     return(FALSE)
   }
 }
+
+syncJobId = function() {
+  randomString = paste("SYNC",createAlphaNumericId(n=1,length=11),sep="")
+  
+  
+  if (exists.Job(randomString)) {
+    # if id exists get a new one (recursive)
+    return(syncJobId())
+  } else {
+    return(randomString)
+  }
+}
