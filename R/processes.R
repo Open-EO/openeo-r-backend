@@ -320,19 +320,18 @@ aggregate_time = Process$new(
     # else we need to download it first.
     
     # prepare paths
-    udf_transaction = prepare_udf_transaction(user,script)
+    udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
     
     # export data
-    write_generics(collection,dir_name = udf_transaction$input)
+    write_generics(collection,dir_name = udf_transaction$workspace)
     #testing
-    write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$input,"udf_request.json",sep="/"))
+    write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$workspace,"udf_request.json",sep="/"))
     
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction$input) 
-      
+      setwd(udf_transaction$workspace) 
       source(file = udf_transaction$script, local = TRUE) 
       # Now read back results present at results.file.path
       # To be implemented once classes for data I/O have been re-written
@@ -340,23 +339,29 @@ aggregate_time = Process$new(
       # -> modification is applied afterwards
       
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(udf_transaction$result, "out_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(udf_transaction$results_workspace, "out_legend.csv", sep = "/"), code = "11110")
+      
+      udf_transaction = udf_transaction$load()
+      udf_transaction$status = "finished"
+      udf_transaction$end_date = format(now(),format="%Y-%m-%d %H:%M:%S")
+      udf_transaction$store()
       
       return(result.collection)
     }, 
     error = function(e) {
       cat(paste("ERROR:",e))
+      udf_transaction = udf_transaction$load()
+      udf_transaction$status = "error"
+      udf_transaction$end_date = NA
+      udf_transaction$store()
     },finally = {
-      # cleanup at this point the results should been written to disk already, clear export!
-      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
-      unlink(files[!grepl("result",files)],recursive = TRUE)
-
-      dirs=list.dirs(".")
-      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      udf_transaction$clearExportData()
       
       setwd(oldwd)
       
     })
+    
+    
     
   }
 )
@@ -392,34 +397,36 @@ apply_pixel = Process$new(
     # fla: if the file is hosted at this backend
     # else we need to download it first.
     # prepare paths
-    udf_transaction = prepare_udf_transaction(user,script)
-    
-    # file.path = paste(user$workspace,"files", script, sep="/")
+    udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
     # export data
-    write_generics(collection,dir_name = udf_transaction$input)
+    write_generics(collection,dir_name = udf_transaction$workspace)
     
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction$input) 
+      setwd(udf_transaction$workspace) 
       
       source(file = udf_transaction$script, local = TRUE) 
 
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(udf_transaction$result, "out_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(udf_transaction$results_workspace, "out_legend.csv", sep = "/"), code = "11110")
+      
+      udf_transaction = udf_transaction$load()
+      udf_transaction$status = "finished"
+      udf_transaction$end_date = format(now(),format="%Y-%m-%d %H:%M:%S")
+      udf_transaction$store()
       
       return(result.collection)
     }, 
     error = function(e) {
       cat(paste("ERROR:",e))
-    },finally= function(){
-      # cleanup at this point the results should been written to disk already, clear export!
-      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
-      unlink(files[!grepl("result",files)],recursive = TRUE)
-      
-      dirs=list.dirs(".")
-      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      udf_transaction = udf_transaction$load()
+      udf_transaction$status = "error"
+      udf_transaction$end_date = NA
+      udf_transaction$store()
+    },finally= function() {
+      udf_transaction$clearExportData()
       
       setwd(oldwd)
     })

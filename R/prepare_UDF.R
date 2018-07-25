@@ -120,40 +120,31 @@ raster_collection_export = function(collection) {
   return(modified[["exported"]])
 }
 
-prepare_udf_transaction = function(user,script) {
+prepare_udf_transaction = function(user,script,job_id = NULL) {
+  udf = Udf$new()
+  
   # TODO mayb script is URL
   isURL = FALSE
   
-  # <workspace>/udf/<transactionid>/
-  transaction_id = createAlphaNumericId(n=1,length=18)
-  
+  # TODO implement the URL check and also download script if necessary
   if (isURL) {
     # download the script and store it in the user workspace
     script.url = script
+    file.path = script.url
   } else {
     # then we need to make the script accessable as URL
     file.path = paste(user$workspace,"files", script, sep="/")
   }
   
+  udf$script = file.path
   
-  udf_transaction_folder = paste(openeo.server$udf_transactions.path,transaction_id,sep="/")
-  
-  if (!dir.exists(udf_transaction_folder)) {
-    dir.create(udf_transaction_folder,recursive = TRUE)
+  if (!is.null(job_id)) {
+    udf$job_id = job_id
+  } else {
+    udf$job_id = "sync_job"
   }
   
-  results.file.path = paste(udf_transaction_folder, "results", sep = "/")
-  if (!dir.exists(results.file.path)) {
-    dir.create(results.file.path,recursive = TRUE)
-  }
-  
-  udf_transaction = list(
-    id = transaction_id,
-    script = file.path,
-    input = udf_transaction_folder,
-    result = results.file.path
-  )
-  class(udf_transaction) = "udf_transaction"
-  
-  return(udf_transaction)
+  udf$store()
+
+  return(udf)
 }

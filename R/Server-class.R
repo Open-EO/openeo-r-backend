@@ -32,6 +32,7 @@ OpenEOServer <- R6Class(
       sqlite.path = NULL,
       
       udf_transactions.path = NULL,
+      udf_cleanup = TRUE,
       
       api.port = NULL,
       host = NULL,
@@ -187,6 +188,16 @@ OpenEOServer <- R6Class(
                     job_id text,
                     args text,
                     type text
+          )")
+        }
+        
+        if (!dbExistsTable(con,"udf")) {
+          dbExecute(con, "create table udf (
+                    udf_id text,
+                    job_id text,
+                    start_date datetime default current_timestamp,
+                    end_date datetime,
+                    status text
           )")
         }
         
