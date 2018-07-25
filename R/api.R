@@ -41,6 +41,7 @@
     "/data/",
     "/data/{product_id}",
     "/jobs/",
+    "/jobs/{job_id}",
     "/jobs/{job_id}/download",
     "/jobs/{job_id}/queue",
     "/processes/",
@@ -112,7 +113,7 @@
       }
     },
     error=function(e) {
-      error(res,403,"Login failed.")
+      openEO.R.Backend:::error(res,403,"Login failed.")
     }
   )
 }
@@ -144,16 +145,19 @@
     
   }
 
-  job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
-  
-  job = job$run()
-  
-  result = job$result
-  if (is.null(result)) {
-    openEO.R.Backend:::error(res,status = 500,msg = "The result was NULL due to an internal error during processing.")
-  }
-  
-  return(.create_output(res = res,result = job$results, format = format))
+  tryCatch({
+    job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
+    
+    job = job$run()
+    
+    if (is.null(job$results)) {
+      return(openEO.R.Backend:::error(res,status = 500,msg = "The result was NULL due to an internal error during processing."))
+    }
+    
+    return(.create_output(res = res,result = job$results, format = format))
+  }, error= function(e) {
+    return(openEO.R.Backend:::error(res=res, status = 500, msg = e))
+  })
 }
 
 .ogrExtension = function(format) {
@@ -236,7 +240,7 @@
     }
   },
   error = function(e) {
-    error(res,401,"Unauthorized")
+    openEO.R.Backend:::error(res,401,"Unauthorized")
   }
   )
 }

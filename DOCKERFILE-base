@@ -1,11 +1,10 @@
-FROM r-base:3.4.4
+FROM r-base:3.5.0
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="1.4"
+LABEL version="1.5"
 LABEL description="The basic configuration of the openeo r server image"
 
 # create the path for the user files
-RUN mkdir -p /opt/dockerfiles/
-RUN mkdir -p /var/openeo/workspace/
+RUN mkdir -p /opt/dockerfiles/ && mkdir -p /var/openeo/workspace/
 
 COPY ./ /opt/dockerfiles/
 

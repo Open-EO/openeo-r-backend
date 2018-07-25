@@ -315,52 +315,47 @@ aggregate_time = Process$new(
       script = gsub("^/", "", script)
     }
     
+    
     # fla: if the file is hosted at this backend
     # else we need to download it first.
-    file.path = paste(user$workspace,"files", script, sep="/")
     
-    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    # prepare paths
+    udf_transaction = prepare_udf_transaction(user,script)
     
-    if (!dir.exists(udf_transaction_folder)) {
-      dir.create(udf_transaction_folder,recursive = TRUE)
-    }
     
-    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
-    if (!dir.exists(results.file.path)) {
-      dir.create(results.file.path,recursive = TRUE)
-    }
-    
-    write_generics(collection,dir_name = udf_transaction_folder)
+    # export data
+    write_generics(collection,dir_name = udf_transaction$input)
+    #testing
+    write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$input,"udf_request.json",sep="/"))
     
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
-      # as long we run the code in this server application. if we create another process, this might fail
+      setwd(udf_transaction$input) 
       
-      source(file = file.path, local = TRUE) 
-      # we need to specify where to store the results here
-      # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
-      # blind at this point. There is nothing fix where the backend can find the results!
-      
-      
-      
+      source(file = udf_transaction$script, local = TRUE) 
       # Now read back results present at results.file.path
       # To be implemented once classes for data I/O have been re-written
       # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
       # -> modification is applied afterwards
       
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(udf_transaction$result, "out_legend.csv", sep = "/"), code = "11110")
       
       return(result.collection)
     }, 
     error = function(e) {
       cat(paste("ERROR:",e))
-    },finally= function(){
-      setwd(oldwd)
+    },finally = {
       # cleanup at this point the results should been written to disk already, clear export!
-      # unlink(udf_export_folder,recursive = TRUE)
+      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
+      unlink(files[!grepl("result",files)],recursive = TRUE)
+
+      dirs=list.dirs(".")
+      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      
+      setwd(oldwd)
+      
     })
     
   }
@@ -396,50 +391,37 @@ apply_pixel = Process$new(
     
     # fla: if the file is hosted at this backend
     # else we need to download it first.
-    file.path = paste(user$workspace,"files", script, sep="/")
+    # prepare paths
+    udf_transaction = prepare_udf_transaction(user,script)
     
-    udf_transaction_folder = paste(openeo.server$workspaces.path,"udf",createAlphaNumericId(n=1,length=18),sep="/")
+    # file.path = paste(user$workspace,"files", script, sep="/")
     
-    if (!dir.exists(udf_transaction_folder)) {
-      dir.create(udf_transaction_folder,recursive = TRUE)
-    }
-    
-    results.file.path = paste(udf_transaction_folder, "results", sep = "/")
-    if (!dir.exists(results.file.path)) {
-      dir.create(results.file.path,recursive = TRUE)
-    }
-    
-    write_generics(collection,dir_name = udf_transaction_folder)
+    # export data
+    write_generics(collection,dir_name = udf_transaction$input)
     
     oldwd = getwd()
     
     tryCatch({
-      setwd(udf_transaction_folder) # TODO revise this, this is and can be only temporary! this can only work
-      # as long we run the code in this server application. if we create another process, this might fail
+      setwd(udf_transaction$input) 
       
-      source(file = file.path, local = TRUE) 
-      # we need to specify where to store the results here
-      # fla: for run_UDF it should not be possible for an user to change the out_dir... we are currently 
-      # blind at this point. There is nothing fix where the backend can find the results!
-      
-      
-      
-      # Now read back results present at results.file.path
-      # To be implemented once classes for data I/O have been re-written
-      # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
-      # -> modification is applied afterwards
-      
+      source(file = udf_transaction$script, local = TRUE) 
+
       # TODO replace code with something that is read from a global meta data file
-      result.collection = read_legend(legend.path = paste(results.file.path, "out_legend.csv", sep = "/"), code = "11110")
+      result.collection = read_legend(legend.path = paste(udf_transaction$result, "out_legend.csv", sep = "/"), code = "11110")
       
       return(result.collection)
     }, 
     error = function(e) {
       cat(paste("ERROR:",e))
     },finally= function(){
-      setwd(oldwd)
       # cleanup at this point the results should been written to disk already, clear export!
-      # unlink(udf_export_folder,recursive = TRUE)
+      files = list.files(path=".", recursive = TRUE,full.names = TRUE)
+      unlink(files[!grepl("result",files)],recursive = TRUE)
+      
+      dirs=list.dirs(".")
+      unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
+      
+      setwd(oldwd)
     })
     
   }

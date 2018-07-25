@@ -105,7 +105,6 @@ Collection <- R6Class(
     },
     
     addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL) {
-      
       dot_args = list(...)
       
       if (is.character(data)) {
@@ -188,15 +187,19 @@ Collection <- R6Class(
       } 
       
       
-      if (!is.null(band) && length(band) > 1) {
+      if (!is.null(band) && length(band) >= 1) { #unstack also one banded images
         # add multiple bands
-        bands = unstack(data)
         adding = tibble(band = band)
         if (self$dimensions$time) {
           adding = add_column(adding,time = time)
         }
         
-        layer = unstack(data)
+        if (class(data) != "RasterLayer") {
+          layer = unstack(data)
+        } else {
+          layer = list(data)
+        }
+        
         adding = add_column(adding,data=layer)
         
         if (self$dimensions$space) {
@@ -326,9 +329,6 @@ Collection <- R6Class(
         if (self$dimensions$time) {
           # order by bands if present, stack single bands into one file
           
-          # space is fixed (for now)
-          # TODO rework the holding of spatial extents in a spatial* data.frame where we store the feature and
-          # state the IDs in the table
           if (self$dimensions$band) {
             private$data_table = private$data_table %>% 
             group_by(time,space) %>% 
@@ -433,7 +433,6 @@ Collection <- R6Class(
         }
         
         if (self$dimensions$time) {
-          # TODO group also by band! currently assuming that we have only one attribute--hmm maybe it doesn't matter
           out = private$data_table %>% dplyr::group_by(space) %>% dplyr::arrange(time) %>% dplyr::summarise(data=tibble(band,time,data) %>% (function(x, ...){
             values = unlist(x$data)
             names = paste(x$band,as.character(x$time), sep=".")
@@ -626,11 +625,9 @@ read_legend = function(legend.path,code, ...) {
   # prepareBands
   parentFolder = dirname(legend.path)
   
-  bandinfo = table %>% group_by(band_index) %>% summarise(band = first(band), data = first(filename)) %>% arrange(band_index)
+  bandinfo = table %>% group_by(band_index) %>% dplyr::summarise(band = first(band), data = first(filename)) %>% dplyr::arrange(band_index)
   # use band as band_index
   dots$band_id = bandinfo$band
-  
-  
   
   for (i in 1:nrow(table)) {
     row = table[i,]
@@ -645,3 +642,18 @@ read_legend = function(legend.path,code, ...) {
   
   return(collection)
 }
+
+#' @export
+setMethod("crs", signature="Collection", function(x, ...) {
+  return(crs.Collection(x,...))
+})
+
+crs.Collection = function(x, ...) {
+  if (x$dimensions$space) {
+    return(x$getGlobalSRS())
+  } else {
+    stop("Try to select a spatial reference system without a spatial dimension defined.")
+  }
+  
+}
+
