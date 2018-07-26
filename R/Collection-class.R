@@ -658,3 +658,33 @@ crs.Collection = function(x, ...) {
   
 }
 
+is.st_raster = function(x) {
+  dims = x$dimensions
+  return(dims$space && dims$time && dims$raster)
+}
+# what about multiband / attribute ?
+
+is.st_feature = function(x) {
+  dims = x$dimensions
+  return(dims$space && dims$time && dims$feature)
+}
+
+is.raster = function(x) {
+  dims = x$dimensions
+  return(dims$space && dims$raster && !dims$time)
+} 
+
+is.feature = function(x) {
+  dims = x$dimensions
+  return(dims$space && dims$feature && !dims$time)
+}
+
+is.timeseries = function(x) {
+  dims = x$dimensions
+  return(dims$time && !dims$space && !dims$raster && !dims$feature)
+}
+
+is.scalar = function(x) {
+  dims = x$dimensions
+  return(!dims$time && !dims$space && !dims$raster && !dims$feature)
+}

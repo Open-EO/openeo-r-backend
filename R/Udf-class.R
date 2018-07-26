@@ -198,7 +198,7 @@ UdfTransaction <- R6Class(
     exportCollection.json = function(collection,strategy) {
       # TODO prepare data with some sort of tiling strategy
       
-      if (collection$dimensions$raster && collection$dimensions$space && collection$dimensions$time) {
+      if (is.st_raster(collection)) {
         udf_data = list()
         udf_data[["proj"]] = as.character(collection$getGlobalSRS())
         udf_data[["raster_collection_tiles"]] = list()
