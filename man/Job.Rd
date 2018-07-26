@@ -20,9 +20,9 @@ graph.
 
 \item{\code{status}}{The current status in the job lifecycle}
 
-\item{\code{process_graph}}{graph of nested processes that is executable}
+\item{\code{process_graph}}{graph of nested processes that is executable (ExecutableProcess)}
 
-\item{\code{view}}{Spatio-Temporal Extent to be used for the calculation}
+\item{\code{view}}{Spatio-Temporal Extent to be used for the calculation (currently not in use)}
 
 \item{\code{submitted}}{Timestamp when the job was submitted to the server}
 
@@ -30,7 +30,15 @@ graph.
 
 \item{\code{consumed_credits}}{For accounting and billing the amount of credits consumed by this job}
 
-\item{\code{filePath}}{The system filepath that links to the stored JSON process graph}
+\item{\code{last_update}}{Timestamp when the job was last updated}
+
+\item{\code{output}}{output configuration like output$format copied from the process graph (pg)}
+
+\item{\code{results}}{Contains the result of the process_graph after execution (Collection)}
+
+\item{\code{persistent}}{Whether or not the job is stored in database}
+
+\item{\code{output}}{list containing the output configuration like format (or additional GDAL commands)}
 }}
 
 \keyword{datasets}

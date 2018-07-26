@@ -1,6 +1,6 @@
 #' @export
-Udf <- R6Class(
-  "Udf",
+UdfTransaction <- R6Class(
+  "UdfTransaction",
   inherit = DatabaseEntity,
   # public ----
   public = list(
@@ -128,6 +128,30 @@ Udf <- R6Class(
         dirs=list.dirs(self$workspace)
         unlink(dirs[!grepl("result",dirs)][-1], recursive = TRUE) # -1 removes the first argument (the transaction folder)
       }
+    },
+    
+    prepareExportData = function(collection, export_type="file") {
+      if (!all(export_type %in% c("file","json"))) {
+        stop("Can only support file and json based data export")
+      }
+      
+      if (! is.Collection(collection)) {
+        stop("Passed object is not a Collection object")
+      }
+      
+      if ("json" %in% export_type) {
+        json = private$createJsonRequest(collection = collection, strategy = NULL, language = "R")  
+        # TODO tiling, coordinate HTTP requests, stitch everything together
+        # for now just write to disk
+        write(toJSON(json, auto_unbox=TRUE,pretty = TRUE),
+              paste(self$workspace,"udf_request.json",sep="/"))
+      }
+      
+      if ("file" %in% export_type) {
+        write_generics(collection,dir_name = self$workspace)
+      }
+      
+      invisible(self)
     }
   ),
   # active ----
@@ -161,6 +185,100 @@ Udf <- R6Class(
       } else {
         return(randomString)
       }
+    },
+    
+    # Prepares the collection data for the UDF service request
+    # 
+    # Transforms the data contained in a Collection into a JSON representation. It will be passed along the code script URL as data
+    # to the specified UDF REST processing service. Currently implemented only for raster timeserires collections.
+    # 
+    # @param collection Collection object
+    # @param strategy the tiling strategy (not implemented yet)
+    # @return list that can be transformed into "UdfData" JSON
+    exportCollection.json = function(collection,strategy) {
+      # TODO prepare data with some sort of tiling strategy
+      
+      if (collection$dimensions$raster && collection$dimensions$space && collection$dimensions$time) {
+        udf_data = list()
+        udf_data[["proj"]] = as.character(collection$getGlobalSRS())
+        udf_data[["raster_collection_tiles"]] = list()
+        
+        udf_data[["raster_collection_tiles"]] = append(udf_data[["raster_collection_tiles"]],private$raster_collection_export(collection))
+        return(udf_data)
+      } else {
+        stop("Not yet implemented")
+      }
+      
+    },
+    
+    createJsonRequest = function(collection,strategy=NULL,language="R") {
+      # TODO remove the hard coded backend selection
+      request = list(
+        code = list(
+          language = language,
+          source = readChar(self$script, file.info(self$script)$size)
+        ),
+        data = private$exportCollection.json(collection = collection, strategy = strategy)
+      )
+      
+      return(request)
+    },
+    
+    # Creates RasterCollectionTile representation
+    # 
+    # Subsets and groups Collection data by band and space in order to create the specified UDF RasterCollectionTile JSON output.
+    # 
+    # @param collection Collection object
+    # @return list that can be transformed into "UdfData" JSON
+    raster_collection_export = function(collection) {
+      if (! is.Collection(collection)) {
+        stop("Passed object is not a Collection object")
+      }
+      
+      data = collection$getData()
+      extents = collection$space
+      
+      modified = data %>% group_by(band,space) %>% dplyr::summarise(
+        exported = tibble(band,space,data,time) %>% (function(x,...) {
+          raster_collection_tiles = list()
+          raster_collection_tiles[["id"]] = "test1"
+          
+          raster_collection_tiles[["wavelength"]] = unique(x[["band"]])
+          
+          # select sf polygons by ids stored in the data table, then give bbox from all of the sf
+          b = st_bbox(extents[x %>% dplyr::select(space) %>% unique() %>% unlist() %>% unname(),])
+          raster_collection_tiles[["extent"]] = list(
+            north = b[["ymax"]],
+            south = b[["ymin"]],
+            west = b[["xmin"]],
+            east = b[["xmax"]],
+            height = yres(x[[1,"data"]]),
+            width = xres(x[[1,"data"]])
+          )
+          
+          # times
+          times = x[["time"]]
+          tres = round(median(diff(times)))
+          raster_collection_tiles[["start_times"]] = strftime(times, "%Y-%m-%dT%H:%M:%S", usetz = TRUE)
+          raster_collection_tiles[["end_times"]] = strftime(times+tres, "%Y-%m-%dT%H:%M:%S", usetz = TRUE)
+          
+          # fetch data from raster files as matrix (store as list first other wise it messes up the matrix 
+          # structure by creating row/col as rows for each attribute)
+          raster_collection_tiles[["data"]] = x %>% apply(MARGIN=1,FUN= function(row) {
+            
+            return(list(raster::values(x=row$data, format="matrix")))
+            
+          })
+          
+          # unlist it again
+          raster_collection_tiles[["data"]] = lapply(raster_collection_tiles[["data"]], function(arr_list) {
+            arr_list[[1]]
+          })
+          
+          return(list(raster_collection_tiles))
+        })
+      )
+      return(modified[["exported"]])
     }
   )
 )
@@ -212,4 +330,33 @@ removeJobsUdfData = function(job) {
       }
     }
   }
+}
+
+prepare_udf_transaction = function(user,script,job_id = NULL) {
+  udf_transaction = UdfTransaction$new()
+  
+  # TODO mayb script is URL
+  isURL = FALSE
+  
+  # TODO implement the URL check and also download script if necessary
+  if (isURL) {
+    # download the script and store it in the user workspace
+    script.url = script
+    file.path = script.url
+  } else {
+    # then we need to make the script accessable as URL
+    file.path = paste(user$workspace,"files", script, sep="/")
+  }
+  
+  udf_transaction$script = file.path
+  
+  if (!is.null(job_id)) {
+    udf_transaction$job_id = job_id
+  } else {
+    udf_transaction$job_id = "sync_job"
+  }
+  
+  udf_transaction$store()
+  
+  return(udf_transaction)
 }

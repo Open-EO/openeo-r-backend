@@ -322,12 +322,13 @@ aggregate_time = Process$new(
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
+    udf_transaction$prepareExportData(collection,export_type=c("json","file"))
     
-    # export data
-    write_generics(collection,dir_name = udf_transaction$workspace)
-    #testing
-    write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$workspace,"udf_request.json",sep="/"))
-    
+    # # export data
+    # write_generics(collection,dir_name = udf_transaction$workspace)
+    # #testing
+    # write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$workspace,"udf_request.json",sep="/"))
+    # 
     oldwd = getwd()
     
     tryCatch({
@@ -399,8 +400,7 @@ apply_pixel = Process$new(
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
-    # export data
-    write_generics(collection,dir_name = udf_transaction$workspace)
+    udf_transaction$prepareExportData(collection,export_type="file")
     
     oldwd = getwd()
     
