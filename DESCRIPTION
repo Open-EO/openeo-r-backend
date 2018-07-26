@@ -76,5 +76,4 @@ Collate:
     'api_job.R'
     'api_data.R'
     'api.R'
-    'prepare_UDF.R'
     'serializer_proxy.R'
