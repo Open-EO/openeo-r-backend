@@ -329,6 +329,7 @@ createAPI = function() {
               "/api/service_types",
               handler = .cors_option_bypass)
   
+  
   root$registerHook("postroute",.cors_filter)
   
   credentials = createCredentialsEndpoint()
@@ -345,6 +346,9 @@ createAPI = function() {
   
   users = createUsersEndpoint()
   root$mount("/api/users",users)
+  
+  me = createMeEndpoint()
+  root$mount("/api/me",me)
   
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",

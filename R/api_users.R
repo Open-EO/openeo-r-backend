@@ -4,6 +4,22 @@ NULL
 #
 # endpoint function ====
 #
+createMeEndpoint = function() {
+  me = plumber$new()
+  
+  openeo.server$registerEndpoint("/me/","GET")
+  me$handle("GET",
+              "/",
+              handler = .userInformation,
+              serializer = serializer_unboxed_json())
+  me$handle("OPTIONS",
+              "/",
+              handler = .cors_option_bypass)
+  
+  me$filter("authorization",.authorized)
+  
+  return(me)
+}
 
 
 createUsersEndpoint = function() {
@@ -143,6 +159,11 @@ createUsersEndpoint = function() {
     error(res,401,"Not authorized to access others files")
   }
   
+}
+
+.userInformation = function(req,res) {
+  user = req$user
+  return(user$shortInfo())
 }
 
 ### this creates corrupted files, something along the line read file / write postbody is off

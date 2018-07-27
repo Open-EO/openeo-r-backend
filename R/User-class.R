@@ -11,10 +11,24 @@ User <- R6Class(
     user_name = NULL,
     password = NULL,
     token = NULL,
+    budget = NULL,
+    storage_quota = NULL,
     
     # functions ====
     initialize = function(user_id = NULL) {
       self$user_id = user_id
+    },
+    
+    shortInfo = function() {
+      return(list(
+        user_id = self$user_id,
+        user_name = self$user_name,
+        storage = list(
+          free = self$storage_quota - self$storage_size,
+          quota = self$storage_quota
+        ),
+        budget = self$budget
+      ))
     },
     
     toList = function() {
@@ -60,6 +74,8 @@ User <- R6Class(
         
         self$user_id = user_info$user_id
         self$user_name = user_info$user_name
+        self$budget = user_info$budget
+        self$storage_quota = user_info$storage_quota
         
         invisible(self)
       } else {
@@ -98,6 +114,7 @@ User <- R6Class(
 
         invisible(self)
       } else {
+        # TODO perform update for adding budget or disk quota        
         message("Skipping creation. User already exists.")
         invisible(self)
       }
@@ -148,6 +165,22 @@ User <- R6Class(
       } else {
         return(as.list(result)[[1]])
       }
+    },
+    storage_size = function() {
+      size.workspace = sum(file.size(list.files(self$workspace,recursive = TRUE,full.names = TRUE)))
+      size.jobs = sum(
+        file.size(
+          list.files(
+            sapply(self$jobs, function(job){
+              job.db = Job$new(job_id = job) 
+              return(job.db$output.folder)
+            }),
+            full.names = TRUE,
+            recursive = TRUE)
+        ), 
+        na.rm=TRUE)
+      
+      return(size.workspace+size.jobs)
     }
   ),
   # private ----

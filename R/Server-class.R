@@ -157,8 +157,23 @@ OpenEOServer <- R6Class(
           dbExecute(con, "create table user (user_id integer, 
                     user_name text, 
                     password text, 
-                    login_secret text)")
+                    login_secret text,
+                    budget real,
+                    storage_quota integer)")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from user limit 0"))
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table user add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "storage_quota" %in% columns) {
+            addColumnsQuery = "alter table user add storage_quota integer"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
         if (!dbExistsTable(con,"job")) {
           dbExecute(con, "create table job (job_id text, 
                     user_id integer, 
