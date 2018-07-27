@@ -1,0 +1,53 @@
+# authentication ----
+
+createCredentialsEndpoint = function() {
+  credentials = plumber$new()
+  
+  openeo.server$registerEndpoint("/credentials/basic","GET")
+  credentials$handle("GET",
+              "/basic",
+              handler = .login_basic,
+              serializer = serializer_unboxed_json())
+  credentials$handle("OPTIONS",
+              "/basic",
+              handler = .cors_option_bypass)
+  
+  return(credentials)
+}
+
+#* @get /api/auth/login
+#* @serializer unboxedJSON
+.login_basic = function(req,res) {
+  auth = req$HTTP_AUTHORIZATION
+  encoded=substr(auth,7,nchar(auth))
+  
+  decoded = rawToChar(base64_dec(encoded))
+  user_name = unlist(strsplit(decoded,":"))[1]
+  user_pwd = unlist(strsplit(decoded,":"))[2]
+  tryCatch(
+    {  
+      con = openeo.server$getConnection()
+      result = dbGetQuery(con, "select * from user where user_name = :name limit 1",param=list(name=user_name))
+      dbDisconnect(con)
+      
+      if (nrow(result) == 0) {
+        stop("Invalid user")
+      }
+      
+      user = as.list(result)
+      
+      if (user$password == user_pwd) {
+        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$secret.key)
+        
+        token = bin2hex(append(encryption, attr(encryption,"nonce")))
+        
+        list(user_id = user$user_id, access_token=token)
+      } else {
+        stop("Wrong password")
+      }
+    },
+    error=function(e) {
+      openEO.R.Backend:::error(res,403,"Login failed.")
+    }
+  )
+}

@@ -1,8 +1,4 @@
-############################
-#
-# data endpoint
-#
-############################
+# data endpoint ----
 
 createDataEndpoint = function() {
   data = plumber$new()

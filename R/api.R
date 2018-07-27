@@ -15,6 +15,7 @@
 #' @include api_services.R
 #' @include api_udf_runtimes.R
 #' @include api_processes.R
+#' @include api_credentials.R
 #' @import raster
 #' @import plumber
 #' @importFrom sodium data_encrypt
@@ -92,44 +93,6 @@
       )
     )
   ))
-}
-
-
-#* @get /api/auth/login
-#* @serializer unboxedJSON
-.login = function(req,res) {
-  auth = req$HTTP_AUTHORIZATION
-  encoded=substr(auth,7,nchar(auth))
-  
-  decoded = rawToChar(base64_dec(encoded))
-  user_name = unlist(strsplit(decoded,":"))[1]
-  user_pwd = unlist(strsplit(decoded,":"))[2]
-  tryCatch(
-    {  
-      con = openeo.server$getConnection()
-      result = dbGetQuery(con, "select * from user where user_name = :name limit 1",param=list(name=user_name))
-      dbDisconnect(con)
-      
-      if (nrow(result) == 0) {
-        stop("Invalid user")
-      }
-      
-      user = as.list(result)
-      
-      if (user$password == user_pwd) {
-        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$secret.key)
-        
-        token = bin2hex(append(encryption, attr(encryption,"nonce")))
-        
-        list(user_id = user$user_id, token=token)
-      } else {
-        stop("Wrong password")
-      }
-    },
-    error=function(e) {
-      openEO.R.Backend:::error(res,403,"Login failed.")
-    }
-  )
 }
 
 
@@ -368,6 +331,9 @@ createAPI = function() {
   
   root$registerHook("postroute",.cors_filter)
   
+  credentials = createCredentialsEndpoint()
+  root$mount("/api/credentials",credentials)
+  
   data = createDataEndpoint()
   root$mount("/api/data",data)
   
@@ -379,19 +345,6 @@ createAPI = function() {
   
   users = createUsersEndpoint()
   root$mount("/api/users",users)
-  
-  authentication = plumber$new()
-  
-  authentication$handle(c("GET","POST"),
-                        "/login",
-                        handler = .login,
-                        serializer = serializer_unboxed_json())
-  authentication$handle("OPTIONS",
-                       "/login",
-                       handler = .cors_option_bypass)
-  
-  root$mount("/api/auth",authentication)
-  
   
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",
