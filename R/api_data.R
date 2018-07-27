@@ -7,6 +7,7 @@
 createDataEndpoint = function() {
   data = plumber$new()
   
+  openeo.server$registerEndpoint("/data/","GET")
   data$handle("GET",
               "/",
               handler = .listData,
@@ -15,6 +16,7 @@ createDataEndpoint = function() {
               "/",
               handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/data/{data_id}","GET")
   data$handle("GET",
               "/<pid>",
               handler = .describeData,
@@ -23,13 +25,14 @@ createDataEndpoint = function() {
               "/<pid>",
               handler = .cors_option_bypass)
   
-  data$handle("GET",
-              "/opensearch",
-              handler = .not_implemented_yet,
-              serializer = serializer_unboxed_json())
-  data$handle("OPTIONS",
-              "/opensearch",
-              handler = .cors_option_bypass)
+  
+  # data$handle("GET",
+  #             "/opensearch",
+  #             handler = .not_implemented_yet,
+  #             serializer = serializer_unboxed_json())
+  # data$handle("OPTIONS",
+  #             "/opensearch",
+  #             handler = .cors_option_bypass)
   
   return(data)
 }
@@ -38,7 +41,7 @@ createDataEndpoint = function() {
 # creates an overview on products available
 #* @get /api/data
 #* @serializer unboxedJSON
-.listData = function(qname,qgeom,qstartdate,qenddate) {
+.listData = function() {
   datalist = openeo.server$data
   unname(lapply(datalist, function(l){
     return(l$shortInfo())
@@ -50,7 +53,7 @@ createDataEndpoint = function() {
 #* @serializer unboxedJSON
 .describeData = function(req,res,pid) {
   if (pid %in% names(openeo.server$data) == FALSE) {
-    return(error(res,404,"Product not found"))
+    return(error(res,404,"Dataset not found"))
   } else {
     return(openeo.server$data[[pid]]$detailedInfo())
   }

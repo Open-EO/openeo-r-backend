@@ -22,7 +22,7 @@ Product <- R6Class(
           },
           shortInfo = function() {
             list(
-              product_id=self$product_id,
+              data_id=self$product_id,
               description=self$description,
               source=self$source
             )
@@ -31,19 +31,19 @@ Product <- R6Class(
             ext=self$extent
             
             list(
-              product_id=self$product_id,
+              data_id=self$product_id,
               description=self$description,
               source=self$source,
-              extent=list(left=xmin(ext),right=xmax(ext),bottom=ymin(ext),top=ymax(ext),srs=toString(self$srs)),
-              time=self$time,
-              bands=self$getBandList()
+              spatial_extent=list(left=xmin(ext),right=xmax(ext),bottom=ymin(ext),top=ymax(ext),crs=toString(self$srs)),
+              temporal_extent=self$time,
+              bands=self$getBandList(),
+              links = list()
             )
           },
           deriveMetadata = function() {
             private$collection$sortGranulesByTime()
             
-            self$time = list(from = private$collection$getMinTime(),
-                             to = private$collection$getMaxTime())
+            self$time = paste(private$collection$getMinTime(),private$collection$getMaxTime(),sep="/")
             
             self$extent = private$collection$calculateExtent()
             self$srs = private$collection$getGlobalSRS()

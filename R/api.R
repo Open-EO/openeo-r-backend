@@ -33,36 +33,34 @@
 }
 
 .capabilities = function() {
+  endpoints = openeo.server$getEndpoints()
+  
+  endpoints = endpoints %>% group_by(path) %>% summarise(
+    path_capabilities=list(tibble(path,method) %>% (function(x,...){
+      return(list(path=unique(x$path),method=x$method))
+    }))
+  )
+  
   list(
-    "/auth/login",
-    "/capabilities",
-    "/capabilities/output_formats",
-    "/capabilities/services",
-    "/data/",
-    "/data/{product_id}",
-    "/jobs/",
-    "/jobs/{job_id}",
-    "/jobs/{job_id}/download",
-    "/jobs/{job_id}/queue",
-    "/processes/",
-    "/processes/{process_id}",
-    "/execute/",
-    "/services/",
-    "/services/{service_id}",
-    "/users/{user_id}/files",
-    "/users/{user_id}/files/{path}",
-    "/users/{user_id}/jobs",
-    "/users/{user_id}/process_graphs",
-    "/users/{user_id}/process_graphs/{graph_id}",
-    "/users/{user_id}/services"
-    
+    version = openeo.server$api.version,
+    endpoints = endpoints$path_capabilities,
+    billing = list(
+      currency = "EUR",
+      plans = list(
+        list(
+          name="free",
+          description = "Free. Unlimited calculations, no credit use. Its a test system!",
+          url="http://openeo.org/plans/free-plan"
+        )
+      )
+    )
   )
 }
 
 .output_formats = function() {
   formats = c(openeo.server$outputGDALFormats,openeo.server$outputOGRFormats)
   namedList = lapply(formats,function(format) {
-    res = list(gdalformat=format)
+    res = list()
     return(res)
   })
 
@@ -76,7 +74,23 @@
 
 .services = function() {
   return(list(
-    "wms"
+    WMS = list(
+      arguments=list(
+        version=list(
+          type="string",
+          description="The WMS version that has to be used.",
+          default="1.3.0",
+          enum=c("1.1.1","1.3.0")
+        )
+      ),
+      attributes = list(
+        layers=list(
+          type="array",
+          description="Array of layer names.",
+          example=c("b01","b02","ndvi")
+        )
+      )
+    )
   ))
 }
 
@@ -325,30 +339,31 @@ createAPI = function() {
               "/api/version",
               handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/","GET")
   root$handle("GET",
-              "/api/capabilities",
+              "/api/",
               handler = .capabilities,
               serializer = serializer_unboxed_json())
   root$handle("OPTIONS",
-              "/api/capabilities",
+              "/api/",
               handler = .cors_option_bypass)
   
-  
+  openeo.server$registerEndpoint("/output_formats","GET")
   root$handle("GET",
-              "/api/capabilities/output_formats",
+              "/api/output_formats",
               handler = .output_formats,
               serializer = serializer_unboxed_json())
-  
   root$handle("OPTIONS",
-              "/api/capabilities/output_formats",
+              "/api/output_formats",
               handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/service_types","GET")
   root$handle("GET",
-              "/api/capabilities/services",
+              "/api/service_types",
               handler = .services,
               serializer = serializer_unboxed_json())
   root$handle("OPTIONS",
-              "/api/capabilities/services",
+              "/api/service_types",
               handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)

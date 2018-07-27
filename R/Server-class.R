@@ -24,7 +24,7 @@ OpenEOServer <- R6Class(
     # public ====
     public = list(
       # attributes ----
-      api.version = "0.0.2",
+      api.version = "0.3.0",
       secret.key = NULL,
       
       data.path = NULL,
@@ -54,6 +54,8 @@ OpenEOServer <- R6Class(
         ogr_drivers = ogrDrivers()
         self$outputGDALFormats = drivers[drivers$create,"name"]
         self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
+        
+        private$endpoints = tibble(path=character(0), method = character(0))
       },
       
       startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
@@ -268,10 +270,22 @@ OpenEOServer <- R6Class(
             logToConsole()
           })
 
+      },
+      registerEndpoint = function(path, method) {
+        private$endpoints = private$endpoints %>% add_row(path=path,method=method)
+        invisible(self)
+      },
+      
+      getEndpoints = function() {
+        return(private$endpoints)
       }
     ),
-    # private ====
+    # private ----
     private = list(
+      # attributes ====
+      endpoints = NULL,
+      
+      # functions ====
       loadDemoData = function() {
         if (! all(c("landsat7","sentinel2") %in% list.files(self$data.path))) {
           cat("Downloading the demo data...  ")
@@ -354,7 +368,7 @@ createAlphaNumericId = function(n=1, length=15) {
 #' @export
 createServerInstance = function() {
   assign("openeo.server", OpenEOServer$new(),envir=.GlobalEnv)
-  invisible()
+  invisible(openeo.server)
 }
 
 
