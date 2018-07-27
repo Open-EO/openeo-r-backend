@@ -78,17 +78,6 @@ OpenEOServer <- R6Class(
           dir.create(udf_temp_dir,recursive = TRUE)
         }
         
-        # TODO revise this... probably we don't need to migrate any longer
-        # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|udf|services]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|udf|jobs|services]")
-        if (length(user_ids) > 0) {
-          if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
-            dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
-          }
-          invisible(file.rename(from=folder.names,to=paste(openeo.server$workspaces.path,"users",user_ids,sep="/")))
-        }
-        
         root = createAPI()
         
         root$registerHook("exit", function(){
