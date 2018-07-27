@@ -1,6 +1,7 @@
 #' @include Server-class.R
 #' @include Process-class.R
 #' @include dimensionality.R
+#' @include parameter_type_definitions.R
 
 # filter_daterange ====
 filter_daterange = Process$new(
@@ -10,19 +11,27 @@ filter_daterange = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "from",
       description = "start date/timestamp for the query interval",
-      required = FALSE
+      required = FALSE,
+      type = "string",
+      format = "data-time"
     ),
     Argument$new(
       name = "to",
       description = "end date/timestamp for the query interval",
-      required = FALSE
+      required = FALSE,
+      type = "string",
+      format = "data-time"
     )
   ),
+  summary="Filter by a date range",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
     cat("Starting filter_daterange\n")
@@ -56,14 +65,20 @@ filter_bands = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "bands",
       description = "one or more band ids",
-      required = TRUE
+      required = TRUE,
+      type = c("string","array"),
+      items = "string"
     )
   ),
+  summary="Filter by band(s)",
+  returns = result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
     collection = NULL
@@ -82,19 +97,26 @@ zonal_statistics = Process$new(
     Argument$new(
       name = "imagery",
       description = "The imagery data set on which the zonal statistics shall be performed",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "regions",
       description = "The relative link in the user workspace, where to find the geometries file",
-      required = TRUE
+      required = TRUE,
+      type="string",
+      format="url"
     ),
     Argument$new(
       name = "func",
       description = "An aggregation function like 'mean', 'median' or 'sum'",
-      required = TRUE
+      required = TRUE,
+      type="string"
     )
   ),
+  summary="Zonal statistics for polygons on EO data",
+  returns=result.vector,
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
     func_name = func
@@ -148,9 +170,13 @@ find_min = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     )
   ),
+  summary="Minimum value of collections per pixel",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
     cat("Starting find_min\n")
@@ -194,21 +220,35 @@ find_min = Process$new(
 filter_bbox = Process$new(
   process_id="filter_bbox",
   description="Subsets an imagery by a specific extent",
-  args = list(Argument$new(name = "imagery",
-                           description = "the spatio-temporal dataset/collection",
-                           required = TRUE),
-              Argument$new(name = "left",
-                           description = "The left value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "right",
-                           description = "The right value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "bottom",
-                           description = "The bottom value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "top",
-                           description = "The top value of a spatial extent",
-                           required = TRUE)),
+  args = list(Argument$new(
+                name = "imagery",
+                description = "the spatio-temporal dataset/collection",
+                required = TRUE,
+                type = "object",
+                format = "eodata"),
+              Argument$new(
+                name = "left",
+                description = "The left value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "right",
+                description = "The right value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "bottom",
+                description = "The bottom value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "top",
+                description = "The top value of a spatial extent",
+                required = TRUE,
+                type="number")
+              ),
+  summary="Spatial filter with Bounding Box",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
     collection = getCollectionFromImageryStatement(imagery)
@@ -236,18 +276,24 @@ calculate_ndvi = Process$new(
   args = list(Argument$new(
                name = "imagery",
                description = "the spatio-temporal dataset/collection",
-               required = TRUE
+               required = TRUE,
+               type = "object",
+               format = "eodata"
              ),
              Argument$new(
                name = "nir",
                description = "The band id of the Near Infrared (NIR) band",
-               required = TRUE
+               required = TRUE,
+               type="string"
              ),
              Argument$new(
                name = "red",
                description = "The band id of the visible red band",
-               required = TRUE
+               required = TRUE,
+               type="string"
              )),
+  summary="NDVI calculation per pixel",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
     cat("Starting calculate_ndvi\n")
@@ -294,17 +340,22 @@ aggregate_time = Process$new(
   args = list(Argument$new(
                 name = "imagery",
                 description = "the spatio-temporal dataset/collection",
-                required = TRUE
+                required = TRUE,
+                type = "object",
+                format = "eodata"
                 ),
               Argument$new(
                 name = "script",
                 description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
-                required = TRUE
+                required = TRUE,
+                type="string",
+                format="url"
                 )
   ),
+  summary="UDF: Applies an aggregation function over time.",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
-  operation = function(imagery, script)
-  {
+  operation = function(imagery, script) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
@@ -374,17 +425,22 @@ apply_pixel = Process$new(
   args = list(Argument$new(
     name = "imagery",
     description = "the spatio-temporal dataset/collection",
-    required = TRUE
+    required = TRUE,
+    type = "object",
+    format = "eodata"
   ),
   Argument$new(
     name = "script",
     description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
-    required = TRUE
+    required = TRUE,
+    type="string",
+    format="url"
   )
   ),
+  summary="UDF: applies a function pixel wise",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band = TRUE)),
-  operation = function(imagery, script)
-  {
+  operation = function(imagery, script) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
@@ -451,7 +507,7 @@ getCollectionFromImageryStatement = function (imagery) {
   } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
-    if ("product_id" %in% names(imagery)) {
+    if ("data_id" %in% names(imagery)) {
       collection = openeo.server$data[[imagery$product_id]]$getCollection()
     }
   }

@@ -7,6 +7,7 @@
 createProcessesEndpoint = function() {
   process = plumber$new()
   
+  openeo.server$registerEndpoint("/processes/","GET")
   process$handle("GET",
                  "/",
                  handler = .listProcesses,
@@ -15,21 +16,21 @@ createProcessesEndpoint = function() {
                  "/",
                  handler = .cors_option_bypass)
   
-  process$handle("GET",
-                 "/<pid>",
-                 handler = .describeProcess,
-                 serializer = serializer_unboxed_json())
-  process$handle("OPTIONS",
-                 "/<pid>",
-                 handler = .cors_option_bypass)
-  
-  process$handle("GET",
-                 "/opensearch",
-                 handler = .not_implemented_yet,
-                 serializer = serializer_unboxed_json())
-  process$handle("OPTIONS",
-                 "/opensearch",
-                 handler = .cors_option_bypass)
+  # process$handle("GET",
+  #                "/<pid>",
+  #                handler = .describeProcess,
+  #                serializer = serializer_unboxed_json())
+  # process$handle("OPTIONS",
+  #                "/<pid>",
+  #                handler = .cors_option_bypass)
+  # 
+  # process$handle("GET",
+  #                "/opensearch",
+  #                handler = .not_implemented_yet,
+  #                serializer = serializer_unboxed_json())
+  # process$handle("OPTIONS",
+  #                "/opensearch",
+  #                handler = .cors_option_bypass)
   
   return(process)
 }
@@ -41,7 +42,7 @@ createProcessesEndpoint = function() {
 .listProcesses = function(qname) {
   processeslist = openeo.server$processes
   unname(lapply(processeslist, function(l){
-    return(l$shortInfo())
+    return(l$detailedInfo())
   }))
 }
 

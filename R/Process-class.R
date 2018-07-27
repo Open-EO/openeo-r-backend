@@ -25,18 +25,24 @@ Process <- R6Class(
     # attributes ====
     process_id = NULL,
     args = NULL,
+    summary = NULL,
     description = NULL,
+    returns = NULL,
     dimensions_modifier = NULL,
     
     # functions ====
     initialize = function(process_id = NA,
+                          summary = NA,
                           description = NA,
                           args = NA,
+                          returns = NA,
                           operation = NULL,
                           modifier=NULL) {
       self$process_id = process_id
+      self$summary = summary
       self$description = description
       self$args = args
+      self$returns = returns
       self$operation = operation
       if (is.null(modifier) || class(modifier) != "DimensionalityModifier") {
         self$dimensions_modifier = create_dimensionality_modifier()
@@ -55,12 +61,15 @@ Process <- R6Class(
     detailedInfo = function() {
       arglist = list()
       for (arg in self$args) {
-        arglist = append(arglist, arg$shortInfo())
+        arglist = append(arglist, arg$detailedInfo())
       }
       res = list(
-        process_id = self$process_id,
+        name = self$process_id,
+        summary = self$summary,
         description = self$description,
-        args = arglist
+        min_parameters = self$min_parameters,
+        parameters = arglist,
+        returns = self$returns
       )
       
       return(res)
@@ -86,6 +95,13 @@ Process <- R6Class(
       invisible(self)
     }
     
+  ),
+  # actives ----
+  active = list(
+    min_parameters = function() {
+      # TODO implement: iterate over args and count where require = TRUE
+      return(1)
+    }
   )
 )
 

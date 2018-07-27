@@ -18,15 +18,29 @@ Argument <- R6Class(
     # attributes ====
     name = NULL,
     description = NULL,
+    
+    type = NULL,
+    format = NULL,
+    items = NULL,
+    examples = NULL,
+    
     required = NULL,
     value = NULL,
     
     # public ====
     initialize = function(name = NA,
                           description = NA,
+                          type = NA,
+                          format = NA,
+                          items = NA,
+                          examples = NA,
                           required = FALSE) {
       self$name = name
       self$description = description
+      self$type = type
+      self$format = format
+      self$items = items
+      self$examples = examples
       self$required = required
     },
     
@@ -34,6 +48,18 @@ Argument <- R6Class(
       res = list()
       
       res[[self$name]] = list(description = self$description)
+      return(res)
+    },
+    
+    detailedInfo = function() {
+      res = list()
+      res[[self$name]] = .generic_param(description = self$description,
+                                        required = self$required,
+                                        type = self$type,
+                                        format = self$format,
+                                        items = self$items,
+                                        examples = self$examples)
+        
       return(res)
     },
     
