@@ -123,10 +123,12 @@ OpenEOServer <- R6Class(
         
       },
 
-      createUser = function(user_name, password, silent=FALSE) {
+      createUser = function(user_name, password, budget=-1, storage_quota = 200000000, silent=FALSE) {
         user = User$new()
         user$user_name = user_name
         user$password = password
+        user$budget = budget
+        user$storage_quota = storage_quota
         
         user$store()
         

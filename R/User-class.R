@@ -93,13 +93,15 @@ User <- R6Class(
         
         con = openeo.server$getConnection()
         insertUserQuery = "insert into user 
-        (user_id, user_name, password) values 
-        (:id, :name, :password)"
+        (user_id, user_name, password, budget, storage_quota) values 
+        (:id, :name, :password, :budget, :storage_quota)"
         
         dbExecute(con,insertUserQuery,param=list(
           id = self$user_id,
           name = self$user_name,
-          password = self$password
+          password = self$password,
+          budget = self$budget,
+          storage_quota = self$storage_quota
         ))
         dbDisconnect(con)
         
