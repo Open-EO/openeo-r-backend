@@ -20,14 +20,14 @@ filter_daterange = Process$new(
       description = "start date/timestamp for the query interval",
       required = FALSE,
       type = "string",
-      format = "data-time"
+      format = "date-time"
     ),
     Argument$new(
       name = "to",
       description = "end date/timestamp for the query interval",
       required = FALSE,
       type = "string",
-      format = "data-time"
+      format = "date-time"
     )
   ),
   summary="Filter by a date range",
