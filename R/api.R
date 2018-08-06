@@ -344,11 +344,15 @@ createAPI = function() {
   jobs = createJobsEndpoint()
   root$mount("/api/jobs",jobs)
   
+  # TODO remove
   users = createUsersEndpoint()
   root$mount("/api/users",users)
   
   me = createMeEndpoint()
   root$mount("/api/me",me)
+  
+  files = createFilesEndpoint()
+  root$mount("/api/files",files)
   
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",

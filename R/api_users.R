@@ -21,6 +21,19 @@ createMeEndpoint = function() {
   return(me)
 }
 
+createFilesEndpoint = function() {
+  files = plumber$new()
+  
+  openeo.server$registerEndpoint("/files/{user_id}","GET")
+  files$handle("GET",
+               "/<user_id>",
+               handler = .listUserFiles,
+               serializer = serializer_unboxed_json())
+  
+  files$filter("authorization",.authorized)
+  
+  return(files)
+}
 
 createUsersEndpoint = function() {
   users = plumber$new()
@@ -126,8 +139,8 @@ createUsersEndpoint = function() {
 
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
-.listUserFiles = function(req,res,userid) {
-  if (paste(userid) == paste(req$user$user_id)) {
+.listUserFiles = function(req,res,user_id) {
+  if (paste(user_id) == paste(req$user$user_id)) {
     req$user$fileList()
   } else {
     error(res,401,"Not authorized to access other workspaces")

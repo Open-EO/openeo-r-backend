@@ -1,5 +1,6 @@
 #' @docType class
 #' @importFrom R6 R6Class
+#' @importFrom lubridate as_datetime
 #' @export
 User <- R6Class(
   "User",
@@ -49,7 +50,8 @@ User <- R6Class(
       return(apply(files.df,1,function(row) {
        return(list(
          name = row["link"],
-         size = row["size"]
+         size = as.integer(trim(row["size"])),
+         modified = format(as_datetime(row["ctime"]),format="%Y-%m-%dT%H:%M:%SZ")
        )) 
       }))
     },
@@ -145,7 +147,7 @@ User <- R6Class(
       fileInfos=file.info(list.files(workspace,recursive = TRUE,full.names = TRUE))
       fileInfos$link = relPath
       
-      return(fileInfos[,c("link","size")])
+      return(fileInfos[,c("link","size","ctime")])
     },
     
     jobs = function() {
