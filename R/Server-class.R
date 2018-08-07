@@ -357,6 +357,7 @@ OpenEOServer <- R6Class(
         self$register(filter_bbox)
         self$register(aggregate_time)
         self$register(apply_pixel)
+        self$register(get_data)
       }
       
 

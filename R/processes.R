@@ -3,6 +3,26 @@
 #' @include dimensionality.R
 #' @include parameter_type_definitions.R
 
+# get_data ====
+get_data = Process$new(
+  process_id = "get_data",
+  description = "Loads the EO data into a process",
+  args = list(
+    Argument$new(
+      name = "data_id",
+      description = "the temporal dataset/collection",
+      required = FALSE,
+      type = "string"
+    )
+  ),
+  summary="Filter by a date range",
+  returns=result.eodata,
+  modifier = create_dimensionality_modifier(),
+  operation = function(data_id) {
+    return(getCollectionFromImageryStatement(data_id))
+  }
+)
+
 # filter_daterange ====
 filter_daterange = Process$new(
   process_id = "filter_daterange",
