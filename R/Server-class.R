@@ -185,11 +185,27 @@ OpenEOServer <- R6Class(
                     consumed_credits integer,
                     process_graph text)")
         }
+        
         if (!dbExistsTable(con,"process_graph")) {
           dbExecute(con, "create table process_graph (graph_id text, 
-                    user_id integer, 
+                    user_id integer,
+                    title text,
+                    description text,
                     process_graph text)")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from process_graph limit 0"))
+          
+          if (!"title" %in% columns) {
+            addColumnsQuery = "alter table process_graph add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "description" %in% columns) {
+            addColumnsQuery = "alter table process_graph add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
         if (!dbExistsTable(con,"service")) {
           dbExecute(con, "create table service (
                     service_id text,
