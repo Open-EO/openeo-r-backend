@@ -16,6 +16,7 @@
 #' @include api_udf_runtimes.R
 #' @include api_processes.R
 #' @include api_credentials.R
+#' @include api_process_graphs.R
 #' @import raster
 #' @import plumber
 #' @importFrom sodium data_encrypt
@@ -353,6 +354,9 @@ createAPI = function() {
   
   files = createFilesEndpoint()
   root$mount("/api/files",files)
+  
+  process_graphs = createProcessGraphsEndpoint()
+  root$mount("/api/process_graphs",process_graphs)
   
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",

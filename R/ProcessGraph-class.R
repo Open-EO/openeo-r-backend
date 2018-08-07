@@ -4,14 +4,18 @@ ProcessGraph <- R6Class(
   # public ----
   public = list(
     # attributes ====
-    graph_id = NULL,
-    user_id = NULL,
+    graph_id = NA,
+    user_id = NA,
+    title = NA,
+    description = NA,
     process_graph = NULL, #parsed list from "process_graph" key in private$json
+    
+    # TODO move to job
     output = NULL, #parsed list from "output" key in private$json
     
     # functions ====
-    initialize = function(graph_id = NULL, process_graph=NULL, user_id=NULL) {
-      if (!is.null(graph_id)) {
+    initialize = function(graph_id = NA, process_graph=NULL, user_id=NA, title=NA,description = NA) {
+      if (!is.na(graph_id)) {
         if (!exists.ProcessGraph(graph_id = graph_id)) {
           stop("Cannot find Process Graph under the given id.")
         }
@@ -31,8 +35,16 @@ ProcessGraph <- R6Class(
           stop("Invalid process graph")
         }
       }
-      if (!is.null(user_id)) {
+      if (!is.na(user_id)) {
         self$user_id = user_id
+      }
+      
+      if (!is.na(title)) {
+        self$title = title
+      }
+      
+      if (!is.na(description)) {
+        self$description = description
       }
     },
     
@@ -41,7 +53,7 @@ ProcessGraph <- R6Class(
         stop("Cannot store process graph with no or invalid JSON information")
       }
       
-      if (is.null(self$graph_id)) {
+      if (is.na(self$graph_id)) {
         self$graph_id = private$newProcessGraphId()
       }
       
@@ -54,13 +66,15 @@ ProcessGraph <- R6Class(
       }
       con = openeo.server$getConnection()
       insertGraphQuery = "insert 
-                      into process_graph (graph_id, user_id, process_graph) 
-                      values (:graphId, :userId, :graph)"
+                      into process_graph (graph_id, user_id, process_graph, title, description) 
+                      values (:graphId, :userId, :graph, :title, :description)"
       
       dbExecute(con, insertGraphQuery,
                 param = list(graphId = self$graph_id, 
                              userId = self$user_id, 
-                             graph = encodeProcessGraph(private$json)))
+                             graph = encodeProcessGraph(private$json),
+                             title = self$title,
+                             description = self$description))
       dbDisconnect(con)
       
       return(self)
@@ -69,9 +83,13 @@ ProcessGraph <- R6Class(
       # note: this is a function to load the process graph from db; NOT the one where the process graph is created
       if (exists.ProcessGraph(self$graph_id)) {
         con = openeo.server$getConnection()
-        graph_binary = dbGetQuery(con, "select process_graph from process_graph where graph_id = :id",
+        row = dbGetQuery(con, "select title,description,process_graph from process_graph where graph_id = :id",
                                   param = list(id = self$graph_id))[1,]
         dbDisconnect(con)
+        
+        self$title = row[["title"]]
+        self$description = row[["description"]]
+        graph_binary = row[["process_graph"]]
         
         private$json = decodeProcessGraph(graph_binary)
         private$json2lists()
@@ -111,16 +129,15 @@ ProcessGraph <- R6Class(
         return(randomString)
       }
     },
-    
     json2lists = function() {
+      # list is already the process_graph element (w/o title and description)
       list = fromJSON(private$json, simplifyDataFrame=FALSE)
       
-      if ("process_graph" %in% names(list)) {
-        self$process_graph = list[["process_graph"]]
-      } else {
-        stop("No process graph found in process graph json.")
-      }
       
+      self$process_graph = list
+      
+      
+      # TODO move to jobs
       if ("output" %in% names(list)) {
         self$output = list[["output"]]
       }

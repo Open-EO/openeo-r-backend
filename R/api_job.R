@@ -130,6 +130,7 @@ createJobsEndpoint = function() {
   return(result)
 }
 
+# TODO remove, because it is probably obsolete
 .createSimpleArgList = function(graph) {
   if ("args" %in% names(graph)) {
     

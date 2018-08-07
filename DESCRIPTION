@@ -70,6 +70,7 @@ Collate:
     'Udf-class.R'
     'User-class.R'
     'View-class.R'
+    'api_process_graphs.R'
     'api_credentials.R'
     'api_processes.R'
     'api_udf_runtimes.R'
