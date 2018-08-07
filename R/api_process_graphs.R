@@ -40,6 +40,15 @@ createProcessGraphsEndpoint = function() {
                         "/<process_graph_id>",
                         handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/process_graphs/{process_graph_id}","PATCH")
+  process_graphs$handle("PATCH",
+                        "/<process_graph_id>",
+                        handler = .modifyProcessGraph,
+                        serializer = serializer_unboxed_json())
+  process_graphs$handle("OPTIONS",
+                        "/<process_graph_id>",
+                        handler = .cors_option_bypass)
+  
   process_graphs$filter("authorization",.authorized)
   
   return(process_graphs)
@@ -112,25 +121,28 @@ createProcessGraphsEndpoint = function() {
   return(process_graph$detailedInfo())
 }
 
-#PUT /users/<userid>/process_graphs/<graph_id>
-.modifyProcessGraph = function(req,res,userid,graph_id) {
-  user_id = req$user$user_id
+#PATCH /process_graphs/<process_graph_id>
+.modifyProcessGraph = function(req,res,process_graph_id) {
   parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-  parsedGraph = .createSimpleArgList(parsedGraph)
   
-  #fetch old one from db... contains process_graph and output...
-  con = openeo.server$getConnection()
-  findQuery = "select process_graph from process_graph where graph_id = :gid and user_id = :uid"
-  oldBinaryGraph = dbGetQuery(con, findQuery, param=list(gid = graph_id, uid = user_id))[1,]
-  oldGraph = fromJSON(decodeProcessGraph(oldBinaryGraph),simplifyDataFrame = FALSE)
+  if ("process_graph" %in% names(parsedGraph)) {
+    process_graph = ProcessGraph$new(graph_id = process_graph_id,process_graph = parsedGraph[["process_graph"]])
+  } else {
+    process_graph = ProcessGraph$new(graph_id = process_graph_id)
+  }
+  process_graph$load()
   
-  oldGraph$process_graph = parsedGraph
+  # title
+  if (!is.null(parsedGraph[["title"]])) {
+    process_graph$title = parsedGraph[["title"]]
+  }
   
-  binary_processgraph = encodeProcessGraph(toJSON(oldGraph,auto_unbox=TRUE,pretty = TRUE))
+  # description
+  if (!is.null(parsedGraph[["description"]])) {
+    process_graph$description = parsedGraph[["description"]]
+  }
   
-  query = "update process_graph set process_graph = :binary_graph where graph_id = :gid and user_id = :uid"
-  dbExecute(con, query, param = list(binary_graph = binary_processgraph, gid = graph_id, uid = user_id))
-  dbDisconnect(con)
+  process_graph$update()
   
   return(ok(res))
 }

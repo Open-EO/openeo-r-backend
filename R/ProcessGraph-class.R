@@ -48,6 +48,28 @@ ProcessGraph <- R6Class(
       }
     },
     
+    update = function() {
+      if (is.null(private$json)) {
+        if (!is.null(self$process_graph) && is.list(self$process_graph)) {
+          private$json = toJSON(self$process_graph,auto_unbox=TRUE,pretty=TRUE)
+        } else {
+          stop("process_graph is null or no list object")
+        }
+      }
+      
+      con = openeo.server$getConnection()
+      updateGraphQuery = "update process_graph set process_graph = :graph, title = :title, description = :description
+      where graph_id = :graphId and user_id = :userId"
+      
+      dbExecute(con, updateGraphQuery,
+                param = list(graphId = self$graph_id, 
+                             userId = self$user_id, 
+                             graph = encodeProcessGraph(private$json),
+                             title = self$title,
+                             description = self$description))
+      dbDisconnect(con)
+    },
+    
     store = function() {
       if (is.null(private$json)) {
         stop("Cannot store process graph with no or invalid JSON information")
@@ -83,16 +105,28 @@ ProcessGraph <- R6Class(
       # note: this is a function to load the process graph from db; NOT the one where the process graph is created
       if (exists.ProcessGraph(self$graph_id)) {
         con = openeo.server$getConnection()
-        row = dbGetQuery(con, "select title,description,process_graph from process_graph where graph_id = :id",
+        row = dbGetQuery(con, "select title,description,process_graph,user_id from process_graph where graph_id = :id",
                                   param = list(id = self$graph_id))[1,]
         dbDisconnect(con)
         
-        self$title = row[["title"]]
-        self$description = row[["description"]]
-        graph_binary = row[["process_graph"]]
+        if (is.na(self$title)) {
+          self$title = row[["title"]]
+        }
         
-        private$json = decodeProcessGraph(graph_binary)
-        private$json2lists()
+        if (is.na(self$description)) {
+          self$description = row[["description"]]
+        }
+        
+        if (is.na(self$user_id)) {
+          self$user_id = row[["user_id"]]
+        }
+        
+        if (is.null(self$process_graph)) {
+          graph_binary = row[["process_graph"]]
+          
+          private$json = decodeProcessGraph(graph_binary)
+          private$json2lists()
+        }
       }
       
       return(self)
