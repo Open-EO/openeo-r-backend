@@ -30,11 +30,31 @@ createFilesEndpoint = function() {
                handler = .listUserFiles,
                serializer = serializer_unboxed_json())
   
+  openeo.server$registerEndpoint("/files/{user_id}/{path}","GET")
+  files$handle("GET",
+               "/<user_id>/<path>",
+               handler = .downloadUserFile,
+               serializer = serializer_unboxed_json())
+  
+  openeo.server$registerEndpoint("/files/{user_id}/{path}","PUT")
+  files$handle("PUT",
+               "/<user_id>/<path>",
+               handler = .uploadFile,
+               serializer = serializer_unboxed_json())
+  
+  openeo.server$registerEndpoint("/files/{user_id}/{path}","DELETE")
+  files$handle("DELETE",
+               "/<user_id>/<path>",
+               handler = .deleteUserFile,
+               serializer = serializer_unboxed_json())
+  
+  
   files$filter("authorization",.authorized)
   
   return(files)
 }
 
+# TODO remove
 createUsersEndpoint = function() {
   users = plumber$new()
   
@@ -57,7 +77,7 @@ createUsersEndpoint = function() {
                serializer = serializer_unboxed_json())
   users$handle("DELETE",
                "/<userid>/files/<path>",
-               handler = .deleteUserData,
+               handler = .deleteUserFile,
                serializer = serializer_unboxed_json())
   users$handle("OPTIONS",
                "/<userid>/files/<path>",
@@ -149,8 +169,8 @@ createUsersEndpoint = function() {
 
 #* @get /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
-.downloadUserFile = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
+.downloadUserFile = function(req,res,user_id,path) {
+  if (paste(user_id) == paste(req$user$user_id)) {
     path = URLdecode(path)
     
     files = req$user$files
@@ -183,8 +203,8 @@ createUsersEndpoint = function() {
 
 # @put /api/users/<userid>/files/<path>
 # @serializer unboxedJSON
-.uploadFile = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
+.uploadFile = function(req,res,user_id,path) {
+  if (paste(user_id) == paste(req$user$user_id)) {
     
     path = URLdecode(path)
     
@@ -212,8 +232,8 @@ createUsersEndpoint = function() {
 
 #* @delete /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
-.deleteUserData = function(req,res,userid,path) {
-  if (paste(userid) == paste(req$user$user_id)) {
+.deleteUserFile = function(req,res,user_id,path) {
+  if (paste(user_id) == paste(req$user$user_id)) {
     user = req$user
     path = URLdecode(path)
     
