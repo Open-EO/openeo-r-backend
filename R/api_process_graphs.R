@@ -22,6 +22,15 @@ createProcessGraphsEndpoint = function() {
                         "/",
                         handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/process_graphs/{process_graph_id}","DELETE")
+  process_graphs$handle("DELETE",
+                        "/<process_graph_id>",
+                        handler = .deleteProcessGraph,
+                        serializer = serializer_unboxed_json())
+  process_graphs$handle("OPTIONS",
+                        "/<process_graph_id>",
+                        handler = .cors_option_bypass)
+  
   process_graphs$filter("authorization",.authorized)
   
   return(process_graphs)
@@ -69,13 +78,13 @@ createProcessGraphsEndpoint = function() {
   
 }
 
-# DELETE /api/users/<userid>/process_graphs/<graph_id>
-.deleteProcessGraph = function(req,res,userid,graph_id) {
+# DELETE /api/process_graphs/<graph_id>
+.deleteProcessGraph = function(req,res,process_graph_id) {
   user_id = req$user$user_id
   
   con = openeo.server$getConnection()
   query = "delete from process_graph where graph_id = :gid and user_id = :uid"
-  success = dbExecute(con,query,param=list(gid = graph_id, uid = user_id)) == 1
+  success = dbExecute(con,query,param=list(gid = process_graph_id, uid = user_id)) == 1
   
   dbDisconnect(con)
   if (success) {
