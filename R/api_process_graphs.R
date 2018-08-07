@@ -31,6 +31,15 @@ createProcessGraphsEndpoint = function() {
                         "/<process_graph_id>",
                         handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/process_graphs/{process_graph_id}","GET")
+  process_graphs$handle("GET",
+                        "/<process_graph_id>",
+                        handler = .getProcessGraph,
+                        serializer = serializer_unboxed_json())
+  process_graphs$handle("OPTIONS",
+                        "/<process_graph_id>",
+                        handler = .cors_option_bypass)
+  
   process_graphs$filter("authorization",.authorized)
   
   return(process_graphs)
@@ -95,17 +104,12 @@ createProcessGraphsEndpoint = function() {
 }
 
 # GET /api/users/<userid>/process_graphs/<graph_id>
-.getProcessGraph = function(req,res,userid,graph_id) {
-  user_id = req$user$user_id
+.getProcessGraph = function(req,res,userid,process_graph_id) {
   
-  con = openeo.server$getConnection()
-  query = "select process_graph from process_graph where graph_id = :gid and user_id = :uid"
-  graph_binary = dbGetQuery(con,query,param=list(gid = graph_id, uid = user_id))[1,]
+  process_graph = ProcessGraph$new(graph_id = process_graph_id)
+  process_graph$load()
   
-  dbDisconnect(con)
-  
-  graph_list = fromJSON(decodeProcessGraph(graph_binary),simplifyDataFrame = FALSE)
-  return(graph_list$process_graph)
+  return(process_graph$detailedInfo())
 }
 
 #PUT /users/<userid>/process_graphs/<graph_id>

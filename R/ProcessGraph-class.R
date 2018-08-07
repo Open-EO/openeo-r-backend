@@ -115,6 +115,14 @@ ProcessGraph <- R6Class(
         description = self$description
       ))
     },
+    detailedInfo = function() {
+      return(list(
+        process_graph_id = self$graph_id,
+        title = self$title,
+        description = self$description,
+        process_graph = self$process_graph
+      ))
+    },
     
     buildExecutableProcessGraph = function(user=NULL,job=NULL) {
       res = private$loadProcess(self$process_graph,user=user, job=job)
