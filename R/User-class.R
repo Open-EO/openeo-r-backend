@@ -170,6 +170,17 @@ User <- R6Class(
         return(as.list(result)[[1]])
       }
     },
+    process_graphs = function() {
+      con = openeo.server$getConnection()
+      result = dbGetQuery(con, "select graph_id from process_graph where user_id = :id",param=list(id = self$user_id))
+      dbDisconnect(con)
+      
+      if (is.null(result)) {
+        return(list())
+      } else {
+        return(as.list(result)[[1]])
+      }    
+    },
     storage_size = function() {
       workspace.files = list.files(self$workspace,recursive = TRUE,full.names = TRUE)
       if (length(workspace.files) < 1) {
