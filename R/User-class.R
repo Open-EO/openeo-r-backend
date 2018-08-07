@@ -154,7 +154,7 @@ User <- R6Class(
       con = openeo.server$getConnection()
       result = dbGetQuery(con, "select job_id from job where user_id = :id",param=list(id = self$user_id))
       dbDisconnect(con)
-      if (is.null(result)) {
+      if (is.null(result) || length(result) < 1) {
         return(list())
       } else {
         return(as.list(result)[[1]])
@@ -171,19 +171,31 @@ User <- R6Class(
       }
     },
     storage_size = function() {
-      size.workspace = sum(file.size(list.files(self$workspace,recursive = TRUE,full.names = TRUE)))
-      size.jobs = sum(
-        file.size(
-          list.files(
-            sapply(self$jobs, function(job){
-              job.db = Job$new(job_id = job) 
-              return(job.db$output.folder)
-            }),
-            full.names = TRUE,
-            recursive = TRUE)
-        ), 
-        na.rm=TRUE)
+      workspace.files = list.files(self$workspace,recursive = TRUE,full.names = TRUE)
+      if (length(workspace.files) < 1) {
+        size.workspace = 0
+      } else {
+        size.workspace = sum(file.size(workspace.files))
+      }
       
+      
+      user_jobs = self$jobs
+      
+      if (length(user_jobs) < 1) {
+        size.jobs = 0
+      } else {
+        size.jobs = sum(
+          file.size(
+            list.files(
+              sapply(user_jobs, function(job){
+                job.db = Job$new(job_id = job) 
+                return(job.db$output.folder)
+              }),
+              full.names = TRUE,
+              recursive = TRUE)
+          ), 
+          na.rm=TRUE)
+      }
       return(size.workspace+size.jobs)
     }
   ),
