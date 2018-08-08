@@ -10,9 +10,6 @@ ProcessGraph <- R6Class(
     description = NA,
     process_graph = NULL, #parsed list from "process_graph" key in private$json
     
-    # TODO move to job
-    output = NULL, #parsed list from "output" key in private$json
-    
     # functions ====
     initialize = function(graph_id = NA, process_graph=NULL, user_id=NA, title=NA,description = NA) {
       if (!is.na(graph_id)) {
@@ -27,10 +24,11 @@ ProcessGraph <- R6Class(
       if (!is.null(process_graph)) {
         if (is.list(process_graph)) {
           private$json = toJSON(process_graph,auto_unbox=TRUE,pretty=TRUE)
-          private$json2lists()
+          
+          self$process_graph = fromJSON(private$json, simplifyDataFrame=FALSE)
         } else if (is.character(process_graph)) {
           private$json = process_graph
-          private$json2lists()
+          self$process_graph = fromJSON(private$json, simplifyDataFrame=FALSE)
         } else {
           stop("Invalid process graph")
         }
@@ -125,7 +123,7 @@ ProcessGraph <- R6Class(
           graph_binary = row[["process_graph"]]
           
           private$json = decodeHex2Char(graph_binary)
-          private$json2lists()
+          self$process_graph = fromJSON(private$json, simplifyDataFrame=FALSE)
         }
       }
       
@@ -178,24 +176,15 @@ ProcessGraph <- R6Class(
         return(randomString)
       }
     },
-    json2lists = function() {
-      # list is already the process_graph element (w/o title and description)
-      list = fromJSON(private$json, simplifyDataFrame=FALSE)
-      
-      
-      self$process_graph = list
-      
-      
-      # TODO move to jobs
-      if ("output" %in% names(list)) {
-        self$output = list[["output"]]
-      }
-    },
     # dots for user and job
     loadProcess = function(graph_list, ...) {
       # from job
       
       processId = graph_list[["process_id"]]
+      graph_list[["process_id"]] = NULL
+      graph_list[["porcess_description"]] = NULL
+      #now graph list contains only the arguments
+      
       #TODO: add cases for udfs
       if (!is.null(processId) && processId %in% names(openeo.server$processes)) {
         process = openeo.server$processes[[processId]]
@@ -205,6 +194,7 @@ ProcessGraph <- R6Class(
         stop(paste("Cannot load process",processId))
       }
     },
+    
     as.executable = function(graph_list, process, ...) {
       # from process
       
@@ -215,7 +205,7 @@ ProcessGraph <- R6Class(
       #this "args". E.g. set a value for args[["from"]]$value
       
       # graph_list: at this point is the named list of the process graph
-      args = graph_list$args
+      args = graph_list
       
       runner = process$clone(deep=TRUE)
       

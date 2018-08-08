@@ -12,7 +12,6 @@
 #' @field user_id The user who owns the job
 #' @field consumed_credits For accounting and billing the amount of credits consumed by this job
 #' @field last_update Timestamp when the job was last updated
-#' @field output output configuration like output$format copied from the process graph (pg)
 #' @field results Contains the result of the process_graph after execution (Collection)
 #' @field persistent Whether or not the job is stored in database
 #' @field output list containing the output configuration like format (or additional GDAL commands)
@@ -35,7 +34,7 @@ Job <- R6Class(
     last_update=NULL,
     user_id=NULL,
     consumed_credits=NULL,
-    output=NULL, # output configuration like output$format copied from the process graph (pg) -> api v0.3.0 this will be stored in db
+    output=NULL,
     budget=NULL,
     title= NULL,
     description = NULL,
@@ -206,7 +205,6 @@ Job <- R6Class(
       private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
       self$process_graph = private$pg$buildExecutableProcessGraph(user = User$new()$load(user_id=self$user_id), job=self) #from db
-      # self$output = private$pg$output
       self$persistent = TRUE
       
       invisible(self)
@@ -216,10 +214,14 @@ Job <- R6Class(
     shortInfo = function() {
       info = list(
         job_id = self$job_id,
+        title = self$title,
+        description = self$description,
         status = self$status,
         submitted = self$submitted,
         updated = self$last_update,
-        consumed_credits = self$consumed_credits
+        plan = self$plan,
+        costs = self$consumed_credits,
+        budget = self$budget
       )
       
       return(info)
@@ -254,7 +256,7 @@ Job <- R6Class(
         user_id = self$user_id,
         status = self$status,
         process_graph = private$pg$process_graph,
-        output = private$pg$output,
+        output = self$output,
         submitted = self$submitted,
         updated = self$last_update,
         consumed_credits = self$consumed_credits

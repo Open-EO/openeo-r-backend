@@ -13,15 +13,7 @@ createJobsEndpoint = function() {
             "/",
             handler = .cors_option_bypass)
   
-  
-  jobs$handle("GET",
-              "/<job_id>",
-              handler = .describeJob,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>",
-              handler = .cors_option_bypass)
-  
+  openeo.server$registerEndpoint("/jobs/","POST")
   jobs$handle("POST",
               "/",
               handler = .createNewJob,
@@ -30,6 +22,14 @@ createJobsEndpoint = function() {
               "/",
               handler = .cors_option_bypass)
   
+  
+  jobs$handle("GET",
+              "/<job_id>",
+              handler = .describeJob,
+              serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/<job_id>",
+              handler = .cors_option_bypass)
   
   jobs$handle("GET",
               "/<job_id>/subscribe",
@@ -115,11 +115,12 @@ createJobsEndpoint = function() {
 #* @post /api/jobs
 #* @serializer unboxedJSON
 .createNewJob = function(req,res) {
+  
+  sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+  
   # TODO check if postBody is valid
-  process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-  # TODO check if this is the simple representation or the complex (probably correct version)
-  # this means search for "args" lists if (names(...$args) == NULL) => unlist(...$args, recursive = FALSE)
-  process_graph = .createSimpleArgList(process_graph)
+  process_graph = sent_job$process_graph
+  
   
   job = Job$new(user_id = req$user$user_id, process_graph = process_graph)
   submit_time = Sys.time()
@@ -127,18 +128,17 @@ createJobsEndpoint = function() {
   job$submitted = submit_time
   job$last_update = submit_time
   
+  job$title = sent_job$title
+  job$description = sent_job$description
+  job$output = sent_job$output
+  job$plan = sent_job$plan
+  job$budget = sent_job$budget
+  
   job$store()
   
-  result = list(
-    job_id=job$job_id,
-    status = job$status,
-    updated = job$last_update,
-    submitted = job$submitted,
-    user_id = job$user_id,
-    consumed_credits = job$consumed_credits
-  )
-  
-  return(result)
+  res$status = 201
+  res$setHeader(name = "Location",
+                value= paste(openeo.server$baseserver.url,"jobs/",self$job_id,sep=""))
 }
 
 # TODO remove, because it is probably obsolete
@@ -208,8 +208,7 @@ createJobsEndpoint = function() {
 .listUserJobs = function(req,res) {
   user = req$user
   
-  possibleUserJobs = user$jobs
-  jobRepresentation = lapply(possibleUserJobs, function(job_id){
+  jobRepresentation = lapply(user$jobs, function(job_id){
     job = Job$new(job_id)
     job$load()
     return(job$shortInfo())
