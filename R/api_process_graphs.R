@@ -145,5 +145,5 @@ createProcessGraphsEndpoint = function() {
   
   process_graph$update()
   
-  return(ok(res))
+  res$status = 204
 }

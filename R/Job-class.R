@@ -19,6 +19,7 @@
 #' @include Process-class.R
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
+#' @importFrom lubridate as_datetime
 #' @export
 Job <- R6Class(
   "Job",
@@ -216,8 +217,8 @@ Job <- R6Class(
         title = self$title,
         description = self$description,
         status = self$status,
-        submitted = self$submitted,
-        updated = self$last_update,
+        submitted = format(as_datetime(self$submitted),format="%Y-%m-%dT%H:%M:%SZ"),
+        updated = format(as_datetime(self$last_update),format="%Y-%m-%dT%H:%M:%SZ"),
         plan = self$plan,
         costs = self$consumed_credits,
         budget = self$budget
@@ -252,16 +253,34 @@ Job <- R6Class(
       }
       info = list(
         job_id = self$job_id,
-        user_id = self$user_id,
-        status = self$status,
+        title = self$title,
+        description = self$description,
         process_graph = private$pg$process_graph,
         output = self$output,
-        submitted = self$submitted,
-        updated = self$last_update,
-        consumed_credits = self$consumed_credits
+        status = self$status,
+        submitted = format(as_datetime(self$submitted),format="%Y-%m-%dT%H:%M:%SZ"),
+        updated = format(as_datetime(self$last_update),format="%Y-%m-%dT%H:%M:%SZ"),
+        plan = self$plan,
+        costs = self$consumed_credits,
+        budget = self$budget
       )
       
       return(info)
+    },
+    
+    getProcessGraph = function() {
+      return(private$pg)
+    },
+    
+    modifyProcessGraph = function(graph) {
+      old_pg_id = private$pg$graph_id
+      # graph is the list represenation of the process graph as parsed from the job input object
+      private$pg = ProcessGraph$new(process_graph = graph, user_id = self$user_id)
+      private$pg$graph_id = old_pg_id
+      private$pg$update()
+      
+      user = User$new()$load(user_id=self$user_id)
+      self$process_graph = private$pg$buildExecutableProcessGraph(user=user,job=self)
     },
     
     run = function() {

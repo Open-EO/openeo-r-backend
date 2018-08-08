@@ -13,6 +13,7 @@ createJobsEndpoint = function() {
             "/",
             handler = .cors_option_bypass)
   
+  # create new job ====
   openeo.server$registerEndpoint("/jobs/","POST")
   jobs$handle("POST",
               "/",
@@ -22,10 +23,22 @@ createJobsEndpoint = function() {
               "/",
               handler = .cors_option_bypass)
   
-  
+  # describe job in detail ====
+  openeo.server$registerEndpoint("/jobs/{job_id}","GET")
   jobs$handle("GET",
               "/<job_id>",
               handler = .describeJob,
+              serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/<job_id>",
+              handler = .cors_option_bypass)
+  
+  
+  # modify job ====
+  openeo.server$registerEndpoint("/jobs/{job_id}","PATCH")
+  jobs$handle("PATCH",
+              "/<job_id>",
+              handler = .updateJob,
               serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
               "/<job_id>",
@@ -75,10 +88,15 @@ createJobsEndpoint = function() {
               "/<job_id>/download",
               handler = .cors_option_bypass)
   
+  # delete job ====
+  openeo.server$registerEndpoint("/jobs/{job_id}","DELETE")
   jobs$handle("DELETE",
               "/<job_id>",
               handler = .deleteJob,
               serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/<job_id>",
+              handler = .cors_option_bypass)
 
   
   
@@ -140,26 +158,6 @@ createJobsEndpoint = function() {
   
 }
 
-# TODO remove, because it is probably obsolete
-.createSimpleArgList = function(graph) {
-  if ("args" %in% names(graph)) {
-    
-    if (is.null(names(graph$args))) {
-      args = unlist(graph$args,recursive = FALSE)
-      
-      #named list it should be
-      for (index in names(args)) {
-        elem = args[[index]]
-        if ("args" %in% names(elem)) {
-          args[[index]] = .createSimpleArgList(elem)
-        }
-      }
-      graph$args = args
-    }
-  }
-  return(graph)
-}
-
 .createDownloadableFileList = function(req,res,job_id) {
   if (!exists.Job(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
@@ -182,6 +180,46 @@ createJobsEndpoint = function() {
   } else {
     error(res, 404 ,"Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }
+}
+
+.updateJob = function(req,res,job_id) {
+  sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+  
+  job = Job$new(user_id = req$user$user_id, job_id = job_id)
+  job$load()
+  
+  if (!is.null(sent_job$process_graph)) {
+    process_graph = sent_job$process_graph
+    
+    job$modifyProcessGraph(process_graph)
+  }
+  
+  if (!is.null(sent_job$title)) {
+    job$title = sent_job$title
+  }
+  
+  if (!is.null(sent_job$description)) {
+    job$description = sent_job$description
+  }
+  
+  if (!is.null(sent_job$output)) {
+    job$output = sent_job$output
+  }
+  
+  if (!is.null(sent_job$plan)) {
+    job$plan = sent_job$plan
+  }
+  
+  if (!is.null(sent_job$budget)) {
+    job$budget = sent_job$budget
+  }
+  
+  
+  job$last_update = Sys.time()
+  
+  job$store()
+
+  res$status = 204
 }
 
 .performJob = function(req,res,job_id) {

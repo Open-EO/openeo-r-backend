@@ -104,8 +104,9 @@
 .executeSynchronous = function(req,res,format=NULL) {
 
   if (!is.null(req$postBody)) {
-    process_graph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-    output = process_graph$output
+    sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+    output = sent_job$output
+    process_graph = sent_job$process_graph
     
     if (is.null(format)) {
       format = output$format
@@ -117,7 +118,6 @@
       return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
     }
     
-    process_graph = .createSimpleArgList(process_graph)
   } else {
     return(error(res,400,"No process graph specified."))
     
@@ -125,6 +125,7 @@
 
   tryCatch({
     job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
+    job$output = output
     job$job_id = syncJobId()
     
     job = job$run()
