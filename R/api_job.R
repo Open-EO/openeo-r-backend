@@ -191,3 +191,22 @@ createJobsEndpoint = function() {
 
   ok(res)
 }
+
+#* @get /api/users/<userid>/jobs
+#* @serializer unboxedJSON
+.listUserJobs = function(req,res,userid) {
+  if (paste(userid) == paste(req$user$user_id)) {
+    user = req$user
+    
+    possibleUserJobs = user$jobs
+    jobRepresentation = lapply(possibleUserJobs, function(job_id){
+      job = Job$new(job_id)
+      job$load()
+      return(job$shortInfo())
+    })
+    
+    return(unname(jobRepresentation))
+  } else {
+    error(res,401,"Not authorized to view jobs of others")
+  }
+}
