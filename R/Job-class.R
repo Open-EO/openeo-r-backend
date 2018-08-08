@@ -35,7 +35,12 @@ Job <- R6Class(
     last_update=NULL,
     user_id=NULL,
     consumed_credits=NULL,
-    output=NULL, # output configuration like output$format copied from the process graph (pg)
+    output=NULL, # output configuration like output$format copied from the process graph (pg) -> api v0.3.0 this will be stored in db
+    budget=NULL,
+    title= NULL,
+    description = NULL,
+    plan = NULL,
+    
     results = NULL, # contains the results of the process_graph after execution
     persistent = FALSE, # whether or not the job is stored in data base
     
@@ -78,6 +83,12 @@ Job <- R6Class(
         private$pg$store()
       }
       
+      encodedOutput = NA
+      
+      if (!is.null(self$output)) {
+        encodedOutput = encodeChar2Hex(toJSON(x=self$output,auto_unbox = TRUE,pretty = TRUE))
+      }
+      
       if (!exists.Job(self$job_id)) {
         
         insertIntoQuery = "insert into job (
@@ -87,7 +98,12 @@ Job <- R6Class(
             process_graph,
             submitted,
             last_update,
-            consumed_credits
+            consumed_credits,
+            output,
+            budget,
+            title,
+            description,
+            plan
         ) values (
             :job_id, 
             :user_id, 
@@ -95,7 +111,12 @@ Job <- R6Class(
             :process_graph, 
             :submitted, 
             :last_update, 
-            :consumed_credits 
+            :consumed_credits,
+            :output,
+            :budget,
+            :title,
+            :description,
+            :plan
         );"
         
         con = openeo.server$getConnection()
@@ -106,29 +127,42 @@ Job <- R6Class(
           process_graph = private$pg$graph_id, # it is the graph_id at this point
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
-          consumed_credits = self$consumed_credits
+          consumed_credits = self$consumed_credits,
+          output = encodedOutput,
+          budget = self$budget,
+          title = self$title,
+          description = self$description,
+          plan = self$plan
         ))
         dbDisconnect(con)
 
       } else {
         updateQuery = "update job 
                        set 
-                          user_id = :id, 
                           status = :status,
                           submitted = :submitted, 
                           last_update = :last_update,
-                          consumed_credits = :consumed_credits 
+                          consumed_credits = :consumed_credits,
+                          output = :output,
+                          budget = :budget,
+                          title = :title,
+                          description = :description,
+                          plan = :plan
                        where 
                           job_id = :job_id;"
         
         con = openeo.server$getConnection()
         dbExecute(con, updateQuery, param = list(
-          user_id = self$user_id,
           status = self$status,
           submitted = as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits,
-          job_id = self$job_id
+          job_id = self$job_id,
+          output = encodedOutput,
+          budget = self$budget,
+          title = self$title,
+          description = self$description,
+          plan = self$plan
         ))
         dbDisconnect(con)
       }
@@ -157,11 +191,22 @@ Job <- R6Class(
       self$last_update = job_info$last_update
       self$consumed_credits = job_info$consumed_credits
       
+      if (is.null(job_info$output) || is.na(job_info$output) || length(job_info$output) < 1) {
+        self$output = NULL
+      } else {
+        self$output = fromJSON(txt=decodeHex2Char(job_info$output),simplifyDataFrame = FALSE)
+      }
+      
+      self$budget = job_info$budget
+      self$title = job_info$title
+      self$description = job_info$description
+      self$plan = job_info$plan
+      
       # when stored in a db then all the time the graph is loaded from db, regardless if it is published or not
       private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
       self$process_graph = private$pg$buildExecutableProcessGraph(user = User$new()$load(user_id=self$user_id), job=self) #from db
-      self$output = private$pg$output
+      # self$output = private$pg$output
       self$persistent = TRUE
       
       invisible(self)

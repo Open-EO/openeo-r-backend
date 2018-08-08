@@ -1,7 +1,18 @@
-# jobs endpoint ====
+# jobs endpoint ----
 
 createJobsEndpoint = function() {
   jobs = plumber$new()
+  
+  # get user jobs ====
+  openeo.server$registerEndpoint("/jobs/","GET")
+  jobs$handle("GET",
+            "/",
+            handler = .listUserJobs,
+            serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+            "/",
+            handler = .cors_option_bypass)
+  
   
   jobs$handle("GET",
               "/<job_id>",
@@ -192,21 +203,18 @@ createJobsEndpoint = function() {
   ok(res)
 }
 
-#* @get /api/users/<userid>/jobs
+#* @get /api/jobs/
 #* @serializer unboxedJSON
-.listUserJobs = function(req,res,userid) {
-  if (paste(userid) == paste(req$user$user_id)) {
-    user = req$user
-    
-    possibleUserJobs = user$jobs
-    jobRepresentation = lapply(possibleUserJobs, function(job_id){
-      job = Job$new(job_id)
-      job$load()
-      return(job$shortInfo())
-    })
-    
-    return(unname(jobRepresentation))
-  } else {
-    error(res,401,"Not authorized to view jobs of others")
-  }
+.listUserJobs = function(req,res) {
+  user = req$user
+  
+  possibleUserJobs = user$jobs
+  jobRepresentation = lapply(possibleUserJobs, function(job_id){
+    job = Job$new(job_id)
+    job$load()
+    return(job$shortInfo())
+  })
+  
+  return(unname(jobRepresentation))
+
 }

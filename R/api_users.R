@@ -2,11 +2,12 @@
 NULL
 
 #
-# endpoint function ====
+# endpoint function ----
 #
 createMeEndpoint = function() {
   me = plumber$new()
   
+  # user information ====
   openeo.server$registerEndpoint("/me/","GET")
   me$handle("GET",
               "/",
@@ -27,14 +28,6 @@ createMeEndpoint = function() {
 createUsersEndpoint = function() {
   users = plumber$new()
 
-  
-  users$handle("GET",
-               "/<userid>/jobs",
-               handler = .listUserJobs,
-               serializer = serializer_unboxed_json())
-  users$handle("OPTIONS",
-               "/<userid>/jobs",
-               handler = .cors_option_bypass)
   
   users$handle("GET",
                "/<userid>/services",

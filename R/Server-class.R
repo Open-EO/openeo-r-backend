@@ -183,8 +183,42 @@ OpenEOServer <- R6Class(
                     submitted text,
                     last_update text,
                     consumed_credits integer,
+                    output text,
+                    budget real,
+                    title text,
+                    description text,
+                    plan text,
                     process_graph text)")
+        } else {
+          # migration
+          columns = colnames(con %>% dbGetQuery("select * from job limit 0"))
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table job add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "output" %in% columns) {
+            addColumnsQuery = "alter table job add output text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "title" %in% columns) {
+            addColumnsQuery = "alter table job add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "description" %in% columns) {
+            addColumnsQuery = "alter table job add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "plan" %in% columns) {
+            addColumnsQuery = "alter table job add plan text"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
         
         if (!dbExistsTable(con,"process_graph")) {
           dbExecute(con, "create table process_graph (graph_id text, 

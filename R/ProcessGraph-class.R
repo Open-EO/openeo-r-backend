@@ -64,7 +64,7 @@ ProcessGraph <- R6Class(
       dbExecute(con, updateGraphQuery,
                 param = list(graphId = self$graph_id, 
                              userId = self$user_id, 
-                             graph = encodeProcessGraph(private$json),
+                             graph = encodeChar2Hex(private$json),
                              title = self$title,
                              description = self$description))
       dbDisconnect(con)
@@ -94,7 +94,7 @@ ProcessGraph <- R6Class(
       dbExecute(con, insertGraphQuery,
                 param = list(graphId = self$graph_id, 
                              userId = self$user_id, 
-                             graph = encodeProcessGraph(private$json),
+                             graph = encodeChar2Hex(private$json),
                              title = self$title,
                              description = self$description))
       dbDisconnect(con)
@@ -124,7 +124,7 @@ ProcessGraph <- R6Class(
         if (is.null(self$process_graph)) {
           graph_binary = row[["process_graph"]]
           
-          private$json = decodeProcessGraph(graph_binary)
+          private$json = decodeHex2Char(graph_binary)
           private$json2lists()
         }
       }
@@ -276,10 +276,10 @@ exists.ProcessGraph = function(graph_id) {
   return(graphIdExists)
 }
 
-encodeProcessGraph = function(text) {
+encodeChar2Hex = function(text) {
   return(bin2hex(charToRaw(text)))
 }
 
-decodeProcessGraph = function(hex) {
+decodeHex2Char = function(hex) {
   return(rawToChar(hex2bin(hex)))
 }
