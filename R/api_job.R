@@ -121,7 +121,6 @@ createJobsEndpoint = function() {
   # TODO check if postBody is valid
   process_graph = sent_job$process_graph
   
-  
   job = Job$new(user_id = req$user$user_id, process_graph = process_graph)
   submit_time = Sys.time()
   job$status = "submitted"
@@ -135,10 +134,10 @@ createJobsEndpoint = function() {
   job$budget = sent_job$budget
   
   job$store()
-  
-  res$status = 201
   res$setHeader(name = "Location",
-                value= paste(openeo.server$baseserver.url,"jobs/",self$job_id,sep=""))
+                value= paste(openeo.server$baseserver.url,"jobs/",job$job_id,sep=""))
+  res$status = 201
+  
 }
 
 # TODO remove, because it is probably obsolete

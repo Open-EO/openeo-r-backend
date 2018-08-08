@@ -18,10 +18,9 @@ ExecutableProcess <- R6Class(
       
       if (!is.null(process)) {
         variables = names(process)
-        
         for (key in variables) {
           value = process[[key]]
-          if (class(value) == "function" || class(value) == "environment") {
+          if (class(value) == "function" || class(value) == "environment" || key == "min_parameters") { # min_parameters is active..
             next()
           } else {
             self[[key]] = value

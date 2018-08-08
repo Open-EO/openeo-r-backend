@@ -78,6 +78,7 @@ Process <- R6Class(
     
     setArgumentValue = function(name, value) {
       # arguments are unnamed so list(Argument) -> list(Argument:name)
+      
       argument_names = lapply(self$args,function(argument) {
         return(argument$name)
       })

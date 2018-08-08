@@ -52,12 +52,11 @@ Job <- R6Class(
       }
       
       self$consumed_credits = 0
-      
       if (!is.null(process_graph)) {
         if (!is.ProcessGraph(process_graph)) {
-          if (is.graph_id(process_graph[["process_graph"]])) {
+          if (is.graph_id(process_graph)) {
             #load graph id and overwrite user and grpah_id
-            private$pg = ProcessGraph$new(graph_id=process_graph[["process_graph"]])
+            private$pg = ProcessGraph$new(graph_id=process_graph)
             private$pg$user_id = user_id
             private$pg$graph_id = NULL # will be created on store
           } else {
@@ -78,7 +77,7 @@ Job <- R6Class(
         self$job_id = private$newJobId()
       }
       
-      if (is.null(private$pg$graph_id)) {
+      if (is.na(private$pg$graph_id) || is.null(private$pg$graph_id)) {
         private$pg$store()
       }
       
