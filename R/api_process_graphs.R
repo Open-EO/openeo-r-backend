@@ -68,9 +68,10 @@ createProcessGraphsEndpoint = function() {
                              description = process_graph[["description"]])
     graph$store()
     
-    # TODO change to 201 and a location header to process_graph detail
-    res$status = 200
-    return(list(process_graph_id=graph$graph_id))
+    res$setHeader(name = "Location",value=paste(openeo.server$baseserver.url,"process_graphs/",graph$graph_id,sep=""))
+    # res$setHeader(name = "Authorization", value=req$HTTP_AUTHORIZATION)
+    
+    res$status = 201
   } else {
     return(error(res,400,"No data or malformed json was send"))
   }
