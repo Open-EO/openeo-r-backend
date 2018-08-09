@@ -97,6 +97,16 @@ createJobsEndpoint = function() {
   jobs$handle("OPTIONS",
               "/<job_id>",
               handler = .cors_option_bypass)
+  
+  # job cost estimation ====
+  openeo.server$registerEndpoint("/jobs/{job_id}/estimate","GET")
+  jobs$handle("GET",
+              "/<job_id>/estimate",
+              handler = .estimateJobCosts,
+              serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/<job_id>/estimate",
+              handler = .cors_option_bypass)
 
   
   
@@ -253,4 +263,13 @@ createJobsEndpoint = function() {
   
   return(unname(jobRepresentation))
 
+}
+
+# for now this will only contain a single "hard coded" entry
+.estimateJobCosts = function(req,res, job_id) {
+  return(list(
+    costs = 0,
+    duration = "P2M",
+    downloads_included = TRUE
+  ))
 }
