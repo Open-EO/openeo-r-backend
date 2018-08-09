@@ -44,6 +44,17 @@ createJobsEndpoint = function() {
               "/<job_id>",
               handler = .cors_option_bypass)
   
+  # perform job ====
+  openeo.server$registerEndpoint("/jobs/{job_id}/results","POST")
+  jobs$handle("POST",
+              "/<job_id>/results",
+              handler = .performJob,
+              serializer = serializer_unboxed_json())
+  jobs$handle("OPTIONS",
+              "/<job_id>/results",
+              handler = .cors_option_bypass)
+  
+  
   jobs$handle("GET",
               "/<job_id>/subscribe",
               handler = .not_implemented_yet,
@@ -53,13 +64,6 @@ createJobsEndpoint = function() {
               handler = .cors_option_bypass)
   
   
-  jobs$handle("PATCH",
-              "/<job_id>/queue",
-              handler = .performJob,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>/queue",
-              handler = .cors_option_bypass)
   
   
   jobs$handle("GET",
@@ -247,7 +251,7 @@ createJobsEndpoint = function() {
     openeo.server$runJob(job= job)
   }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
 
-  ok(res)
+  res$status = 202
 }
 
 #* @get /api/jobs/

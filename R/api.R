@@ -366,7 +366,7 @@ createAPI = function() {
   executeSynchronous$filter("authorization",.authorized)
   executeSynchronous$filter("me_filter",.replace_user_me_in_body)
   
-  root$mount("/api/execute",executeSynchronous)
+  root$mount("/api/preview",executeSynchronous)
   
   services = createServicesEndpoint()
   root$mount("/api/services",services)

@@ -308,7 +308,7 @@ udfIdsByJobId = function(jobid) {
     query = "select udf_id from udf where job_id = :jid"
     
     db = openeo.server$getConnection()
-    result = dbGetQuery(db, query, param = list(jid=jobid))
+    result = dbGetQuery(db, query, param = list(jid=jobid))[,1]
     return(result)
     
   },finally = {

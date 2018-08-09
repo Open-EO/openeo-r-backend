@@ -19,7 +19,9 @@ get_data = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(data_id) {
-    return(getCollectionFromImageryStatement(data_id))
+    cat(paste("Selecting product:",data_id,"\n"))
+    coll = getCollectionFromImageryStatement(data_id)
+    return(coll)
   }
 )
 
@@ -524,6 +526,13 @@ getCollectionFromImageryStatement = function (imagery) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
+    if (imagery %in% names(openeo.server$data)) {
+      collection = openeo.server$data[[imagery]]$getCollection()
+    } else {
+      stop(paste("Cannot find product:",imagery))
+    }
+    
+    
   } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
   } else if (class(imagery) == "list") {
