@@ -5,11 +5,25 @@ Service <- R6Class(
   # public ----
   public = list(
     # attributes ====
-    service_id = NULL,
     service_url = NULL,
-    service_type = "",
-    service_args = "",
-    job_id = NULL,
+    
+    # db fields
+    service_id = NA,
+    job_id = NA,
+    title = NA,
+    description = NA,
+    process_graph = NA, # this should be the graph_id
+    type = NA,
+    enabled = FALSE,
+    plan = NA,
+    budget = NA,
+    submitted = NA,
+    costs = NA,
+    
+    attributes = list(),
+    parameters = list(),
+    
+    
     
     # functions ====
     initialize = function(service_id = NULL) {
@@ -20,8 +34,8 @@ Service <- R6Class(
     detailedInfo = function () {
       info = list(
         service_id = self$service_id,
-        service_type = self$service_type,
-        service_args = self$service_args,
+        type = self$type,
+        parameters = self$parameters,
         job_id = self$job_id,
         service_url = self$url
       )
@@ -40,10 +54,34 @@ Service <- R6Class(
                               ,param = list(id=service_id))
         dbDisconnect(con)
         
+        # service_id text,
+        # job_id text,
+        # title text,
+        # description text,
+        # type text,
+        # parameters text,
+        # attributes text,
+        # plan text,
+        # costs real,
+        # budget real,
+        # enabled integer,
+        # submitted datetime
+        
         self$service_id = service_info$service_id
         self$job_id = service_info$job_id
-        self$service_args = private$stringToArgs(service_info$args)
-        self$service_type = service_info$type
+        self$title = service_info$title
+        self$description = service_info$description
+        self$type = service_info$type
+        self$parameters = fromJSON(decodeHex2Char(service_info$parameters),
+                                   simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
+        self$attributes = fromJSON(decodeHex2Char(service_info$attributes),
+                                   simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
+        self$plan = service_info$plan
+        self$costs = service_info$costs
+        self$budget = service_info$budget
+        self$enabled = as.logical(service_info$enabled)
+        self$submitted = service_info$submitted
+        
         
         invisible(self)
       } else {
@@ -59,31 +97,51 @@ Service <- R6Class(
         self$service_id = private$newServiceId()
         
         insertQuery = "insert into service (
-          service_id, type, job_id, args
+          service_id, job_id, title, description, type, parameters, attributes, plan, costs, budget, enabled, submitted
         ) VALUES (
-          :sid, :type, :jid, :args
+          :sid, :jid, :title, :description, :type, :parameters, :attributes, :plan, :costs, :budget, :enabled, :submitted
         )"
         
         con = openeo.server$getConnection()
         dbExecute(con, insertQuery, param=list(
           sid = self$service_id,
-          type = self$service_type,
+          type = self$type,
           jid = self$job_id,
-          args = private$argsToString(self$service_args)
+          parameters = encodeChar2Hex(toJSON(self$parameters, auto_unbox = FALSE, pretty = TRUE)),
+          attributes = encodeChar2Hex(toJSON(self$attributes, auto_unbox = FALSE, pretty = TRUE)),
+          title = self$title,
+          description = self$description,
+          plan = self$plan,
+          costs = self$costs,
+          budget = self$budget,
+          enabled = self$enabled,
+          submitted = now()
         ))
         dbDisconnect(con)
         
       } else {
         # update values
-        
+
         updateQuery = "update service 
-          set args = :args
+          set title = :title,
+          description = :description,
+          enabled = :enabled,
+          job_id = :job_id,
+          parameter = :parameters,
+          plan = :plan,
+          budget = :budget
           where service_id = :sid
         "
         con = openeo.server$getConnection()
         dbExecute(con, updateQuery, param=list(
           sid = self$service_id,
-          args = private$argsToString(self$sevice_args)
+          title = self$title,
+          description = self$description,
+          enabled = self$enabled,
+          job_id = self$job_id,
+          parameter = encodeChar2Hex(toJSON(self$parameters, auto_unbox = TRUE, pretty = TRUE)),
+          plan = self$plan,
+          budget = self$budget
         ))
         dbDisconnect(con)
         
@@ -109,7 +167,16 @@ Service <- R6Class(
   active = list(
     url = function() {
       return(paste("http://",openeo.server$host,":",openeo.server$api.port,"/api/",
-                   self$service_type,"/",self$service_id,sep=""))
+                   self$type,"/",self$service_id,sep=""))
+    },
+    job = function() {
+      if (!is.na(self$job_id)) {
+        job = Job$new(job_id = self$job_id)
+        job$load()
+        return(job)
+      } else {
+        return(NULL)
+      }
     }
   ),
   # private ----

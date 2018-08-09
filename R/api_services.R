@@ -2,6 +2,8 @@
 createServicesEndpoint = function() {
   services = plumber$new()
   
+  # create new service ====
+  openeo.server$registerEndpoint("/services/","POST")
   services$handle("POST",
                   "/",
                   handler=.createNewService,
@@ -64,38 +66,73 @@ createWFSEndpoint = function() {
 
 # handler ----
 .createNewService = function(req, res) {
+  if (length(req$postBody) == 0 || is.null(req$postBody) || is.na(req$postBody)) {
+    return(error(res,400, "No Request Body"))
+  }
+  
   service_input = fromJSON(req$postBody,simplifyDataFrame = FALSE)
   
+  if (is.null(service_input$process_graph) || is.null(service_input$type)) {
+    return(error(res,400, "Either process_graph or service type is missing."))
+  }
+  
   service = Service$new()
-  type = tolower(service_input$service_type)
-  if (is.null(type)) {
-    return(error(res, 400, "No service type specified"))
-  } else {
-    service$service_type = type
+
+  service$type = tolower(service_input$type)
+  
+  if (!is.null(service_input$title)) {
+    service$title = service_input$title
   }
   
-  
-  args = service_input$service_args
-  service$service_args = args
-  
-  job_id = service_input$job_id
-  if (!is.null(job_id) && exists.Job(job_id)) {
-    service$job_id = job_id
-  } else {
-    return(error(res,500,"Cannot link to job. Please create a job first."))
+  if (!is.null(service_input$description)) {
+    service$description = service_input$description
   }
+  
+  if (!is.null(service_input$enabled)) {
+    service$enabled = service_input$enabled
+  }
+  
+  if (!is.null(service_input$plan)) {
+    service$plan = service_input$plan
+  }
+  
+  if (!is.null(service_input$budget)) {
+    service$budget = service_input$budget
+  }
+ 
+  params = service_input$parameters
+  if (!is.null(params)) {
+    service$parameters = params
+  }
+  
+  job = Job$new(user_id = req$user$user_id, process_graph = service_input$process_graph)
+  job$store()
+  service$job_id = job$job_id
   
   service$store()
   
-  job = Job$new(job_id)
   job$load()
+  
+  # also set a title that is assigned to a service
+  job$title = paste("Service",service$service_id)
+  job$store()
+  
+  
   #if not running or finished then run job!
+  # TODO consider also that the result is a feature
   if (job$status %in% c("submitted","error")) {
-    openeo.server$runJob(job=job, format = job$output[["format"]])
+    if (is.null(job$output) || is.null(job$output[["format"]])) {
+      format = "GTiff"
+    } else {
+      format = job$output[["format"]]
+    }
+    openeo.server$runJob(job=job, format = format)
   }
+  # TODO wait until finished before proceeding
+  
   # when finished then create: create map file
-  if (type %in% c("wms","wcs")) {
-    job_result_path = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+  if (service$type %in% c("wms","wcs")) {
+    job_result_path = paste(openeo.server$workspaces.path,"jobs",job$job_id,sep="/")
     files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
     files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
     config = MapServerConfig$new()
@@ -105,7 +142,7 @@ createWFSEndpoint = function() {
     mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
     config$toFile(mapfile)
   } else {
-    job_folder = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+    job_folder = paste(openeo.server$workspaces.path,"jobs",job$job_id,sep="/")
     files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
     if (is.null(files) || length(files) == 0) {
       stop("Cannot find SHP file to create WFS from.")
@@ -118,7 +155,8 @@ createWFSEndpoint = function() {
     config$toFile(mapfile)
   }
   
-  return(service$detailedInfo())
+  res$setHeader("Location",paste(openeo.server$baseserver.url,"services/",service$service_id))
+  res$status = 201
 }
 
 .referToMapserver = function(req,res,service_id) {

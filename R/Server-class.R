@@ -244,9 +244,69 @@ OpenEOServer <- R6Class(
           dbExecute(con, "create table service (
                     service_id text,
                     job_id text,
-                    args text,
-                    type text
+                    title text,
+                    description text,
+                    type text,
+                    parameters text,
+                    attributes text,
+                    plan text,
+                    costs real,
+                    budget real,
+                    enabled integer,
+                    submitted datetime
           )")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from service limit 0"))
+          #args -> parameters
+          if (!"parameters" %in% columns) {
+            addColumnsQuery = "alter table service add parameters text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"title" %in% columns) {
+            addColumnsQuery = "alter table service add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"description" %in% columns) {
+            addColumnsQuery = "alter table service add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"type" %in% columns) {
+            addColumnsQuery = "alter table service add type text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"attributes" %in% columns) {
+            addColumnsQuery = "alter table service add attributes text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"plan" %in% columns) {
+            addColumnsQuery = "alter table service add plan text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"costs" %in% columns) {
+            addColumnsQuery = "alter table service add costs real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table service add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"enabled" %in% columns) {
+            addColumnsQuery = "alter table service add enabled integer"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"submitted" %in% columns) {
+            addColumnsQuery = "alter table service add submitted datetime"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
         
         if (!dbExistsTable(con,"udf")) {

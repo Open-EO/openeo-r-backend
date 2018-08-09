@@ -36,7 +36,7 @@ MapServerConfig <- R6Class(
     fromVector = function(obj,service,data.dir=NULL) {
       self$service = service
       service_id = service$service_id
-      service_type = service$service_type
+      type = service$type
       
       map = MapServerMap$new()
       
@@ -44,11 +44,11 @@ MapServerConfig <- R6Class(
         map$NAME = service_id
       }
       
-      service_type = tolower(service_type)
-      if (service_type %in% private$supported_services) {
+      type = tolower(type)
+      if (type %in% private$supported_services) {
         map$WEB = private$createWebElement()
         
-        if (service_type %in% c("wfs")) {
+        if (type %in% c("wfs")) {
 
           e = extent(obj)
           extent.string = paste(e@xmin, e@ymin, e@xmax, e@ymax)
@@ -120,7 +120,7 @@ MapServerConfig <- R6Class(
       
       self$service = service
       service_id = service$service_id
-      service_type = service$service_type
+      type = service$type
       
       map = MapServerMap$new()
       
@@ -128,11 +128,11 @@ MapServerConfig <- R6Class(
         map$NAME = service_id
       }
       
-      service_type = tolower(service_type)
-      if (service_type %in% private$supported_services) {
+      type = tolower(type)
+      if (type %in% private$supported_services) {
         map$WEB = private$createWebElement()
         
-        if (service_type %in% c("wms","wcs")) {
+        if (type %in% c("wms","wcs")) {
           #create global variables...
           # assume obj to be a raster for now
           e = extent(obj[[1]])
@@ -200,27 +200,27 @@ MapServerConfig <- R6Class(
     supported_services = c("wcs","wms","wfs"),
     # functions ====
     createWebElement = function() {
-      service_type = tolower(self$service$service_type)
+      type = tolower(self$service$type)
       web = MapServerWeb$new()
       
-      service_url = paste(self$service$url,"?SERVICE=",toupper(service_type),sep="")
+      service_url = paste(self$service$url,"?SERVICE=",toupper(type),sep="")
       
-      version = self$service$service_args[[match("version",tolower(names(self$service$service_args)))]]
+      version = self$service$parameters[[match("version",tolower(names(self$service$parameters)))]]
       if (!is.null(version)) {
         service_url = paste(service_url,"&VERSION=",version,sep="")
       }
       
-      if (tolower(service_type) == "wms") {
+      if (tolower(type) == "wms") {
         service_operations = "GetCapabilities GetMap"
       } else {
         service_operations = "*"
       }
       
-      keys = c(paste(service_type,"_srs",sep=""),
-               paste(service_type,"_enable_request",sep=""),
-               paste(service_type,"_onlineresource",sep=""),
-               paste(service_type,"_title",sep=""))
-      values = list("EPSG:3857 EPSG:4326", service_operations , service_url, service_type)
+      keys = c(paste(type,"_srs",sep=""),
+               paste(type,"_enable_request",sep=""),
+               paste(type,"_onlineresource",sep=""),
+               paste(type,"_title",sep=""))
+      values = list("EPSG:3857 EPSG:4326", service_operations , service_url, type)
       
       names(values) <- keys
       web$METADATA <- values
