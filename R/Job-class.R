@@ -29,18 +29,18 @@ Job <- R6Class(
   public = list(
     # attributes ----
     job_id = NULL,
-    status=NULL,
+    status=NA,
     process_graph = NULL,
     view=NULL,
-    submitted=NULL,
-    last_update=NULL,
+    submitted=NA,
+    last_update=NA,
     user_id=NULL,
-    consumed_credits=NULL,
-    output=NULL,
-    budget=NULL,
-    title= NULL,
-    description = NULL,
-    plan = NULL,
+    consumed_credits=NA,
+    output=NA,
+    budget=NA,
+    title= NA,
+    description = NA,
+    plan = NA,
     
     results = NULL, # contains the results of the process_graph after execution
     persistent = FALSE, # whether or not the job is stored in data base
@@ -51,6 +51,14 @@ Job <- R6Class(
       
       if (!is.null(user_id)) {
         self$user_id = user_id
+      }
+      if (is.na(self$submitted)) {
+        self$submitted = now()
+        self$last_update = self$submitted
+      }
+      
+      if (!is.na(self$status)) {
+        self$status = "submitted"
       }
       
       self$consumed_credits = 0
