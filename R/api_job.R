@@ -1,3 +1,6 @@
+#' @include utils.R
+NULL
+
 # jobs endpoint ----
 
 createJobsEndpoint = function() {
@@ -54,43 +57,42 @@ createJobsEndpoint = function() {
               "/<job_id>/results",
               handler = .cors_option_bypass)
   
-  
+  # get info about finished job results ====
+  openeo.server$registerEndpoint("/jobs/{job_id}/results","GET")
   jobs$handle("GET",
-              "/<job_id>/subscribe",
-              handler = .not_implemented_yet,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>/subscribe",
-              handler = .cors_option_bypass)
-  
-  
-  
-  
-  jobs$handle("GET",
-              "/<job_id>/pause",
-              handler = .not_implemented_yet,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>/pause",
-              handler = .cors_option_bypass)
-  
-  
-  jobs$handle("GET",
-              "/<job_id>/cancel",
-              handler = .not_implemented_yet,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>/cancel",
-              handler = .cors_option_bypass)
-  
-  
-  jobs$handle("GET",
-              "/<job_id>/download",
+              "/<job_id>/results",
               handler = .createDownloadableFileList,
-              serializer = serializer_json())
+              serializer = serializer_unboxed_json())
   jobs$handle("OPTIONS",
-              "/<job_id>/download",
+              "/<job_id>/results",
               handler = .cors_option_bypass)
+  
+  # 
+  # jobs$handle("GET",
+  #             "/<job_id>/subscribe",
+  #             handler = .not_implemented_yet,
+  #             serializer = serializer_unboxed_json())
+  # jobs$handle("OPTIONS",
+  #             "/<job_id>/subscribe",
+  #             handler = .cors_option_bypass)
+  # 
+  # jobs$handle("GET",
+  #             "/<job_id>/pause",
+  #             handler = .not_implemented_yet,
+  #             serializer = serializer_unboxed_json())
+  # jobs$handle("OPTIONS",
+  #             "/<job_id>/pause",
+  #             handler = .cors_option_bypass)
+  # 
+  # 
+  # jobs$handle("GET",
+  #             "/<job_id>/cancel",
+  #             handler = .not_implemented_yet,
+  #             serializer = serializer_unboxed_json())
+  # jobs$handle("OPTIONS",
+  #             "/<job_id>/cancel",
+  #             handler = .cors_option_bypass)
+
   
   # delete job ====
   openeo.server$registerEndpoint("/jobs/{job_id}","DELETE")
@@ -176,12 +178,31 @@ createJobsEndpoint = function() {
   if (!exists.Job(job_id)) {
     error(res, 404, paste("Cannot find job with id:",job_id))
   } else {
+    job = Job$new(job_id = job_id)
+    job$load()
+    
+    if (job$status != "finished") {
+      error(res,400,paste("Job '",job_id,"' has not finished or has not been started yet. Please try again later.",sep=""))
+    }
+    
     job_results = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
     
     base_url = paste(openeo.server$baseserver.url,"result/",job_id,sep="")
     
     #get files in outputfolder but not the log file
-    paste(base_url,list.files(job_results,pattern="[^process\\.log]"),sep="/")
+    links = paste(base_url,list.files(job_results,pattern="[^process\\.log]"),sep="/")
+    
+    result_links = list()
+    for (i in 1:length(links)) {
+      result_links = c(result_links, list(list(href = links[i])))
+    }
+    
+    return(list(
+      title = job$title,
+      description = job$description,
+      updated = iso_datetime(job$last_update),
+      links = result_links
+    ))
   }
 }
 

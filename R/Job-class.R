@@ -17,6 +17,7 @@
 #' @field output list containing the output configuration like format (or additional GDAL commands)
 #' 
 #' @include Process-class.R
+#' @include utils.R
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
 #' @importFrom lubridate as_datetime
@@ -210,15 +211,14 @@ Job <- R6Class(
       invisible(self)
 
     },
-
     shortInfo = function() {
       info = list(
         job_id = self$job_id,
         title = self$title,
         description = self$description,
         status = self$status,
-        submitted = format(as_datetime(self$submitted),format="%Y-%m-%dT%H:%M:%SZ"),
-        updated = format(as_datetime(self$last_update),format="%Y-%m-%dT%H:%M:%SZ"),
+        submitted = iso_datetime(self$submitted),
+        updated = iso_datetime(self$last_update),
         plan = self$plan,
         costs = self$consumed_credits,
         budget = self$budget
@@ -258,8 +258,8 @@ Job <- R6Class(
         process_graph = private$pg$process_graph,
         output = self$output,
         status = self$status,
-        submitted = format(as_datetime(self$submitted),format="%Y-%m-%dT%H:%M:%SZ"),
-        updated = format(as_datetime(self$last_update),format="%Y-%m-%dT%H:%M:%SZ"),
+        submitted = iso_datetime(self$submitted),
+        updated =iso_datetime(self$last_update),
         plan = self$plan,
         costs = self$consumed_credits,
         budget = self$budget

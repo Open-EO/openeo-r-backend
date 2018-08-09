@@ -54,6 +54,7 @@ Collate:
     'dimensionality.R'
     'Process-class.R'
     'ExecutableProcess-class.R'
+    'utils.R'
     'Job-class.R'
     'MapServerConfig-class.R'
     'MapServerLayer-class.R'

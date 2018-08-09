@@ -32,8 +32,6 @@ graph.
 
 \item{\code{last_update}}{Timestamp when the job was last updated}
 
-\item{\code{output}}{output configuration like output$format copied from the process graph (pg)}
-
 \item{\code{results}}{Contains the result of the process_graph after execution (Collection)}
 
 \item{\code{persistent}}{Whether or not the job is stored in database}
