@@ -12,21 +12,38 @@ createServicesEndpoint = function() {
                   "/",
                   handler=.cors_option_bypass)
   
+  openeo.server$registerEndpoint("/services/","GET")
+  services$handle("GET",
+               "/",
+               handler = .listUserServices,
+               serializer = serializer_unboxed_json())
+  services$handle("OPTIONS",
+               "/",
+               handler = .cors_option_bypass)
+  
+  openeo.server$registerEndpoint("/services/{service_id}","GET")
   services$handle("GET",
                   "/<service_id>",
                   handler=.getServiceInformation,
                   serializer = serializer_unboxed_json())
-  services$handle("PATCH",
-                  "/<service_id>",
-                  handler=.updateService,
-                  serializer = serializer_unboxed_json())
+  
+  openeo.server$registerEndpoint("/services/{service_id}","DELETE")
   services$handle("DELETE",
                   "/<service_id>",
                   handler=.deleteService,
                   serializer = serializer_unboxed_json())
+  
   services$handle("OPTIONS",
                   "/<service_id>",
                   handler=.cors_option_bypass)
+  
+  
+  services$handle("PATCH",
+                  "/<service_id>",
+                  handler=.updateService,
+                  serializer = serializer_unboxed_json())
+  
+  
   
   services$filter("authorization",.authorized)
   
@@ -188,7 +205,7 @@ createWFSEndpoint = function() {
     
     return(service$detailedInfo())
   } else {
-    error(re, 404, "Cannot find service")
+    error(res, 404, "Cannot find service")
   }
 }
 
@@ -215,11 +232,21 @@ createWFSEndpoint = function() {
 
 .deleteService = function(req,res,service_id) {
   if (exists.Service(service_id)) {
-    service = Service$new(service_id)
+    service = Service$new(service_id)$load()
+    
     service$remove()
     
-    ok(res)
+    res$status = 204
   } else {
-    error(re, 404, "Cannot find service")
+    error(res, 404, "Cannot find service")
   }
+}
+
+.listUserServices = function(req,res) {
+  userid = req$user$user_id
+  return(
+    lapply(req$user$services, function(service_id) {
+      return(Service$new(service_id)$load()$shortInfo())
+    })
+  )
 }

@@ -12,9 +12,6 @@ createJobsEndpoint = function() {
             "/",
             handler = .listUserJobs,
             serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-            "/",
-            handler = .cors_option_bypass)
   
   # create new job ====
   openeo.server$registerEndpoint("/jobs/","POST")
@@ -22,6 +19,7 @@ createJobsEndpoint = function() {
               "/",
               handler = .createNewJob,
               serializer = serializer_unboxed_json())
+  
   jobs$handle("OPTIONS",
               "/",
               handler = .cors_option_bypass)
@@ -32,10 +30,6 @@ createJobsEndpoint = function() {
               "/<job_id>",
               handler = .describeJob,
               serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>",
-              handler = .cors_option_bypass)
-  
   
   # modify job ====
   openeo.server$registerEndpoint("/jobs/{job_id}","PATCH")
@@ -43,9 +37,18 @@ createJobsEndpoint = function() {
               "/<job_id>",
               handler = .updateJob,
               serializer = serializer_unboxed_json())
+
+  # delete job ====
+  openeo.server$registerEndpoint("/jobs/{job_id}","DELETE")
+  jobs$handle("DELETE",
+              "/<job_id>",
+              handler = .deleteJob,
+              serializer = serializer_unboxed_json())
+  
   jobs$handle("OPTIONS",
               "/<job_id>",
               handler = .cors_option_bypass)
+  
   
   # perform job ====
   openeo.server$registerEndpoint("/jobs/{job_id}/results","POST")
@@ -92,17 +95,6 @@ createJobsEndpoint = function() {
   # jobs$handle("OPTIONS",
   #             "/<job_id>/cancel",
   #             handler = .cors_option_bypass)
-
-  
-  # delete job ====
-  openeo.server$registerEndpoint("/jobs/{job_id}","DELETE")
-  jobs$handle("DELETE",
-              "/<job_id>",
-              handler = .deleteJob,
-              serializer = serializer_unboxed_json())
-  jobs$handle("OPTIONS",
-              "/<job_id>",
-              handler = .cors_option_bypass)
   
   # job cost estimation ====
   openeo.server$registerEndpoint("/jobs/{job_id}/estimate","GET")

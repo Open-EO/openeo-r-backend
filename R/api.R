@@ -354,6 +354,7 @@ createAPI = function() {
   process_graphs = createProcessGraphsEndpoint()
   root$mount("/api/process_graphs",process_graphs)
   
+  openeo.server$registerEndpoint(path = "/preview/", "POST")
   executeSynchronous = plumber$new()
   executeSynchronous$handle("POST",
                             "/",
@@ -370,6 +371,7 @@ createAPI = function() {
   services = createServicesEndpoint()
   root$mount("/api/services",services)
   
+  # additional apis to handle and forward OGC service request
   wms = createWMSEndpoint()
   root$mount("/api/wms",wms)
   

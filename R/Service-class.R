@@ -1,3 +1,4 @@
+#' @importFrom as_datetime lubridate
 #' @export
 Service <- R6Class(
   "Service",
@@ -30,14 +31,50 @@ Service <- R6Class(
       self$service_id = service_id
       invisible(self)
     },
+    shortInfo = function() {
+      # service_id text,
+      # job_id text,
+      # title text,
+      # description text,
+      # type text,
+      # parameters text,
+      # attributes text,
+      # plan text,
+      # costs real,
+      # budget real,
+      # enabled integer,
+      # submitted datetime
+      info = list(
+        service_id = self$service_id,
+        title = self$title,
+        description = self$description,
+        url = self$url,
+        type = self$type,
+        enabled = self$enabled,
+        submitted = iso_datetime(self$submitted),
+        plan = self$plan,
+        costs = self$costs,
+        budget = self$budget
+      )
+      
+      return(info)
+    }, 
     
     detailedInfo = function () {
       info = list(
         service_id = self$service_id,
+        title = self$title,
+        description = self$description,
+        url = self$url,
         type = self$type,
+        enabled = self$enabled,
+        submitted = iso_datetime(self$submitted),
+        plan = self$plan,
+        costs = self$costs,
+        budget = self$budget,
         parameters = self$parameters,
-        job_id = self$job_id,
-        service_url = self$url
+        attributes = self$attributes,
+        process_graph = self$job$getProcessGraph()$process_graph
       )
       
       return(info)
@@ -54,34 +91,32 @@ Service <- R6Class(
                               ,param = list(id=service_id))
         dbDisconnect(con)
         
-        # service_id text,
-        # job_id text,
-        # title text,
-        # description text,
-        # type text,
-        # parameters text,
-        # attributes text,
-        # plan text,
-        # costs real,
-        # budget real,
-        # enabled integer,
-        # submitted datetime
-        
         self$service_id = service_info$service_id
         self$job_id = service_info$job_id
         self$title = service_info$title
         self$description = service_info$description
         self$type = service_info$type
-        self$parameters = fromJSON(decodeHex2Char(service_info$parameters),
-                                   simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
-        self$attributes = fromJSON(decodeHex2Char(service_info$attributes),
-                                   simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
+        
+        if (!is.na(service_info$parameters)) {
+          self$parameters = fromJSON(decodeHex2Char(service_info$parameters),
+                                     simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
+        } else {
+          self$parameters = NA
+        }
+        
+        if (!is.na(service_info$attributes)) {
+          self$attributes = fromJSON(decodeHex2Char(service_info$attributes),
+                                     simplifyDataFrame = FALSE, simplifyMatrix = FALSE, simplifyVector = FALSE)
+        } else {
+          self$attributes = NA
+        }
+        
+        
         self$plan = service_info$plan
         self$costs = service_info$costs
         self$budget = service_info$budget
         self$enabled = as.logical(service_info$enabled)
-        self$submitted = service_info$submitted
-        
+        self$submitted = as_datetime(service_info$submitted)
         
         invisible(self)
       } else {
@@ -127,7 +162,7 @@ Service <- R6Class(
           costs = self$costs,
           budget = self$budget,
           enabled = self$enabled,
-          submitted = now()
+          submitted = as.character(now())
         ))
         dbDisconnect(con)
         
@@ -162,6 +197,8 @@ Service <- R6Class(
     },
     remove = function() {
       service_id = self$service_id
+      
+      self$job$remove()
       
       con = openeo.server$getConnection()
       deleteQuery = "delete from service where service_id = :sid"
