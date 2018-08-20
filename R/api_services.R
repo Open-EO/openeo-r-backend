@@ -188,8 +188,12 @@ createWFSEndpoint = function() {
     if (!is.null(patch$process_graph)) {
       job = service$job
       pg = job$getProcessGraph()
-      pg$process_graph = patch$process_graph
-      pg$update()
+      
+      update_pg = ProcessGraph$new()
+      update_pg$graph_id = pg$graph_id 
+      update_pg$user_id = pg$user_id
+      update_pg$process_graph = patch$process_graph
+      update_pg$update()
       
       job$status = "submitted"
       job$last_update = as.character(now())
