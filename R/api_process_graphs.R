@@ -107,7 +107,7 @@ createProcessGraphsEndpoint = function() {
   
   dbDisconnect(con)
   if (success) {
-    ok(res)
+    res$status = 204
   } else {
     error(res = res, status = 500, msg = "Cannot delete graph. Either it is already deleted, does not exists or you don't have rights to delete the graph.")
   }

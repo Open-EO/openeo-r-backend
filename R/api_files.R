@@ -99,7 +99,8 @@ createFilesEndpoint = function() {
     outputFile = file(storedFilePath,"wb")
     writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
     close(outputFile,type="wb")
-    ok(res)
+    
+    res$status = 204
   } else {
     error(res,401,"Not authorized to upload data into other users workspaces")
   }
@@ -122,7 +123,8 @@ createFilesEndpoint = function() {
       file = rownames(selection)
       
       unlink(file, recursive = TRUE,force=TRUE)
-      ok(res)
+      
+      res$status = 204
     }
   } else {
     error(res,401,"Not authorized to delete data of others")

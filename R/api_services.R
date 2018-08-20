@@ -33,17 +33,15 @@ createServicesEndpoint = function() {
                   handler=.deleteService,
                   serializer = serializer_unboxed_json())
   
-  services$handle("OPTIONS",
-                  "/<service_id>",
-                  handler=.cors_option_bypass)
-  
-  
+  openeo.server$registerEndpoint("/services/{service_id}","PATCH")
   services$handle("PATCH",
                   "/<service_id>",
                   handler=.updateService,
                   serializer = serializer_unboxed_json())
   
-  
+  services$handle("OPTIONS",
+                  "/<service_id>",
+                  handler=.cors_option_bypass)
   
   services$filter("authorization",.authorized)
   
@@ -122,55 +120,16 @@ createWFSEndpoint = function() {
     service$parameters = params
   }
   
-  job = Job$new(user_id = req$user$user_id, process_graph = service_input$process_graph)
-  job$store()
-  service$job_id = job$job_id
+  .createNewServiceJob(service = service, user_id = req$user$user_id, process_graph = service_input$process_graph)
   
-  service$store()
-  
-  job$load()
-  
-  # also set a title that is assigned to a service
-  job$title = paste("Service",service$service_id)
-  job$status = "submitted"
-  job$store()
   
   #if not running or finished then run job!
-  # TODO consider also that the result is a feature
-  if (job$status %in% c("submitted","error")) {
-    if (is.null(job$output) || is.null(job$output[["format"]])) {
-      format = "GTiff"
-    } else {
-      format = job$output[["format"]]
-    }
-    openeo.server$runJob(job=job, format = format,response=FALSE)
-  }
+  .runServiceJob(service = service)
+
   # TODO wait until finished before proceeding
   
   # when finished then create: create map file
-  if (service$type %in% c("wms","wcs")) {
-    job_result_path = paste(openeo.server$workspaces.path,"jobs",job$job_id,sep="/")
-    files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
-    files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
-    config = MapServerConfig$new()
-    config = config$fromRaster(obj = lapply(files,brick),service=service)
-    #TODO maybe we need to create layers for each additional file...
-
-    mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
-    config$toFile(mapfile)
-  } else {
-    job_folder = paste(openeo.server$workspaces.path,"jobs",job$job_id,sep="/")
-    files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
-    if (is.null(files) || length(files) == 0) {
-      stop("Cannot find SHP file to create WFS from.")
-    }
-    
-    config = MapServerConfig$new()
-    config = config$fromVector(obj = readOGR(files[1]),service=service,data.dir=job_folder)
-    
-    mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
-    config$toFile(mapfile)
-  }
+  service$buildMapFile()
   
   res$setHeader("Location",paste(openeo.server$baseserver.url,"services/",service$service_id))
   res$status = 201
@@ -212,19 +171,67 @@ createWFSEndpoint = function() {
 .updateService = function(req,res,service_id) {
   if (exists.Service(service_id)) {
     patch = fromJSON(req$postBody,simplifyDataFrame=FALSE)
-    if (names(patch) == "service_args") {
-      args = patch[["service_args"]]
-      service = Service$new(service_id)$load()
-      
-      for (key in names(args)) {
-        value = args[[key]]
-        service$service_args[[key]] = value
-      }
-      
-      service$store()
-      ok(res)
+    
+    service = Service$new(service_id)$load()
+    
+    rebuildMapFile = FALSE
+    rerunJob = FALSE
+    
+    if (!is.null(patch$title)) {
+      service$title = patch$title
     }
     
+    if (!is.null(patch$description)) {
+      service$description = patch$description
+    }
+    
+    if (!is.null(patch$process_graph)) {
+      job = service$job
+      pg = job$getProcessGraph()
+      pg$process_graph = patch$process_graph
+      pg$update()
+      
+      job$status = "submitted"
+      job$last_update = as.character(now())
+      
+      job$store()
+      
+      rerunJob=TRUE
+      rebuildMapFile = TRUE
+    }
+    
+    if (!is.null(patch$enabled)) {
+      service$enabled = patch$enabled
+    }
+    
+    if (!is.null(patch$parameters)) {
+      service$parameters = patch$parameters
+      rebuildMapFile = TRUE
+    } else {
+      if ("parameters" %in% names(patch)) {
+        service$parameters = NA
+      }
+    }
+    
+    if (!is.null(patch$plan)) {
+      service$plan = patch$plan
+    }
+    
+    if (!is.null(patch$budget)) {
+      service$budget = patch$budget
+    }
+    
+    service$store()
+    
+    if (rerunJob) {
+      .runServiceJob(service)
+    }
+    
+    if (rebuildMapFile) {
+      service$buildMapFile()
+    }
+    
+    res$status = 204
   } else {
     error(res, 404, "Cannot find service")
   }
@@ -249,4 +256,37 @@ createWFSEndpoint = function() {
       return(Service$new(service_id)$load()$shortInfo())
     })
   )
+}
+
+.runServiceJob = function(service) {
+  job = service$job
+  
+  if (dir.exists(job$output.folder)) {
+    file.remove(list.files(job$output.folder, full.names = TRUE))
+  }
+  
+  # TODO consider also that the result is a feature
+  if (job$status %in% c("submitted","error")) {
+    if (is.null(job$output) || is.null(job$output[["format"]])) {
+      format = "GTiff"
+    } else {
+      format = job$output[["format"]]
+    }
+    openeo.server$runJob(job=job, format = format,response=FALSE)
+  }
+}
+
+.createNewServiceJob = function(service, user_id, process_graph) {
+  job = Job$new(user_id = user_id, process_graph = process_graph)
+  job$store()
+  service$job_id = job$job_id
+  
+  service$store()
+  
+  job$load()
+  
+  # also set a title that is assigned to a service
+  job$title = paste("Service",service$service_id)
+  job$status = "submitted"
+  job$store()
 }

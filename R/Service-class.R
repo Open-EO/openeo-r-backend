@@ -15,7 +15,7 @@ Service <- R6Class(
     description = NA,
     process_graph = NA, # this should be the graph_id
     type = NA,
-    enabled = FALSE,
+    enabled = TRUE,
     plan = NA,
     budget = NA,
     submitted = NA,
@@ -174,7 +174,7 @@ Service <- R6Class(
           description = :description,
           enabled = :enabled,
           job_id = :job_id,
-          parameter = :parameters,
+          parameters = :parameters,
           plan = :plan,
           budget = :budget
           where service_id = :sid
@@ -186,7 +186,7 @@ Service <- R6Class(
           description = self$description,
           enabled = self$enabled,
           job_id = self$job_id,
-          parameter = encodeChar2Hex(toJSON(self$parameters, auto_unbox = TRUE, pretty = TRUE)),
+          parameters = encodeChar2Hex(toJSON(self$parameters, auto_unbox = TRUE, pretty = TRUE)),
           plan = self$plan,
           budget = self$budget
         ))
@@ -209,6 +209,34 @@ Service <- R6Class(
       
       if (file.exists(mapfile)) {
         unlink(mapfile)
+      }
+    },
+    buildMapFile = function() {
+      mapfile = paste(openeo.server$workspaces.path,"services",paste(self$service_id,".map",sep=""),sep="/")
+      if (file.exists(mapfile)) {
+        file.remove(mapfile)
+      }
+      
+      if (self$type %in% c("wms","wcs")) {
+        job_result_path = paste(openeo.server$workspaces.path,"jobs",self$job$job_id,sep="/")
+        files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
+        files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
+        config = MapServerConfig$new()
+        config = config$fromRaster(obj = lapply(files,brick),service=self)
+        #TODO maybe we need to create layers for each additional file...
+        
+        config$toFile(mapfile)
+      } else {
+        job_folder = paste(openeo.server$workspaces.path,"jobs",self$job$job_id,sep="/")
+        files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
+        if (is.null(files) || length(files) == 0) {
+          stop("Cannot find SHP file to create WFS from.")
+        }
+        
+        config = MapServerConfig$new()
+        config = config$fromVector(obj = readOGR(files[1]),service=self,data.dir=job_folder)
+        
+        config$toFile(mapfile)
       }
     }
   ),

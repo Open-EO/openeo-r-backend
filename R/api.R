@@ -236,7 +236,7 @@
   res$setHeader("Access-Control-Allow-Headers", "Authorization, Accept, Content-Type")
   res$setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH")
   
-  ok(res)
+  res$status = 200
 }
 
 .replace_user_me_in_body = function(req, res, ...) {
@@ -257,16 +257,14 @@
 # utility functions ====
 #
 
-ok = function(res) {
-  error(res,200,"OK")
-}
-
-error = function(res, status,msg) {
+error = function(res, status,msg, code = NULL) {
   res$status = status
   
+  # id and links are spared for now
   return(list(
-    status=status,
-    message=msg)
+    code = code,
+    message=msg,
+    links = list())
   )
 }
 

@@ -203,7 +203,7 @@ createJobsEndpoint = function() {
   success = job$remove()
   
   if (success) {
-    ok(res)
+    res$status = 204
   } else {
     error(res, 404 ,"Cannot delete job. Either it is already deleted or the job_id is not valid.")
   }

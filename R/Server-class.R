@@ -363,9 +363,12 @@ OpenEOServer <- R6Class(
       runJob = function(job, format=NULL, response=FALSE, res = NULL) {
           job_id = job$job_id
           
-          
-          if (!response && !dir.exists(job$output.folder)) {
-            dir.create(job$output.folder,recursive = TRUE)
+          #  && !dir.exists(job$output.folder)
+          if (!response) {
+            if (!dir.exists(job$output.folder)) {
+              dir.create(job$output.folder,recursive = TRUE)
+            }
+            
             log = paste(job$output.folder, "process.log",sep="/")
             
             logToFile(file=log)
