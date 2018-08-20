@@ -360,16 +360,18 @@ OpenEOServer <- R6Class(
         }
       },
 
-      runJob = function(job, format=NULL) {
+      runJob = function(job, format=NULL, response=FALSE, res = NULL) {
           job_id = job$job_id
           
-          if (!dir.exists(job$output.folder)) {
+          
+          if (!response && !dir.exists(job$output.folder)) {
             dir.create(job$output.folder,recursive = TRUE)
+            log = paste(job$output.folder, "process.log",sep="/")
+            
+            logToFile(file=log)
           }
           
-          log = paste(job$output.folder, "process.log",sep="/")
           
-          logToFile(file=log)
           tryCatch({
 
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
@@ -381,20 +383,34 @@ OpenEOServer <- R6Class(
             }
             
             job = job$run()
-            
+
 
             if (job$status == "error") {
               stop("Canceling output creation due to prior error")
             }
 
-            cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
+            if (!response) {
+              cat("Creating output without HTTP response\n")
+              openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
+            } else {
+              cat("Creating output and HTTP response\n")
+              
+              if (is.null(res)) {
+                stop("Passed no response object. Please provide parameter 'res' from plumber")
+              }
+              
+              return(.create_output(res = res,result = job$results, format = format))
+            }
+                      
             cat("Output finished\n")
           }, error = function(e) {
             cat(str(e))
           }, finally={
             removeJobsUdfData(job)
-            logToConsole()
+            
+            if (!response) {
+              logToConsole()
+            }
           })
 
       },

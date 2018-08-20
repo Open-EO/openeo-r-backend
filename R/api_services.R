@@ -115,8 +115,8 @@ createWFSEndpoint = function() {
   
   # also set a title that is assigned to a service
   job$title = paste("Service",service$service_id)
+  job$status = "submitted"
   job$store()
-  
   
   #if not running or finished then run job!
   # TODO consider also that the result is a feature
@@ -126,7 +126,7 @@ createWFSEndpoint = function() {
     } else {
       format = job$output[["format"]]
     }
-    openeo.server$runJob(job=job, format = format)
+    openeo.server$runJob(job=job, format = format,response=FALSE)
   }
   # TODO wait until finished before proceeding
   

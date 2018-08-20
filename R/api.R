@@ -128,13 +128,12 @@
     job$output = output
     job$job_id = syncJobId()
     
-    job = job$run()
+    # job = job$run()
     
-    if (is.null(job$results)) {
-      return(openEO.R.Backend:::error(res,status = 500,msg = "The result was NULL due to an internal error during processing."))
-    }
+    openeo.server$runJob(job = job, format = format, response = TRUE, res = res)
     
-    return(.create_output(res = res,result = job$results, format = format))
+    return(res)
+    
   }, error= function(e) {
     return(openEO.R.Backend:::error(res=res, status = 500, msg = e))
   }, finally = {

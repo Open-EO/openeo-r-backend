@@ -101,14 +101,26 @@ Service <- R6Class(
         ) VALUES (
           :sid, :jid, :title, :description, :type, :parameters, :attributes, :plan, :costs, :budget, :enabled, :submitted
         )"
+
+        if (!is.null(self$parameters) && (is.list(self$parameters) && length(self$parameters) > 0)) {
+          parameters = encodeChar2Hex(toJSON(self$parameters, auto_unbox = FALSE, pretty = TRUE))
+        } else {
+          parameters = NA
+        }
+        
+        if (!is.null(self$attributes) && (is.list(self$attributes) && length(self$attributes) > 0)) {
+          attributes = encodeChar2Hex(toJSON(self$attributes, auto_unbox = FALSE, pretty = TRUE))
+        } else {
+          attributes=NA
+        }
         
         con = openeo.server$getConnection()
         dbExecute(con, insertQuery, param=list(
           sid = self$service_id,
           type = self$type,
           jid = self$job_id,
-          parameters = encodeChar2Hex(toJSON(self$parameters, auto_unbox = FALSE, pretty = TRUE)),
-          attributes = encodeChar2Hex(toJSON(self$attributes, auto_unbox = FALSE, pretty = TRUE)),
+          parameters = parameters,
+          attributes = attributes,
           title = self$title,
           description = self$description,
           plan = self$plan,
