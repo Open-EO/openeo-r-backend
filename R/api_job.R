@@ -107,7 +107,6 @@ createJobsEndpoint = function() {
               handler = .cors_option_bypass)
 
   
-  
   jobs$filter("authorization",.authorized)
   jobs$filter("me_filter", .replace_user_me_in_body)
   

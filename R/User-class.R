@@ -172,7 +172,7 @@ User <- R6Class(
     },
     process_graphs = function() {
       con = openeo.server$getConnection()
-      result = dbGetQuery(con, "select graph_id from process_graph where user_id = :id",param=list(id = self$user_id))
+      result = dbGetQuery(con, "select graph_id from process_graph where user_id = :id and graph_id not in (select distinct process_graph from job)",param=list(id = self$user_id))
       dbDisconnect(con)
       
       if (is.null(result)) {
