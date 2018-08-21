@@ -7,7 +7,6 @@
 #' @field job_id The unique identifier of the job
 #' @field status The current status in the job lifecycle
 #' @field process_graph graph of nested processes that is executable (ExecutableProcess)
-#' @field view Spatio-Temporal Extent to be used for the calculation (currently not in use)
 #' @field submitted Timestamp when the job was submitted to the server
 #' @field user_id The user who owns the job
 #' @field consumed_credits For accounting and billing the amount of credits consumed by this job
@@ -31,7 +30,6 @@ Job <- R6Class(
     job_id = NULL,
     status=NA,
     process_graph = NULL,
-    view=NULL,
     submitted=NA,
     last_update=NA,
     user_id=NULL,

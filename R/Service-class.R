@@ -1,4 +1,4 @@
-#' @importFrom as_datetime lubridate
+#' @importFrom lubridate as_datetime
 #' @export
 Service <- R6Class(
   "Service",

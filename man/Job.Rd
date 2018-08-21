@@ -22,8 +22,6 @@ graph.
 
 \item{\code{process_graph}}{graph of nested processes that is executable (ExecutableProcess)}
 
-\item{\code{view}}{Spatio-Temporal Extent to be used for the calculation (currently not in use)}
-
 \item{\code{submitted}}{Timestamp when the job was submitted to the server}
 
 \item{\code{user_id}}{The user who owns the job}
