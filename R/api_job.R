@@ -215,7 +215,7 @@ createJobsEndpoint = function() {
   job = Job$new(user_id = req$user$user_id, job_id = job_id)
   job$load()
   
-  if (!is.null(sent_job$process_graph)) {
+  if (!is.null(sent_job$process_graph) && job$status %in% c("submitted","canceled","error")) {
     process_graph = sent_job$process_graph
     
     job$modifyProcessGraph(process_graph)
