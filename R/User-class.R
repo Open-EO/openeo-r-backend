@@ -32,17 +32,6 @@ User <- R6Class(
       ))
     },
     
-    toList = function() {
-      return(
-        list(
-          user_id = self$user_id,
-          user_name = self$user_name,
-          password = self$password,
-          jobs = self$jobs
-        )
-      )
-    },
-    
     fileList = function() {
       files.df = self$files
       rownames(files.df) <- NULL
@@ -152,7 +141,7 @@ User <- R6Class(
     
     jobs = function() {
       con = openeo.server$getConnection()
-      result = dbGetQuery(con, "select job_id from job where user_id = :id",param=list(id = self$user_id))
+      result = dbGetQuery(con, "select job_id from job where user_id = :id and job_id not in (select job_id from service where user_id = :id)",param=list(id = self$user_id))
       dbDisconnect(con)
       if (is.null(result) || length(result) < 1) {
         return(list())
@@ -189,7 +178,7 @@ User <- R6Class(
         size.workspace = sum(file.size(workspace.files))
       }
       
-      
+      # TODO maybe change this request to find also jobs from services
       user_jobs = self$jobs
       
       if (length(user_jobs) < 1) {
