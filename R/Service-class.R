@@ -6,8 +6,6 @@ Service <- R6Class(
   # public ----
   public = list(
     # attributes ====
-    service_url = NULL,
-    
     # db fields
     service_id = NA,
     job_id = NA,
@@ -23,6 +21,7 @@ Service <- R6Class(
     
     attributes = list(),
     parameters = list(),
+    # TODO remove db field "args"
     
     
     
