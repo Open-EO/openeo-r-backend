@@ -249,7 +249,7 @@
 }
 
 .not_implemented_yet = function(req,res, ...) {
-  error(res,501, "Not implemented, yet")
+  error(res,501, "The back-end responds with this error code whenever an endpoint is specified in the openEO API, but is not supported.", code = 501)
 }
 
 
@@ -328,6 +328,20 @@ createAPI = function() {
               "/api/service_types",
               handler = .cors_option_bypass)
   
+  
+  root$handle("GET",
+              "/api/subscription",
+              handler = .not_implemented_yet)
+  root$handle("OPTIONS",
+              "/api/subscription",
+              handler = .cors_option_bypass)
+  
+  root$handle("POST",
+              "/api/validation",
+              handler = .not_implemented_yet)
+  root$handle("OPTIONS",
+              "/api/validation",
+              handler = .cors_option_bypass)
   
   root$registerHook("postroute",.cors_filter)
   
