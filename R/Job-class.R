@@ -58,7 +58,6 @@ Job <- R6Class(
       if (!is.na(self$status)) {
         self$status = "submitted"
       }
-      
       self$consumed_credits = 0
       if (!is.null(process_graph)) {
         if (!is.ProcessGraph(process_graph)) {

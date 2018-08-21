@@ -221,7 +221,7 @@ ProcessGraph <- R6Class(
         
         #TODO maybe add a handling for UDF or in the UDF class 
         if (class(value) == "list" && "process_id" %in% names(value)) {
-          runner$setArgumentValue(key, private$loadProcess(value))
+          runner$setArgumentValue(key, private$loadProcess(value,...))
         } else {
           runner$setArgumentValue(key, value)
         }

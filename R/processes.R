@@ -19,7 +19,17 @@ get_data = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(data_id) {
-    cat(paste("Selecting product:",data_id,"\n"))
+    logger = Logger$new(self$process_id)
+    job = parent.frame()$job
+    
+    msg = paste("Selecting product:",data_id)
+    if (!is.null(job)) {
+      logger$info(job_id= job$job_id, message = msg)
+    } else {
+      cat(paste(msg,"\n",sep=""))
+    }
+    
+    
     coll = getCollectionFromImageryStatement(data_id)
     return(coll)
   }

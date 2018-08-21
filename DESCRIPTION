@@ -56,6 +56,7 @@ Collate:
     'ExecutableProcess-class.R'
     'utils.R'
     'Job-class.R'
+    'Logger-class.R'
     'MapServerConfig-class.R'
     'MapServerLayer-class.R'
     'MapServerMap-class.R'

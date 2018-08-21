@@ -319,6 +319,27 @@ OpenEOServer <- R6Class(
           )")
         }
         
+        if (!dbExistsTable(con,"job_result")) {
+          dbExecute(con, "create table job_result (
+                    job_id text,
+                    path text,
+                    created datetime,
+                    expiry datetime,
+                    size long
+          )")
+        }
+        
+        if (!dbExistsTable(con,"log")) {
+          dbExecute(con, "create table log (
+                    timestamp datetime,
+                    job_id text,
+                    service_id text,
+                    process_id text,
+                    category text,
+                    message text
+          )")
+        }
+        
         dbDisconnect(con)
       },
       
