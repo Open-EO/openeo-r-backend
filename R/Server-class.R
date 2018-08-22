@@ -382,6 +382,8 @@ OpenEOServer <- R6Class(
       },
 
       runJob = function(job, format=NULL, response=FALSE, res = NULL) {
+          logger = Logger$new(process=list(process_id = "job_runner"), job = job)
+          
           job_id = job$job_id
           
           #  && !dir.exists(job$output.folder)
@@ -406,27 +408,27 @@ OpenEOServer <- R6Class(
               format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
             }
             
-            job = job$run()
+            job = job$run(logger = logger)
 
 
             if (job$status == "error") {
-              stop("Canceling output creation due to prior error")
+              logger$error("Canceling output creation due to prior error")
             }
 
             if (!response) {
-              cat("Creating output without HTTP response\n")
-              openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
+              logger$info("Creating output without HTTP response")
+              openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder, logger = logger)
             } else {
-              cat("Creating output and HTTP response\n")
+              logger$info("Creating output and HTTP response")
               
               if (is.null(res)) {
-                stop("Passed no response object. Please provide parameter 'res' from plumber")
+                logger$error("Passed no response object. Please provide parameter 'res' from plumber")
               }
               
-              return(.create_output(res = res,result = job$results, format = format))
+              return(.create_output(res = res,result = job$results, format = format, logger = logger))
             }
                       
-            cat("Output finished\n")
+            logger$info("Output finished")
           }, error = function(e) {
             cat(str(e))
           }, finally={
@@ -475,9 +477,10 @@ OpenEOServer <- R6Class(
         }
         
         self$data = list()
-        
+        cat("Loading demo data sets...")
         loadLandsat7Dataset()
         loadSentinel2Data()
+        cat("[done]\n")
       },
       
       loadDemoProcesses = function() {

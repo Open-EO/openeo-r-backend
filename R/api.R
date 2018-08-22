@@ -128,8 +128,6 @@
     job$output = output
     job$job_id = syncJobId()
     
-    # job = job$run()
-    
     openeo.server$runJob(job = job, format = format, response = TRUE, res = res)
     
     return(res)
@@ -158,14 +156,14 @@
 }
 
 # creates files for batch processing
-.create_output_no_response = function(result, format, dir) {
-    result$toFile(dir,format=format)
+.create_output_no_response = function(result, format, dir,logger) {
+    result$toFile(dir,format=format,logger)
 }
 
 
 
 # creates file output for a direct webservice result (executeSynchronous)
-.create_output = function(res, result, format) {
+.create_output = function(res, result, format, logger) {
   #store the job? even though it is completed?
   if (result$dimensions$feature) {
     contentType = paste("application/x-ogr-",format,sep="")
@@ -174,7 +172,7 @@
   }
     
   tryCatch({
-    temp = result$toFile(format=format, temp=TRUE)
+    temp = result$toFile(format=format, temp=TRUE, logger=logger)
     first = temp$getData()$output.file[[1]]
     sendFile(res, 
              status=200, 

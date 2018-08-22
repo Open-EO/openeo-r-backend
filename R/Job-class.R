@@ -288,10 +288,33 @@ Job <- R6Class(
       self$process_graph = private$pg$buildExecutableProcessGraph(user=user,job=self)
     },
     
-    run = function() {
+    clearLog = function() {
+      con = openeo.server$getConnection()
+      tryCatch(
+        {
+          return(con %>% dbExecute("delete from log where job_id = :jid", param=list(jid=self$job_id)))
+        },
+        finally = {
+          dbDisconnect(con)
+        }
+      )
+    },
+    
+    getLog = function() {
+      con = openeo.server$getConnection()
+      tryCatch({
+          results = con %>% dbGetQuery("select * from log where job_id = :jid", param=list(jid=self$job_id))
+          return(results)
+       },
+       finally = {
+         dbDisconnect(con)
+       })
+    },
+    
+    run = function(logger) {
 
       tryCatch({
-        cat("Start job processing...\n")
+        logger$info("Start job processing...")
         self$status = "running"
         
         if (self$persistent) {
@@ -303,9 +326,7 @@ Job <- R6Class(
           dbDisconnect(con)
         }
         
-        
         self$results = self$process_graph$execute()
-        
         
         self$status = "finished"
         
@@ -318,9 +339,9 @@ Job <- R6Class(
           dbDisconnect(con)
         }
         
-        cat("Job done\n")
+        logger$info("Job done")
       }, error=function (e) {
-        cat("Error. Aborting execution.\n")
+        logger$error("Error. Aborting execution.")
         self$status = "error"
         self$results = NULL
         if (self$persistent) {

@@ -19,12 +19,11 @@ get_data = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(data_id) {
-    logger = Logger$new(self$process_id)
-    job = parent.frame()$job
+    logger = Logger$new(process=self, job = parent.frame()$job)
     
     msg = paste("Selecting product:",data_id)
-    if (!is.null(job)) {
-      logger$info(job_id= job$job_id, message = msg)
+    if (!is.null(parent.frame()$job)) {
+      logger$info(msg)
     } else {
       cat(paste(msg,"\n",sep=""))
     }
@@ -66,14 +65,15 @@ filter_daterange = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
-    cat("Starting filter_daterange\n")
+    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger$info("Starting filter_daterange")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
     if (is.null(collection)) {
-      stop("no collection element found in function call")
+      logger$error("no collection element found in function call")
     }
     
     if (!is.null(from) && class(from) == "character") {
@@ -113,10 +113,11 @@ filter_bands = Process$new(
   returns = result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
+    logger = Logger$new(process=self, job = parent.frame()$job)
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
-    cat("Filtering for bands")
+    logger$info("Filtering for bands")
     return(collection$filterByBands(bands))
   }
 )
@@ -151,8 +152,11 @@ zonal_statistics = Process$new(
   returns=result.vector,
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
+    logger = Logger$new(process=self, job = parent.frame()$job)
     func_name = func
     func = get(tolower(func))
+    
+    logger$info("Start calculating zonal statistics")
     
     if (startsWith(regions,"/")) {
       regions = gsub("^/","",regions)
@@ -165,6 +169,7 @@ zonal_statistics = Process$new(
     
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
     crs(polygonList) = crs(regions)
+    logger$info("Imported polygons")
     
     collection = getCollectionFromImageryStatement(imagery)
     
@@ -179,10 +184,7 @@ zonal_statistics = Process$new(
                              fun=func,
                              df=FALSE)
     
-    
-    # colnames(values) = c(colnames(regions@data),timestamps)
-    # out = SpatialPolygonsDataFrame(polygonList,data=values)
-    # crs(out) <- crs(regions)
+    logger$info("Finished extracting data for polygons")
     
     old_dimensionality = collection$dimensions
     result = Collection$new(old_dimensionality)
@@ -211,7 +213,9 @@ find_min = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
-    cat("Starting find_min\n")
+    logger = Logger$new(process=self, job = parent.frame()$job)
+    
+    logger$info("Starting find_min")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
@@ -219,18 +223,17 @@ find_min = Process$new(
       #get a list of the data (raster objects)
       rasters = collection$getData()$data
       
-      cat("Fetched related granules\n")
+      logger$info("Fetched related granules")
       #create a brick
       data = stack(rasters)
-      cat("Stacking data\n")
+      logger$info("Stacking data")
       
       #calculate
       minimum = calc(data,fun=min,na.rm=T)
-      cat("calculating the minimum\n")
+      logger$info("calculating the minimum")
       
       #create a granule
-      # aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
-      cat("creating single granule for minimum calculation\n")
+      logger$info("creating single granule for minimum calculation")
       
       dims = collection$dimensions
       dims$time = FALSE
@@ -239,11 +242,11 @@ find_min = Process$new(
 
       result = Collection$new(dimensions = dims) #modified afterwards
       result$addGranule(data=minimum)
-      cat("Creating collection for single granule and setting meta data\n")
+      logger$info("Creating collection for single granule and setting meta data")
       
       return(result)
     } else {
-      stop("Not implemented yet. Group by band and apply function, or reduce band dimension")
+      logger$error("Not implemented yet. Group by band and apply function, or reduce band dimension")
     }
   }
 )
@@ -283,6 +286,9 @@ filter_bbox = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
+    logger = Logger$new(process=self, job = parent.frame()$job)
+    
+    logger$info("Filter for bounding box")
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
@@ -328,12 +334,14 @@ calculate_ndvi = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
-    cat("Starting calculate_ndvi\n")
+    logger = Logger$new(process=self, job = parent.frame()$job)
+    
+    logger$info("Starting calculate_ndvi")
 
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
-    cat("Fetched indices for bands\n")
+    logger$info("Fetched indices for bands")
     
     if (collection$dimensions$time) {
       group = collection$getData() %>% group_by(time) 
@@ -354,12 +362,12 @@ calculate_ndvi = Process$new(
     
     # fetch the data elements and simultanously calculate ndvi
 
-    cat("ndvi calculation applied on all granules\n")
+    logger$info("ndvi calculation applied on all granules")
     
     result.collection = collection$clone(deep=TRUE)
  
     result.collection$setData(ndvi_calculation)
-    cat("set metadata for newly calculated collection\n")
+    logger$info("set metadata for newly calculated collection")
     
     return(result.collection)
   }
@@ -391,6 +399,8 @@ aggregate_time = Process$new(
     parent = parent.frame()
     job = parent$job
     user = parent$user
+    
+    logger = Logger$new(process=self, job = parent.frame()$job)
     
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
@@ -433,7 +443,7 @@ aggregate_time = Process$new(
       return(result.collection)
     }, 
     error = function(e) {
-      cat(paste("ERROR:",e))
+      logger.error(paste("ERROR:",e))
       udf_transaction = udf_transaction$load()
       udf_transaction$status = "error"
       udf_transaction$end_date = NA
@@ -477,6 +487,8 @@ apply_pixel = Process$new(
     job = parent$job
     user = parent$user
     
+    logger = Logger$new(process=self, job = job)
+    
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
     {
@@ -508,7 +520,7 @@ apply_pixel = Process$new(
       return(result.collection)
     }, 
     error = function(e) {
-      cat(paste("ERROR:",e))
+      logger$error(paste("ERROR:",e))
       udf_transaction = udf_transaction$load()
       udf_transaction$status = "error"
       udf_transaction$end_date = NA

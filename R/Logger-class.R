@@ -5,35 +5,61 @@ Logger <- R6Class(
   # public ----
   public = list(
     # attributes ====
-    process_id = NA,
     # functions ====
-    initialize = function(process_id = NA) {
-      self$process_id = process_id
+    initialize = function(process = NULL, job = NULL, service = NULL) {
+      private$process = process
+      private$job = job
+      private$service = service
       invisible(self)
     },
-    info = function(job_id = NA, service_id = NA, message) {
-      private$log(job_id=job_id,service_id = service_id, message = message,category = "info")
+    info = function(message) {
+      private$log(message = message,category = "info")
     },
-    error = function(job_id = NA, service_id = NA, message) {
-      private$log(job_id=job_id,service_id = service_id, message = message,category = "error")
+    error = function(message) {
+      private$log(message = message,category = "error")
       stop(message)
     }
   ),
+  # private ----
   private = list(
-    log = function(job_id = NA, service_id = NA, message, category) {
+    # attributes ====
+    service = NULL,
+    job = NULL,
+    process = NULL,
+    # functions ====
+    log = function(message, category) {
       con = openeo.server$getConnection()
+      
+      if (!is.null(private$process)) {
+        process_id = private$process$process_id
+      } else {
+        process_id = NA
+      }
+      
+      if (!is.null(private$job)) {
+        job_id = private$job$job_id
+      } else {
+        job_id = NA
+      }
+      
+      if (!is.null(private$service)) {
+        service_id = private$service$service_id
+      } else {
+        service_id = NA
+      }
+      
       tryCatch(
         {
           invisible(dbExecute(con, 
                     "insert into log (timestamp,message,job_id,service_id,category,process_id) 
                     values (:time,:msg,:jid,:sid,:category,:pid)", 
                     param = list(
-                      time=iso_datetime(now()),
+                      time=iso_datetime_milli(now()),
                       msg = message, 
                       jid=job_id, 
                       sid=service_id,
                       category=category,
-                      pid=self$process_id)))
+                      pid=process_id)))
         },
         finally={dbDisconnect(con)}
       )

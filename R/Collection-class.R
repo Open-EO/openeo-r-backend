@@ -313,14 +313,14 @@ Collection <- R6Class(
     getBandIndex = function(band_id) {
       return(match(band_id, self$getBandNames()))
     },
-    toFile = function(dir=NULL, format=NULL,temp=FALSE) {
+    toFile = function(dir=NULL, format=NULL,temp=FALSE,logger) {
       if (is.null(dir)) {
         dir = getwd()
       }
       dir = gsub(pattern = "^(.*[^/])/+$", "\\1",dir) #remove tailing slashes
       # to raster data file ====
       if (self$dimensions$raster) {
-        cat("Creating raster file with GDAL\n")
+        logger$info("Creating raster file with GDAL")
         # collection contains raster data
         if (is.null(format)) {
           format = "GTiff"
@@ -421,7 +421,7 @@ Collection <- R6Class(
       
       # to vector data file ====
       if (self$dimensions$feature) {
-        cat("Creating vector file with OGR\n")
+        logger$info("Creating vector file with OGR")
         
         if (is.null(format)) {
           format = "GeoJSON"

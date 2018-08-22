@@ -3,3 +3,8 @@
 iso_datetime = function(string) {
   return(format(as_datetime(string),format="%Y-%m-%dT%H:%M:%SZ"))
 }
+
+
+iso_datetime_milli = function(string) {
+  return(format(as_datetime(string),format="%Y-%m-%dT%H:%M:%OS3Z"))
+}
