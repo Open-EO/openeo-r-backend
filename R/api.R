@@ -158,7 +158,7 @@
 
 # creates files for batch processing
 .create_output_no_response = function(result, format, dir,logger) {
-    result$toFile(dir,format=format,logger)
+    result$toFile(dir=dir,format=format,logger=logger)
 }
 
 
