@@ -322,7 +322,7 @@ aggregate_time = Process$new(
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
-    udf_transaction$prepareExportData(collection,export_type=c("json","file"))
+    udf_transaction$prepareExportData(collection,export_type=c("json","file"), dim_mod = names(which(self$modifier == TRUE)))
     
     # # export data
     # write_generics(collection,dir_name = udf_transaction$workspace)
