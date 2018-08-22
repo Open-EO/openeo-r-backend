@@ -130,6 +130,7 @@
     
     openeo.server$runJob(job = job, format = format, response = TRUE, res = res)
     
+    job$clearLog()
     return(res)
     
   }, error= function(e) {
@@ -165,6 +166,10 @@
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format, logger) {
   #store the job? even though it is completed?
+  if (is.null(result)) {
+    logger$error("Outputter did not receive a collection for output.")
+  }
+  
   if (result$dimensions$feature) {
     contentType = paste("application/x-ogr-",format,sep="")
   } else {
@@ -182,7 +187,9 @@
   },error=function(e){
     openEO.R.Backend:::error(res,500,e)
   },finally = {
-    unlink(temp$getData()$output.file)
+    if (!is.null(temp)) {
+      unlink(temp$getData()$output.file)
+    }
   })
 }
 

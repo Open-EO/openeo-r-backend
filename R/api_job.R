@@ -152,11 +152,11 @@ createJobsEndpoint = function() {
   job$submitted = submit_time
   job$last_update = submit_time
   
-  job$title = sent_job$title
-  job$description = sent_job$description
-  job$output = sent_job$output
-  job$plan = sent_job$plan
-  job$budget = sent_job$budget
+  if (!is.null(sent_job$title)) job$title = sent_job$title
+  if (!is.null(sent_job$description)) job$description = sent_job$description
+  if (!is.null(sent_job$output)) job$output = sent_job$output
+  if (!is.null(sent_job$plan)) job$plan = sent_job$plan
+  if (!is.null(sent_job$budget)) job$budget = sent_job$budget
   
   job$store()
   res$setHeader(name = "Location",

@@ -6,5 +6,5 @@ iso_datetime = function(string) {
 
 
 iso_datetime_milli = function(string) {
-  return(format(as_datetime(string),format="%Y-%m-%dT%H:%M:%OS3Z"))
+  return(format(as_datetime(string),format="%Y-%m-%dT%H:%M:%OS3Z",tz=Sys.timezone()))
 }

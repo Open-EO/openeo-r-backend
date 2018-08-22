@@ -245,6 +245,8 @@ Job <- R6Class(
       success2 = dbExecute(con,"delete from job where job_id = :id",param=list(id = self$job_id)) == 1
       dbDisconnect(con)
       
+      self$clearLog()
+      
       if (dir.exists(self$output.folder)) {
         unlink(self$output.folder,recursive = TRUE)
       }
