@@ -16,6 +16,8 @@ intermediate results from one process to an other (the result of a process is a 
 
 \describe{
 \item{\code{dimensions}}{A dimensionality object containing information about the existence of dimensions}
+
+\item{\code{space}}{A tibble containing an index and the geometry}
 }}
 
 \keyword{datasets}

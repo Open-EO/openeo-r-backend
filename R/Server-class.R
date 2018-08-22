@@ -32,10 +32,11 @@ OpenEOServer <- R6Class(
       sqlite.path = NULL,
       
       udf_transactions.path = NULL,
+      udf_cleanup = TRUE,
       
       api.port = NULL,
       host = NULL,
-      baseserver.url = "http:localhost:8000/api/",
+      baseserver.url = "http://localhost:8000/api/",
       mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
       
       processes = NULL,
@@ -190,6 +191,16 @@ OpenEOServer <- R6Class(
           )")
         }
         
+        if (!dbExistsTable(con,"udf")) {
+          dbExecute(con, "create table udf (
+                    udf_id text,
+                    job_id text,
+                    start_date datetime default current_timestamp,
+                    end_date datetime,
+                    status text
+          )")
+        }
+        
         dbDisconnect(con)
       },
       
@@ -264,6 +275,7 @@ OpenEOServer <- R6Class(
           }, error = function(e) {
             cat(str(e))
           }, finally={
+            removeJobsUdfData(job)
             logToConsole()
           })
 

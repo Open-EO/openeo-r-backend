@@ -147,6 +147,7 @@
 
   tryCatch({
     job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
+    job$job_id = syncJobId()
     
     job = job$run()
     
@@ -157,6 +158,8 @@
     return(.create_output(res = res,result = job$results, format = format))
   }, error= function(e) {
     return(openEO.R.Backend:::error(res=res, status = 500, msg = e))
+  }, finally = {
+    removeJobsUdfData(job)
   })
 }
 

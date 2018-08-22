@@ -6,12 +6,16 @@
 #' 
 #' @field job_id The unique identifier of the job
 #' @field status The current status in the job lifecycle
-#' @field process_graph graph of nested processes that is executable
-#' @field view Spatio-Temporal Extent to be used for the calculation
+#' @field process_graph graph of nested processes that is executable (ExecutableProcess)
+#' @field view Spatio-Temporal Extent to be used for the calculation (currently not in use)
 #' @field submitted Timestamp when the job was submitted to the server
 #' @field user_id The user who owns the job
 #' @field consumed_credits For accounting and billing the amount of credits consumed by this job
-#' @field filePath The system filepath that links to the stored JSON process graph
+#' @field last_update Timestamp when the job was last updated
+#' @field output output configuration like output$format copied from the process graph (pg)
+#' @field results Contains the result of the process_graph after execution (Collection)
+#' @field persistent Whether or not the job is stored in database
+#' @field output list containing the output configuration like format (or additional GDAL commands)
 #' 
 #' @include Process-class.R
 #' @importFrom R6 R6Class
@@ -31,9 +35,9 @@ Job <- R6Class(
     last_update=NULL,
     user_id=NULL,
     consumed_credits=NULL,
-    output=NULL,
-    results = NULL,
-    persistent = FALSE,
+    output=NULL, # output configuration like output$format copied from the process graph (pg)
+    results = NULL, # contains the results of the process_graph after execution
+    persistent = FALSE, # whether or not the job is stored in data base
     
     # functions ----
     initialize = function(job_id=NULL,process_graph=NULL,user_id = NULL) {
@@ -303,5 +307,17 @@ exists.Job = function(job_id) {
     return(result)
   } else {
     return(FALSE)
+  }
+}
+
+syncJobId = function() {
+  randomString = paste("SYNC",createAlphaNumericId(n=1,length=11),sep="")
+  
+  
+  if (exists.Job(randomString)) {
+    # if id exists get a new one (recursive)
+    return(syncJobId())
+  } else {
+    return(randomString)
   }
 }
