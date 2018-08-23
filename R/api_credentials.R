@@ -12,6 +12,15 @@ createCredentialsEndpoint = function() {
               "/basic",
               handler = .cors_option_bypass)
   
+  # openeo.server$registerEndpoint("/credentials/oidc","GET")
+  credentials$handle("GET",
+                     "/oidc",
+                     handler = .not_implemented_yet,
+                     serializer = serializer_unboxed_json())
+  credentials$handle("OPTIONS",
+                     "/oidc",
+                     handler = .cors_option_bypass)
+  
   return(credentials)
 }
 

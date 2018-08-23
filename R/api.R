@@ -75,9 +75,10 @@
 }
 
 .services = function() {
+  # TODO also list WFS and WCS here
   return(list(
     WMS = list(
-      arguments=list(
+      parameters=list(
         version=list(
           type="string",
           description="The WMS version that has to be used.",
