@@ -37,10 +37,12 @@ ProcessGraph <- R6Class(
         self$user_id = user_id
       }
       
+      if (is.null(title)) title = NA
       if (!is.na(title)) {
         self$title = title
       }
       
+      if (is.null(description)) description = NA
       if (!is.na(description)) {
         self$description = description
       }
