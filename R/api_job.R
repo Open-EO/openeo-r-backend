@@ -285,7 +285,7 @@ createJobsEndpoint = function() {
 .estimateJobCosts = function(req,res, job_id) {
   return(list(
     costs = 0,
-    duration = "P2M",
+    duration = "PT2M",
     downloads_included = TRUE
   ))
 }
