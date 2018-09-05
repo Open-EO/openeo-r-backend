@@ -342,9 +342,10 @@ createAPI = function() {
               "/api/subscription",
               handler = .cors_option_bypass)
   
+  openeo.server$registerEndpoint("/validation","POST")
   root$handle("POST",
               "/api/validation",
-              handler = .not_implemented_yet)
+              handler = .validateProcessGraph)
   root$handle("OPTIONS",
               "/api/validation",
               handler = .cors_option_bypass)

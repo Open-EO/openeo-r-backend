@@ -147,3 +147,24 @@ createProcessGraphsEndpoint = function() {
   
   res$status = 204
 }
+
+.validateProcessGraph = function(req,res) {
+  parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+  
+  if ("process_graph" %in% names(parsedGraph)) {
+    process_graph = ProcessGraph$new(process_graph = parsedGraph[["process_graph"]])
+  } else {
+    stop("No process graph sent to the backend")
+  }
+  
+  tryCatch({
+    process_graph$buildExecutableProcessGraph(user = req$user)
+    res$status = 204
+    
+    
+  },error=function(e) {
+    return(openEO.R.Backend:::error(res,501,"Process graph contains errors...")) #TODO improve!
+  }) 
+  
+  
+}
