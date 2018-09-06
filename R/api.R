@@ -60,17 +60,46 @@
 }
 
 .output_formats = function() {
-  formats = c(openeo.server$outputGDALFormats,openeo.server$outputOGRFormats)
-  namedList = lapply(formats,function(format) {
-    res = list()
-    return(res)
+  raster.only.formats = openeo.server$outputGDALFormats[which(! openeo.server$outputGDALFormats %in% openeo.server$outputOGRFormats)]
+  rasterformats = lapply(raster.only.formats, function(formatname) {
+    format = list(
+      gis_data_types = c("raster")
+    )
+    return(format)
   })
+  names(rasterformats) = raster.only.formats
+  
+  vector.only.formats = openeo.server$outputOGRFormats[which(! openeo.server$outputOGRFormats %in% openeo.server$outputGDALFormats)]
+  vectorformats = lapply(vector.only.formats, function(formatname) {
+    format = list(
+      gis_data_types = c("vector")
+    )
 
-  names(namedList) = formats
+    return(format)
+  })
+  names(vectorformats) = vector.only.formats
+  
+  
+  both.type.formats = openeo.server$outputOGRFormats[which(openeo.server$outputOGRFormats %in% openeo.server$outputGDALFormats)]
+  bothformats = lapply(both.type.formats, function(formatname) {
+    format = list(
+      gis_data_types = c("raster","vector"),
+      parameters = list(gis_data_type = list(
+          type = "string",
+          enum = c("raster","vector"),
+          required = TRUE
+        )
+      )
+    )
+    return(format)
+  })
+  names(bothformats) = both.type.formats
+  
+  formats = c(rasterformats,vectorformats,bothformats)
   
   return(list(
     default="GTiff",
-    formats = namedList
+    formats = formats
   ))
 }
 
