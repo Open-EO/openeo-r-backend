@@ -385,7 +385,7 @@ createAPI = function() {
   root$mount("/api/credentials",credentials)
   
   data = createDataEndpoint()
-  root$mount("/api/data",data)
+  root$mount("/api/collections",data)
   
   process = createProcessesEndpoint()
   root$mount("/api/processes",process)

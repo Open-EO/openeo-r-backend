@@ -3,7 +3,7 @@
 createDataEndpoint = function() {
   data = plumber$new()
   
-  openeo.server$registerEndpoint("/data/","GET")
+  openeo.server$registerEndpoint("/collections/","GET")
   data$handle("GET",
               "/",
               handler = .listData,
@@ -12,7 +12,7 @@ createDataEndpoint = function() {
               "/",
               handler = .cors_option_bypass)
   
-  openeo.server$registerEndpoint("/data/{data_id}","GET")
+  openeo.server$registerEndpoint("/collections/{data_id}","GET")
   data$handle("GET",
               "/<pid>",
               handler = .describeData,
