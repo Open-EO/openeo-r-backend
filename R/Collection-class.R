@@ -56,6 +56,12 @@ Collection <- R6Class(
     getBandsMetadata = function() {
       return(private$bands_metadata)
     },
+    setCollectionMetadata=function(md) {
+      private$collection_metadata = md
+    },
+    getCollectionMetadata = function() {
+      return(private$collection_metadata)
+    },
     addFeature = function(space=NULL,time=NULL,band=NULL,data,...) {
       # space: spatial features
       # time: time stamps (1D tibble)
@@ -105,7 +111,7 @@ Collection <- R6Class(
       invisible(self)
     },
     
-    addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL) {
+    addGranule = function(space=NULL,time=NULL, band=NULL, data, ..., meta_band = NULL, band_file = NULL) {
       dot_args = list(...)
       
       if (is.character(data)) {
@@ -146,11 +152,17 @@ Collection <- R6Class(
         }
         
         if (!is.null(band) && (length(private$bands_metadata) < band || is.null(private$bands_metadata[[band]]))) {
-          filePath = data@file@name
+          if (is.null(band_file)) {
+            filePath = data@file@name
+          } else {
+            filePath = band_file
+          }
+          
+          
         
           md = GDALinfo(filePath,silent=TRUE)
-          scale = attr(md,"ScaleOffset")[,"scale"]
-          offset = attr(md,"ScaleOffset")[,"offset"]
+          scale = attr(md,"ScaleOffset")[1,"scale"]
+          offset = attr(md,"ScaleOffset")[1,"offset"]
           type = tolower(attr(md,"df")[1,"GDType"])
           nodata=attr(md,"df")[1,"NoDataValue"]
           resolution = list(x=md["res.x"],y=md["res.y"])
@@ -472,6 +484,7 @@ Collection <- R6Class(
     srs = NULL,
     data_table = NULL,
     bands_metadata = NULL, # named list of Band
+    collection_metadata = NULL,
     
     # functions ====
     init_tibble = function() {
@@ -567,6 +580,83 @@ Collection <- R6Class(
 )
 
 # statics ----
+
+#' Imports a collection
+#' 
+#' The function uses a predefined lookup table for data retrieval and a metadata json document to 
+#' describe the whole collection. 
+#' 
+#' @details The files are named lookup.csv and md.json. The first has the columns "file_access", "timestamp",
+#' "band_index" and "filename". With file_access we state the link to the accessed file how the
+#' data will be loaded and accessed, e.g. a VRT. "filename" links to the actual file, which should be a single
+#' band. This will be used to extract relevant metadata for each individual band (like the actual spatial 
+#' resolution), which might not be correctly obtainable from a VRT.
+#' 
+#' @importFrom lubridate as_datetime
+#' @import dplyr
+#' @import tibble
+#' @import magrittr
+#' @importFrom jsonlite read_json
+#' @export
+importCollection = function(path,fun=brick) {
+  lookup = read.csv2(paste(path,"lookup.csv",sep="/"))
+  lookup$timestamp = lubridate::as_datetime(lookup$timestamp)
+  lookup = tibble::as_tibble(lookup)
+  
+  l = lookup %>% 
+    dplyr::rowwise() %>% 
+    dplyr::do(band_index=as.integer(.$band_index),
+       timestamp=as_datetime(.$timestamp),
+       data = fun(paste(path,.$file_access,sep="/"))[[.$band_index]],
+       filename = .$filename) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(band_index=unlist(band_index),timestamp = as_datetime(unlist(timestamp)),filename = unlist(filename))
+  
+  col = Collection$new(create_dimensionality(space=TRUE,time=TRUE,band=TRUE,raster=TRUE))
+  
+  
+  
+  meta = jsonlite::read_json(paste(path,"md.json",sep="/"))
+  
+  band_ids = names(meta$`eo:bands`)
+  names = sapply(meta$`eo:bands`,function(band){
+    n = band$common_name
+    if (is.null(n)) {
+      n = NA_character_
+    }
+    return(n)
+  })
+  wavelengths = sapply(meta$`eo:bands`,function(band){
+    l = band$center_wavelength
+    if (is.null(l)) {
+      l = NA_real_
+    }
+    return(l)
+  })
+  
+  band_meta=tibble(band_id = band_ids, name = names, wavelengths = wavelengths)
+  
+  added = l %>% rowwise() %>% dplyr::do(done = {
+    col$addGranule(band = .$band_index,
+                   time = .$timestamp,
+                   data = unlist(.$data), 
+                   meta_band = band_meta,
+                   band_file = paste(path,.$filename,sep="/"))
+    TRUE
+  })
+  
+  # update extents with inserted data
+  # TODO deal with open temporal intervals 
+  e = as(extent(col),"SpatialPolygons")
+  crs(e) = crs(col)
+  e = spTransform(e, crs("+init=EPSG:4326"))
+  meta$extent$spatial = extent(e)[c(1,3,2,4)]
+  meta$extent$temporal = c(openEO.R.Backend:::iso_datetime(col$getMinTime()), 
+                           openEO.R.Backend:::iso_datetime(col$getMaxTime()))
+  
+  col$setCollectionMetadata(meta)
+  return(col)
+}
 
 is.Collection = function(obj) {
   return("Collection" %in% class(obj))
