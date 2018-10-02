@@ -12,13 +12,13 @@ createDataEndpoint = function() {
               "/",
               handler = .cors_option_bypass)
   
-  openeo.server$registerEndpoint("/collections/{data_id}","GET")
+  openeo.server$registerEndpoint("/collections/{name}","GET")
   data$handle("GET",
-              "/<pid>",
+              "/<name>",
               handler = .describeData,
               serializer = serializer_unboxed_json())
   data$handle("OPTIONS",
-              "/<pid>",
+              "/<name>",
               handler = .cors_option_bypass)
   
   
@@ -58,10 +58,10 @@ createDataEndpoint = function() {
 # returns details of a certain product
 #* @get /api/data/<pid>
 #* @serializer unboxedJSON
-.describeData = function(req,res,pid) {
-  if (pid %in% names(openeo.server$data) == FALSE) {
+.describeData = function(req,res,name) {
+  if (name %in% names(openeo.server$data) == FALSE) {
     return(error(res,404,"Dataset not found"))
   } else {
-    return(openeo.server$data[[pid]]$detailedInfo())
+    return(openeo.server$data[[name]]$detailedInfo())
   }
 }
