@@ -456,6 +456,9 @@ OpenEOServer <- R6Class(
       
       # functions ====
       loadDemoData = function() {
+        landsat7_md_url = "https://uni-muenster.sciebo.de/s/D2HMuKlxo2dxeWb/download"
+        sentinel2_md_url = "https://uni-muenster.sciebo.de/s/rqfiErEIV0wALjp/download"
+        
         if (! all(c("landsat7","sentinel2") %in% list.files(self$data.path))) {
           cat("Downloading the demo data...  ")
 
@@ -476,10 +479,51 @@ OpenEOServer <- R6Class(
           cat("[done]\n")
         }
         
+        # check metadata files and download them if missing
+        ls7path = paste(self$data.path,"landsat7",sep="/")
+        ls7md = paste(ls7path,"md.json",sep="/")
+        ls7lookup = paste(ls7path,"lookup.csv",sep="/")
+        if (! file.exists(ls7md)) {
+          cat("Downloading missing metadata file for Landsat 7 dataset... ")
+          download.file(url = paste(landsat7_md_url,"?files=md.json",sep=""),
+                        destfile = ls7md,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        if (! file.exists(ls7lookup)) {
+          cat("Downloading missing lookup table for Landsat 7 dataset... ")
+          download.file(url = paste(landsat7_md_url,"?files=lookup.csv",sep=""),
+                        destfile = ls7lookup,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        
+        s2path = paste(self$data.path,"sentinel2",sep="/")
+        s2md = paste(s2path,"md.json",sep="/")
+        s2lookup = paste(s2path,"lookup.csv",sep="/")
+        if (! file.exists(s2md)) {
+          cat("Downloading missing metadata file for Sentinel 2 dataset... ")
+          download.file(url = paste(sentinel2_md_url,"?files=md.json",sep=""),
+                        destfile = s2md,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        if (! file.exists(s2lookup)) {
+          cat("Downloading missing lookup table for Sentinel 2 dataset... ")
+          download.file(url = paste(sentinel2_md_url,"?files=lookup.csv",sep=""),
+                        destfile = s2lookup,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        
         self$data = list()
         cat("Loading demo data sets...")
-        loadLandsat7Dataset()
-        loadSentinel2Data()
+        # loadLandsat7Dataset()
+        # loadSentinel2Data()
+        importCollection(paste(self$data.path,"sentinel2",sep="/")) %>% openeo.server$register()
+        importCollection(paste(self$data.path,"landsat7",sep="/"),fun=raster) %>% openeo.server$register()
+        # 1 banded granules have to use 
+        # raster function, multiband = brick
         cat("[done]\n")
       },
       

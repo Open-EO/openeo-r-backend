@@ -8,6 +8,7 @@ Product <- R6Class(
         public = list(
           # attributes ====
           product_id = NULL,
+          title = NULL,
           description = NULL,
           source= NULL,
           extent = NULL,
@@ -15,8 +16,9 @@ Product <- R6Class(
           srs=NULL,
           
           # functions ====
-          initialize = function(product_id=NA,description=NA,source=NA) {
+          initialize = function(product_id=NA,title = NA, description=NA,source=NA) {
             self$product_id = product_id
+            self$title = title
             self$description= description
             self$source=source
           },
@@ -64,6 +66,13 @@ Product <- R6Class(
             }
             
             private$collection = collection
+          },
+          
+          setCollectionMetadata=function(md) {
+            private$collection_metadata = md
+          },
+          getCollectionMetadata = function() {
+            return(private$collection_metadata)
           }
           
         ),
@@ -76,6 +85,7 @@ Product <- R6Class(
         # private ----
         private = list(
           #attributes ====
+          collection_metadata = NULL,
           collection=NULL
         )
 )

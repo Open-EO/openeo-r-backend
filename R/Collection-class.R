@@ -56,12 +56,6 @@ Collection <- R6Class(
     getBandsMetadata = function() {
       return(private$bands_metadata)
     },
-    setCollectionMetadata=function(md) {
-      private$collection_metadata = md
-    },
-    getCollectionMetadata = function() {
-      return(private$collection_metadata)
-    },
     addFeature = function(space=NULL,time=NULL,band=NULL,data,...) {
       # space: spatial features
       # time: time stamps (1D tibble)
@@ -484,7 +478,6 @@ Collection <- R6Class(
     srs = NULL,
     data_table = NULL,
     bands_metadata = NULL, # named list of Band
-    collection_metadata = NULL,
     
     # functions ====
     init_tibble = function() {
@@ -614,8 +607,6 @@ importCollection = function(path,fun=brick) {
   
   col = Collection$new(create_dimensionality(space=TRUE,time=TRUE,band=TRUE,raster=TRUE))
   
-  
-  
   meta = jsonlite::read_json(paste(path,"md.json",sep="/"))
   
   band_ids = names(meta$`eo:bands`)
@@ -654,8 +645,11 @@ importCollection = function(path,fun=brick) {
   meta$extent$temporal = c(openEO.R.Backend:::iso_datetime(col$getMinTime()), 
                            openEO.R.Backend:::iso_datetime(col$getMaxTime()))
   
-  col$setCollectionMetadata(meta)
-  return(col)
+  prod = Product$new(product_id=meta$name,title = meta$title, description=meta$description)
+  prod$setCollectionMetadata(meta)
+  prod$setCollection(col)
+  prod$deriveMetadata()
+  return(prod)
 }
 
 is.Collection = function(obj) {
