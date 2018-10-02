@@ -24,23 +24,16 @@ Product <- R6Class(
           },
           shortInfo = function() {
             list(
-              data_id=self$product_id,
-              description=self$description,
-              source=self$source
+              name = private$collection_metadata$name,
+              title = private$collection_metadata$title,
+              description = private$collection_metadata$description,
+              license = private$collection_metadata$license,
+              extent = private$collection_metadata$extent,
+              links = private$collection_metadata$links
             )
           },
           detailedInfo = function() {
-            ext=self$extent
-            
-            list(
-              data_id=self$product_id,
-              description=self$description,
-              source=self$source,
-              spatial_extent=list(left=xmin(ext),right=xmax(ext),bottom=ymin(ext),top=ymax(ext),crs=toString(self$srs)),
-              temporal_extent=self$time,
-              bands=self$getBandList(),
-              links = list()
-            )
+            return(private$collection_metadata)
           },
           deriveMetadata = function() {
             private$collection$sortGranulesByTime()
@@ -73,6 +66,27 @@ Product <- R6Class(
           },
           getCollectionMetadata = function() {
             return(private$collection_metadata)
+          },
+          addSelfReferenceLink = function() {
+            if (endsWith(openeo.server$baseserver.url,"/")) {
+              baseurl = substr(openeo.server$baseserver.url,1,nchar(openeo.server$baseserver.url)-1)
+            } else {
+              baseurl = openeo.server$baseserver.url
+            }
+            
+            selfRefLink = paste(baseurl,"collections",self$product_id,sep="/")
+            
+            if (!is.null(private$collection_metadata)) {
+              private$collection_metadata$links = c(private$collection_metadata$links,
+                                                    list(
+                                                      list(
+                                                        rel="self",
+                                                        href=selfRefLink
+                                                      )
+                                                    ))
+            }
+            
+            return(self)
           }
           
         ),

@@ -520,10 +520,14 @@ OpenEOServer <- R6Class(
         cat("Loading demo data sets...")
         # loadLandsat7Dataset()
         # loadSentinel2Data()
-        importCollection(paste(self$data.path,"sentinel2",sep="/")) %>% openeo.server$register()
-        importCollection(paste(self$data.path,"landsat7",sep="/"),fun=raster) %>% openeo.server$register()
+        
+        importCollection(paste(self$data.path,"sentinel2",sep="/"))$addSelfReferenceLink() %>% openeo.server$register()
+        importCollection(paste(self$data.path,"landsat7",sep="/"),fun=raster)$addSelfReferenceLink() %>% openeo.server$register()
         # 1 banded granules have to use 
         # raster function, multiband = brick
+        
+        #TODO set self reference link for detailed description
+        
         cat("[done]\n")
       },
       
