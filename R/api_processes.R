@@ -41,9 +41,10 @@ createProcessesEndpoint = function() {
 #* @serializer unboxedJSON
 .listProcesses = function(qname) {
   processeslist = openeo.server$processes
-  unname(lapply(processeslist, function(l){
+  list(processes=unname(lapply(processeslist, function(l){
     return(l$detailedInfo())
-  }))
+  })),
+  links=list())
 }
 
 # returns details of a certain product

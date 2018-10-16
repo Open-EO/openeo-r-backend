@@ -89,9 +89,9 @@ createProcessGraphsEndpoint = function() {
       return(process_graph$shortInfo())
     })
     
-    return(listInfo)
+    return(list(process_graphs=listInfo),links=list())
   } else {
-    return(list())
+    return(list(process_graphs=list(),link=list()))
   }
   
   

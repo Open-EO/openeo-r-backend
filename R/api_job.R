@@ -277,7 +277,10 @@ createJobsEndpoint = function() {
     return(job$shortInfo())
   })
   
-  return(unname(jobRepresentation))
+  return(list(
+    jobs=unname(jobRepresentation),
+    links=list()
+  ))
 
 }
 

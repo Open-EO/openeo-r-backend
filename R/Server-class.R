@@ -38,6 +38,7 @@ OpenEOServer <- R6Class(
       host = NULL,
       baseserver.url = "http://localhost:8000/api/",
       mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
+      oidcprovider.url = NULL,
       
       processes = NULL,
       data = NULL,

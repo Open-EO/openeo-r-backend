@@ -36,13 +36,16 @@ User <- R6Class(
       files.df = self$files
       rownames(files.df) <- NULL
       
-      return(apply(files.df,1,function(row) {
-       return(list(
-         name = row["link"],
-         size = as.integer(trim(row["size"])),
-         modified = format(as_datetime(row["ctime"]),format="%Y-%m-%dT%H:%M:%SZ")
-       )) 
-      }))
+      return(list(
+        files=apply(files.df,1,function(row) {
+         return(list(
+           name = row["link"],
+           size = as.integer(trim(row["size"])),
+           modified = format(as_datetime(row["ctime"]),format="%Y-%m-%dT%H:%M:%SZ")
+         ))
+        }),
+        links=list())
+      )
     },
     
     load = function(user_id=NULL,user_name=NULL) {

@@ -255,11 +255,12 @@ createWFSEndpoint = function() {
 
 .listUserServices = function(req,res) {
   userid = req$user$user_id
-  return(
-    lapply(req$user$services, function(service_id) {
+  return(list(
+    services=lapply(req$user$services, function(service_id) {
       return(Service$new(service_id)$load()$shortInfo())
-    })
-  )
+    }),
+    links=list()
+  ))
 }
 
 .runServiceJob = function(service) {

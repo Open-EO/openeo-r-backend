@@ -12,10 +12,10 @@ createCredentialsEndpoint = function() {
               "/basic",
               handler = .cors_option_bypass)
   
-  # openeo.server$registerEndpoint("/credentials/oidc","GET")
+  openeo.server$registerEndpoint("/credentials/oidc","GET")
   credentials$handle("GET",
                      "/oidc",
-                     handler = .not_implemented_yet,
+                     handler = .login_oidc,
                      serializer = serializer_unboxed_json())
   credentials$handle("OPTIONS",
                      "/oidc",
@@ -59,4 +59,11 @@ createCredentialsEndpoint = function() {
       openEO.R.Backend:::error(res,403,"Login failed.")
     }
   )
+}
+
+.login_oidc = function(req,res) {
+  res$setHeader(name = "Location",
+                value=openeo.server$oidcprovider.url)
+  
+  res$status = 303
 }
