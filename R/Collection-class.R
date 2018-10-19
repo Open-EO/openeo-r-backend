@@ -314,7 +314,7 @@ Collection <- R6Class(
       return(private$srs)
     },
     getBandNames = function() {
-      return(names(private$bands_metadata))
+      return(sapply(self$getBandsMetadata(), function(band) {return(paste(band$band_id,sep=""))}))
     },
     getBandIndex = function(band_id) {
       return(match(band_id, self$getBandNames()))

@@ -343,7 +343,6 @@ Job <- R6Class(
         
         logger$info("Job done")
       }, error=function (e) {
-        logger$error("Error. Aborting execution.")
         self$status = "error"
         self$results = NULL
         if (self$persistent) {
@@ -354,6 +353,7 @@ Job <- R6Class(
                                                     job_id=self$job_id))
           dbDisconnect(con)
         }
+        logger$error("Error. Aborting execution.")
       }, finally={
         return(self)
       })

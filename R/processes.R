@@ -19,7 +19,7 @@ get_collection = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(name) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
 
     msg = paste("Selecting product:",name)
     if (!is.null(parent.frame()$job)) {
@@ -65,7 +65,7 @@ filter_daterange = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     logger$info("Starting filter_daterange")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
@@ -113,7 +113,7 @@ filter_bands = Process$new(
   returns = result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
@@ -152,7 +152,7 @@ zonal_statistics = Process$new(
   returns=result.vector,
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     func_name = func
     func = get(tolower(func))
     
@@ -213,7 +213,7 @@ find_min = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     
     logger$info("Starting find_min")
     #get the collection of the imagery
@@ -286,7 +286,7 @@ filter_bbox = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     
     logger$info("Filter for bounding box")
     collection = getCollectionFromImageryStatement(imagery)
@@ -334,15 +334,19 @@ calculate_ndvi = Process$new(
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     
     logger$info("Starting calculate_ndvi")
 
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
-    logger$info("Fetched indices for bands")
     
+    if (is.na(nir.index) || is.na(red.index)) {
+      logger$error("Incorrect band indices.")
+    }
+    
+    logger$info("Fetched indices for bands")
     if (collection$dimensions$time) {
       group = collection$getData() %>% group_by(time) 
     } else {
@@ -400,7 +404,7 @@ aggregate_time = Process$new(
     job = parent$job
     user = parent$user
     
-    logger = Logger$new(process=self, job = parent.frame()$job)
+    logger = Logger$new(process=parent, job = parent.frame()$job)
     
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
@@ -443,7 +447,7 @@ aggregate_time = Process$new(
       return(result.collection)
     }, 
     error = function(e) {
-      logger.error(paste("ERROR:",e))
+      logger$error(paste("ERROR:",e))
       udf_transaction = udf_transaction$load()
       udf_transaction$status = "error"
       udf_transaction$end_date = NA
@@ -487,7 +491,7 @@ apply_pixel = Process$new(
     job = parent$job
     user = parent$user
     
-    logger = Logger$new(process=self, job = job)
+    logger = Logger$new(process=parent, job = job)
     
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
