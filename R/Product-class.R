@@ -7,7 +7,7 @@ Product <- R6Class(
         # public ----
         public = list(
           # attributes ====
-          product_id = NULL,
+          id = NULL,
           title = NULL,
           description = NULL,
           source= NULL,
@@ -16,8 +16,8 @@ Product <- R6Class(
           srs=NULL,
           
           # functions ====
-          initialize = function(product_id=NA,title = NA, description=NA,source=NA) {
-            self$product_id = product_id
+          initialize = function(id=NA,title = NA, description=NA,source=NA) {
+            self$id = id
             self$title = title
             self$description= description
             self$source=source
@@ -74,7 +74,7 @@ Product <- R6Class(
               baseurl = openeo.server$baseserver.url
             }
             
-            selfRefLink = paste(baseurl,"collections",self$product_id,sep="/")
+            selfRefLink = paste(baseurl,"collections",self$id,sep="/")
             
             if (!is.null(private$collection_metadata)) {
               private$collection_metadata$links = c(private$collection_metadata$links,

@@ -645,7 +645,7 @@ importCollection = function(path,fun=brick) {
   meta$extent$temporal = c(openEO.R.Backend:::iso_datetime(col$getMinTime()), 
                            openEO.R.Backend:::iso_datetime(col$getMaxTime()))
   
-  prod = Product$new(product_id=meta$name,title = meta$title, description=meta$description)
+  prod = Product$new(id=meta$name,title = meta$title, description=meta$description)
   prod$setCollectionMetadata(meta)
   prod$setCollection(col)
   prod$deriveMetadata()

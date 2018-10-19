@@ -113,7 +113,7 @@ OpenEOServer <- R6Class(
           listName = "data"
           
           newObj = list(obj)
-          names(newObj) = c(obj$product_id)
+          names(newObj) = c(obj$id)
           
         } else {
           warning("Cannot register object. It is neither Process, Product nor Job.")

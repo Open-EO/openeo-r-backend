@@ -67,10 +67,10 @@ Argument <- R6Class(
       arg = list()
       value = NULL
       
-      if (is.ExecutableProcess(self$value)) {
+      if (is.ExecutableProcess(self$value)) { 
+        # since collections are loaded via a process, values are always either a processes or 
+        # a specific simple data type (string, numeric, ...)
         value = self$value$detailedInfo()
-      } else if (class(self$value) == "list" && names(self$value)[1] == "product_id") {
-        value = list(product_id = self$value$product_id)
       } else {
         value = self$value
       }

@@ -561,11 +561,9 @@ getCollectionFromImageryStatement = function (imagery) {
     
   } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
-  } else if (class(imagery) == "list") {
-    if ("data_id" %in% names(imagery)) {
-      collection = openeo.server$data[[imagery$product_id]]$getCollection()
-    }
-  }
+  } 
+  # since accessing the collection is a process we don't any other type check here
+  
   if (is.null(collection)) {
     stop("no collection element found in function call")
   }
