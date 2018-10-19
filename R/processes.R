@@ -3,25 +3,25 @@
 #' @include dimensionality.R
 #' @include parameter_type_definitions.R
 
-# get_data ====
-get_data = Process$new(
-  process_id = "get_data",
+# get_collection ====
+get_collection = Process$new(
+  process_id = "get_collection",
   description = "Loads the EO data into a process",
   args = list(
     Argument$new(
-      name = "data_id",
+      name = "name",
       description = "the temporal dataset/collection",
-      required = FALSE,
+      required = TRUE,
       type = "string"
     )
   ),
-  summary="Filter by a date range",
+  summary="Select a collection",
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
-  operation = function(data_id) {
+  operation = function(name) {
     logger = Logger$new(process=self, job = parent.frame()$job)
-    
-    msg = paste("Selecting product:",data_id)
+
+    msg = paste("Selecting product:",name)
     if (!is.null(parent.frame()$job)) {
       logger$info(msg)
     } else {
@@ -29,7 +29,7 @@ get_data = Process$new(
     }
     
     
-    coll = getCollectionFromImageryStatement(data_id)
+    coll = getCollectionFromImageryStatement(name)
     return(coll)
   }
 )
