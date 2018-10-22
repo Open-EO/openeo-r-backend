@@ -56,7 +56,7 @@ OpenEOServer <- R6Class(
         self$outputGDALFormats = drivers[drivers$create,"name"]
         self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
         
-        private$endpoints = tibble(path=character(0), method = character(0))
+        self$initEndpoints()
       },
       
       startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
@@ -440,6 +440,9 @@ OpenEOServer <- R6Class(
             }
           })
 
+      },
+      initEndpoints = function() {
+        private$endpoints = tibble(path=character(0), method = character(0))
       },
       registerEndpoint = function(path, method) {
         private$endpoints = private$endpoints %>% add_row(path=path,method=method)

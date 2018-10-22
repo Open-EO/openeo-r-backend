@@ -39,7 +39,7 @@
   
   endpoints = endpoints %>% group_by(path) %>% summarise(
     path_capabilities=list(tibble(path,method) %>% (function(x,...){
-      return(list(path=unique(x$path),method=x$method))
+      return(list(path=unique(x$path),methods=as.list(x$method)))
     }))
   )
   
@@ -326,6 +326,8 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
 #
 
 createAPI = function() {
+  if(!is.null(openeo.server$getEndpoints()) && nrow(openeo.server$getEndpoints())>=1) openeo.server$initEndpoints()
+  
   root = plumber$new()
   
   root$handle("GET",
