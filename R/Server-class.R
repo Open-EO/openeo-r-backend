@@ -1,3 +1,10 @@
+UnboxedPlumber = R6Class(
+  "UnboxedPlumber",
+  inherit=plumber,
+  public=list(getPrivate=function()private)
+)
+
+
 #' OpenEOServer
 #' 
 #' This is the server class, wich has different variables regarding the storage paths, as well as the loaded processes, products and
@@ -12,6 +19,7 @@
 #' 
 #' @include processes.R
 #' @include data.R
+#' @include api.R
 #' @importFrom plumber plumb
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
@@ -36,7 +44,7 @@ OpenEOServer <- R6Class(
       
       api.port = NULL,
       host = NULL,
-      baseserver.url = "http://localhost:8000/api/",
+      baseserver.url = "http://localhost:8000/",
       mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
       oidcprovider.url = NULL,
       
@@ -81,16 +89,14 @@ OpenEOServer <- R6Class(
           dir.create(udf_temp_dir,recursive = TRUE)
         }
         
-        root = createAPI()
+        private$initRouter()
+        createAPI()
         
-        root$registerHook("exit", function(){
-          print("Bye bye!")
-        })
         
         job_downloads = PlumberStatic$new(batch_job_download_dir)
-        root$mount("/api/result", job_downloads)
+        private$router$mount("/result", job_downloads)
         
-        root$run(port = self$api.port,host = host)
+        private$router$run(port = self$api.port,host = host)
       },
       
       register = function(obj) {
@@ -444,19 +450,50 @@ OpenEOServer <- R6Class(
       initEndpoints = function() {
         private$endpoints = tibble(path=character(0), method = character(0))
       },
-      registerEndpoint = function(path, method) {
-        private$endpoints = private$endpoints %>% add_row(path=path,method=method)
+      registerEndpoint = function(path, method, filters=list(),handler=NULL, serializer=serializer_unboxed_json(),
+                                  withCORS=TRUE, unsupported = FALSE) {
+        if (!unsupported) {
+          private$endpoints = private$endpoints %>% add_row(path=path,method=method)
+        } else {
+          if (is.null(handler)) {
+            handler = .not_implemented_yet
+          }
+        }
+        
+        
+        if (!is.null(private$router)) {
+          plumber.path = path %>% gsub(pattern="\\{",replacement="<") %>% gsub(pattern="\\}",replacement=">")
+          endpoint=private$router$createEndpoint(methods = method,path = plumber.path,handler = handler,serializer = serializer)
+          endpoint$registerFilter(filter = filters)
+          
+          private$router$handle(endpoint = endpoint)
+          
+          if (withCORS) {
+            corsEndpoint = private$router$createEndpoint(methods = "OPTIONS",path = path,handler = .cors_option_bypass)
+            #TODO register Filters?
+            private$router$handle(endpoint = corsEndpoint)
+          }
+        }
+        
+        
         invisible(self)
       },
       
       getEndpoints = function() {
         return(private$endpoints)
+      },
+      
+      createFilter = function(name, expr, serializer) {
+        if (is.null(private$router)) return(NULL)
+        
+        return(private$router$createFilter(name, expr, serializer))
       }
     ),
     # private ----
     private = list(
       # attributes ====
       endpoints = NULL,
+      router = NULL,
       
       # functions ====
       loadDemoData = function() {
@@ -533,6 +570,19 @@ OpenEOServer <- R6Class(
         #TODO set self reference link for detailed description
         
         cat("[done]\n")
+      },
+      
+      initRouter = function() {
+        if(!is.null(private$endpoints) && nrow(private$endpoints)>=1) self$initEndpoints()
+        
+        private$router=OpenEORouter$new()
+        
+        # add the CORS filter to the router
+        private$router$registerHook("postroute",.cors_filter)
+        
+        private$router$registerHook("exit", function(){
+          print("Bye bye!")
+        })
       },
       
       loadDemoProcesses = function() {
@@ -614,3 +664,6 @@ DatabaseEntity = R6Class(
     }
   )
 )
+
+
+openeo.globals = plumber:::.globals

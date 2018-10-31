@@ -1,38 +1,5 @@
 # data endpoint ----
 
-createDataEndpoint = function() {
-  data = plumber$new()
-  
-  openeo.server$registerEndpoint("/collections/","GET")
-  data$handle("GET",
-              "/",
-              handler = .listData,
-              serializer = serializer_unboxed_json())
-  data$handle("OPTIONS",
-              "/",
-              handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/collections/{name}","GET")
-  data$handle("GET",
-              "/<name>",
-              handler = .describeData,
-              serializer = serializer_unboxed_json())
-  data$handle("OPTIONS",
-              "/<name>",
-              handler = .cors_option_bypass)
-  
-  
-  # data$handle("GET",
-  #             "/opensearch",
-  #             handler = .not_implemented_yet,
-  #             serializer = serializer_unboxed_json())
-  # data$handle("OPTIONS",
-  #             "/opensearch",
-  #             handler = .cors_option_bypass)
-  
-  return(data)
-}
-
 
 # creates an overview on products available
 #* @get /api/data

@@ -13,10 +13,10 @@
 #' @include api_job.R
 #' @include api_users.R
 #' @include api_services.R
-#' @include api_udf_runtimes.R
 #' @include api_processes.R
 #' @include api_credentials.R
 #' @include api_process_graphs.R
+#' @include FilterableEndpoint.R
 #' @import raster
 #' @import plumber
 #' @importFrom sodium data_encrypt
@@ -230,6 +230,7 @@
 
 #* @filter checkAuth
 .authorized = function(req, res){
+  
   if (req$REQUEST_METHOD == 'OPTIONS') {
     return(forward())
   }
@@ -264,7 +265,7 @@
 .cors_filter = function(req,res) {
   res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
   res$setHeader("Access-Control-Allow-Credentials", "true")
-  plumber::forward()
+  forward()
 }
 
 .cors_option_bypass = function(req,res, ...) {
@@ -326,110 +327,234 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
 #
 
 createAPI = function() {
-  if(!is.null(openeo.server$getEndpoints()) && nrow(openeo.server$getEndpoints())>=1) openeo.server$initEndpoints()
-  
-  root = plumber$new()
-  
-  root$handle("GET",
-              "/api/version",
-              handler = .version,
-              serializer = serializer_unboxed_json())
-  root$handle("OPTIONS",
-              "/api/version",
-              handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/","GET")
-  root$handle("GET",
-              "/api/",
-              handler = .capabilities,
-              serializer = serializer_unboxed_json())
-  root$handle("OPTIONS",
-              "/api/",
-              handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/output_formats","GET")
-  root$handle("GET",
-              "/api/output_formats",
-              handler = .output_formats,
-              serializer = serializer_unboxed_json())
-  root$handle("OPTIONS",
-              "/api/output_formats",
-              handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/service_types","GET")
-  root$handle("GET",
-              "/api/service_types",
-              handler = .services,
-              serializer = serializer_unboxed_json())
-  root$handle("OPTIONS",
-              "/api/service_types",
-              handler = .cors_option_bypass)
   
   
-  root$handle("GET",
-              "/api/subscription",
-              handler = .not_implemented_yet)
-  root$handle("OPTIONS",
-              "/api/subscription",
-              handler = .cors_option_bypass)
+  AuthFilter = openeo.server$createFilter("authorization",.authorized)
+  MeFilter = openeo.server$createFilter("me_filter", .replace_user_me_in_body)
   
-  openeo.server$registerEndpoint("/validation","POST")
-  root$handle("POST",
-              "/api/validation",
-              handler = .validateProcessGraph)
-  root$handle("OPTIONS",
-              "/api/validation",
-              handler = .cors_option_bypass)
+  # serializer default is serializer_unboxed_json() if serializer is omitted
   
-  root$registerHook("postroute",.cors_filter)
+  # server - capabilities ====
+  openeo.server$registerEndpoint(path = "/",
+                                 method = "GET",
+                                 handler = .capabilities)
+
+  # server - output formats ====
+  openeo.server$registerEndpoint(path="/output_formats",
+                                 method="GET",
+                                 handler = .output_formats)
   
-  credentials = createCredentialsEndpoint()
-  root$mount("/api/credentials",credentials)
+  # server - service types ====
+  openeo.server$registerEndpoint(path="/service_types",
+                                 method="GET",
+                                 handler=.services)
+
+  # server - subscription ====
+  openeo.server$registerEndpoint(path="/subscription",
+                                 method = "GET",
+                                 unsupported = TRUE)
+
+  # server - validation ====
+  openeo.server$registerEndpoint(path="/validation",
+                                 method="POST",
+                                 handler=.validateProcessGraph)
+
+  # credentials - basic ====
+  openeo.server$registerEndpoint(path="/credentials/basic",
+                                 method="GET",
+                                 handler = .login_basic)
+
+  # credentials - oidc ====
+  openeo.server$registerEndpoint(path="/credentials/oidc",
+                                 method="GET",
+                                 handler=.login_oidc)
+
+  # collections - list all ====
+  openeo.server$registerEndpoint(path="/collections",
+                                 method="GET",
+                                 handler=.listData)
   
-  data = createDataEndpoint()
-  root$mount("/api/collections",data)
+  # collections - describe data ====
+  openeo.server$registerEndpoint(path="/collections/{name}",
+                                 method="GET",
+                                 handler=.describeData)
+
+  # processes - list all ====
+  openeo.server$registerEndpoint(path="/processes",
+                                 method="GET",
+                                 handler=.listProcesses)
   
-  process = createProcessesEndpoint()
-  root$mount("/api/processes",process)
+  # me - user information ====
+  openeo.server$registerEndpoint(path = "/me",
+                                 method="GET",
+                                 filters = list(AuthFilter),
+                                 handler = .userInformation)
   
-  jobs = createJobsEndpoint()
-  root$mount("/api/jobs",jobs)
+  # jobs - list all ====
+  openeo.server$registerEndpoint(path="/jobs",
+                                 method="GET",
+                                 handler=.listUserJobs,
+                                 filters = list(AuthFilter))
   
-  me = createMeEndpoint()
-  root$mount("/api/me",me)
+  # jobs - create new ====
+  openeo.server$registerEndpoint(path = "/jobs",
+                                 method = "POST",
+                                 handler = .createNewJob,
+                                 filters = list(AuthFilter))
+
+  # jobs - describe ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}",
+                                 method = "GET",
+                                 handler = .describeJob,
+                                 filters = list(AuthFilter))
+
+  # jobs - update ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}",
+                                 method = "PATCH",
+                                 handler = .updateJob,
+                                 filters = list(AuthFilter))
+
+  # jobs - delete ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}",
+                                 method = "DELETE",
+                                 handler = .deleteJob,
+                                 filters = list(AuthFilter))
   
-  files = createFilesEndpoint()
-  root$mount("/api/files",files)
+  # jobs - perform async ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}/results",
+                                 method = "POST",
+                                 handler = .performJob,
+                                 filters = list(AuthFilter))
   
-  process_graphs = createProcessGraphsEndpoint()
-  root$mount("/api/process_graphs",process_graphs)
+  # jobs - describe job results ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}/results",
+                                 method = "GET",
+                                 handler = .createDownloadableFileList,
+                                 filters = list(AuthFilter))
+
+  # jobs - cost estimation ====
+  openeo.server$registerEndpoint(path = "/jobs/{job_id}/estimate",
+                                 method = "GET",
+                                 handler = .estimateJobCosts,
+                                 filters = list(AuthFilter))
   
-  openeo.server$registerEndpoint(path = "/preview/", "POST")
-  executeSynchronous = plumber$new()
-  executeSynchronous$handle("POST",
-                            "/",
-                            handler = .executeSynchronous,
-                            serializer = serializer_unboxed_json())
-  executeSynchronous$handle("OPTIONS",
-                            "/",
-                            handler = .cors_option_bypass)
-  executeSynchronous$filter("authorization",.authorized)
-  executeSynchronous$filter("me_filter",.replace_user_me_in_body)
+  # files - list all ====
+  openeo.server$registerEndpoint(path = "/files/{user_id}",
+                                 method = "GET",
+                                 handler = .listUserFiles,
+                                 filters = list(AuthFilter,MeFilter))
   
-  root$mount("/api/preview",executeSynchronous)
+  # files - download file ====
+  openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
+                                 method = "GET",
+                                 handler = .downloadUserFile,
+                                 filters = list(AuthFilter,MeFilter))
   
-  services = createServicesEndpoint()
-  root$mount("/api/services",services)
+  # files - upload file ====
+  openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
+                                 method = "PUT",
+                                 handler = .uploadFile,
+                                 filters = list(AuthFilter,MeFilter)) # think about a new filter that handles the URL encoding
+
+  # files - delete file ====
+  openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
+                                 method = "DELETE",
+                                 handler = .deleteUserFile,
+                                 filters = list(AuthFilter,MeFilter))
+
+  # graphs - create ====
+  openeo.server$registerEndpoint(path = "/process_graphs",
+                                 method = "POST",
+                                 handler = .createProcessGraph,
+                                 filters = list(AuthFilter))
+
+  # graphs - list all ====
+  openeo.server$registerEndpoint(path = "/process_graphs",
+                                 method = "GET",
+                                 handler = .listUserProcessGraphs,
+                                 filters = list(AuthFilter))
   
-  # additional apis to handle and forward OGC service request
-  wms = createWMSEndpoint()
-  root$mount("/api/wms",wms)
+  # graphs - delete ====
+  openeo.server$registerEndpoint(path = "/process_graphs/{process_graph_id}",
+                                 method = "DELETE",
+                                 handler = .deleteProcessGraph,
+                                 filters = list(AuthFilter))
   
-  wfs = createWFSEndpoint()
-  root$mount("/api/wfs",wfs)
+  # graphs - describe ====
+  openeo.server$registerEndpoint(path = "/process_graphs/{process_graph_id}",
+                                 method = "GET",
+                                 handler = .getProcessGraph,
+                                 filters = list(AuthFilter))
   
-  udf_runtimes = createUDFRuntimesEndpoint()
-  root$mount("/api/udf_runtimes",udf_runtimes)
+  # graphs - update ====
+  openeo.server$registerEndpoint(path = "/process_graphs/{process_graph_id}",
+                                 method = "PATCH",
+                                 handler = .modifyProcessGraph,
+                                 filters = list(AuthFilter))
+
+  # server - preview ====
+  openeo.server$registerEndpoint(path = "/preview", 
+                                 method = "POST",
+                                 handler = .executeSynchronous,
+                                 filters = list(AuthFilter))
   
-  return(root)
+  # services - create ====
+  openeo.server$registerEndpoint(path = "/services",
+                                 method = "POST",
+                                 handler = .createNewService,
+                                 filters = list(AuthFilter))
+  
+  # services - list all ====
+  openeo.server$registerEndpoint(path = "/services",
+                                 method = "GET",
+                                 handler = .listUserServices,
+                                 filters = list(AuthFilter))
+
+  # services - describe ====
+  openeo.server$registerEndpoint(path = "/services/{service_id}",
+                                 method = "GET",
+                                 handler = .getServiceInformation,
+                                 filters = list(AuthFilter))
+
+  # services - delete ====
+  openeo.server$registerEndpoint(path = "/services/{service_id}",
+                                 method = "DELETE",
+                                 handler = .deleteService,
+                                 filters = list(AuthFilter))
+
+  # services - update ====
+  openeo.server$registerEndpoint(path = "/services/{service_id}",
+                                 method = "PATCH",
+                                 handler = .updateService,
+                                 filters = list(AuthFilter))
+
+  # wms - referer ====
+  openeo.server$registerEndpoint(path = "/wms/{service_id}",
+                                 method = "GET",
+                                 handler = .referToMapserver,
+                                 serializer = serializer_proxy(),
+                                 unsupported = TRUE)
+  
+  # wfs - referer ====
+  openeo.server$registerEndpoint(path = "/wfs/{service_id}",
+                                 method = "GET",
+                                 handler = .referToMapserver,
+                                 serializer = serializer_proxy(),
+                                 unsupported = TRUE)
+
+  # server - udf runtimes ====
+  openeo.server$registerEndpoint(path = "/udf_runtimes",
+                                 method = "GET",
+                                 unsupported = TRUE)
+  
+  # server - describe udf runtime
+  openeo.server$registerEndpoint(path = "/udf_runtimes/{lang}/{udf_type}",
+                                 method = "GET",
+                                 unsupported = TRUE)
+
+  invisible(TRUE)
+}
+
+forward = function() {
+  openeo.globals$forwarded=TRUE
 }

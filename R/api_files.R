@@ -1,42 +1,5 @@
 #
-# endpoint function ====
-#
-
-createFilesEndpoint = function() {
-  files = plumber$new()
-  
-  openeo.server$registerEndpoint("/files/{user_id}","GET")
-  files$handle("GET",
-               "/<user_id>",
-               handler = .listUserFiles,
-               serializer = serializer_unboxed_json())
-  
-  openeo.server$registerEndpoint("/files/{user_id}/{path}","GET")
-  files$handle("GET",
-               "/<user_id>/<path>",
-               handler = .downloadUserFile,
-               serializer = serializer_unboxed_json())
-  
-  openeo.server$registerEndpoint("/files/{user_id}/{path}","PUT")
-  files$handle("PUT",
-               "/<user_id>/<path>",
-               handler = .uploadFile,
-               serializer = serializer_unboxed_json())
-  
-  openeo.server$registerEndpoint("/files/{user_id}/{path}","DELETE")
-  files$handle("DELETE",
-               "/<user_id>/<path>",
-               handler = .deleteUserFile,
-               serializer = serializer_unboxed_json())
-  
-  
-  files$filter("authorization",.authorized)
-  
-  return(files)
-}
-
-#
-# Request handling functions ====
+# /files handler functions ====
 #
 
 #* @get /api/users/<userid>/files

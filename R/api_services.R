@@ -1,85 +1,5 @@
-# services endpoints ----
-createServicesEndpoint = function() {
-  services = plumber$new()
-  
-  # create new service ====
-  openeo.server$registerEndpoint("/services/","POST")
-  services$handle("POST",
-                  "/",
-                  handler=.createNewService,
-                  serializer = serializer_unboxed_json())
-  services$handle("OPTIONS",
-                  "/",
-                  handler=.cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/services/","GET")
-  services$handle("GET",
-               "/",
-               handler = .listUserServices,
-               serializer = serializer_unboxed_json())
-  services$handle("OPTIONS",
-               "/",
-               handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/services/{service_id}","GET")
-  services$handle("GET",
-                  "/<service_id>",
-                  handler=.getServiceInformation,
-                  serializer = serializer_unboxed_json())
-  
-  openeo.server$registerEndpoint("/services/{service_id}","DELETE")
-  services$handle("DELETE",
-                  "/<service_id>",
-                  handler=.deleteService,
-                  serializer = serializer_unboxed_json())
-  
-  openeo.server$registerEndpoint("/services/{service_id}","PATCH")
-  services$handle("PATCH",
-                  "/<service_id>",
-                  handler=.updateService,
-                  serializer = serializer_unboxed_json())
-  
-  services$handle("OPTIONS",
-                  "/<service_id>",
-                  handler=.cors_option_bypass)
-  
-  services$filter("authorization",.authorized)
-  
-  return(services)
-}
+# /services handler functions ----
 
-# redirecter endpoints ----
-createWMSEndpoint = function() {
-  wms = plumber$new()
-  
-  wms$handle("GET",
-                  "/<service_id>",
-                  handler=.referToMapserver,
-                  serializer = serializer_proxy())
-  
-  wms$handle("OPTIONS",
-                  "/<service_id>",
-                  handler=.cors_option_bypass)
-  
-  return(wms)
-}
-
-createWFSEndpoint = function() {
-  wfs = plumber$new()
-  
-  wfs$handle("GET",
-             "/<service_id>",
-             handler=.referToMapserver,
-             serializer = serializer_proxy())
-  
-  wfs$handle("OPTIONS",
-             "/<service_id>",
-             handler=.cors_option_bypass)
-  
-  return(wfs)
-}
-
-# handler ----
 .createNewService = function(req, res) {
   if (length(req$postBody) == 0 || is.null(req$postBody) || is.na(req$postBody)) {
     return(error(res,400, "No Request Body"))
@@ -156,6 +76,8 @@ createWFSEndpoint = function() {
     url = substr(url, 1, nchar(url)-1)
   }
   response = GET(url = url,query = values)
+  #TODO eventually use 303 redirect with Location header
+  return(response)
 }
 
 .getServiceInformation = function(req,res,service_id) {
@@ -254,7 +176,6 @@ createWFSEndpoint = function() {
 }
 
 .listUserServices = function(req,res) {
-  userid = req$user$user_id
   return(list(
     services=lapply(req$user$services, function(service_id) {
       return(Service$new(service_id)$load()$shortInfo())

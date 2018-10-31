@@ -1,31 +1,5 @@
 # authentication ----
 
-createCredentialsEndpoint = function() {
-  credentials = plumber$new()
-  
-  openeo.server$registerEndpoint("/credentials/basic","GET")
-  credentials$handle("GET",
-              "/basic",
-              handler = .login_basic,
-              serializer = serializer_unboxed_json())
-  credentials$handle("OPTIONS",
-              "/basic",
-              handler = .cors_option_bypass)
-  
-  openeo.server$registerEndpoint("/credentials/oidc","GET")
-  credentials$handle("GET",
-                     "/oidc",
-                     handler = .login_oidc,
-                     serializer = serializer_unboxed_json())
-  credentials$handle("OPTIONS",
-                     "/oidc",
-                     handler = .cors_option_bypass)
-  
-  return(credentials)
-}
-
-#* @get /api/auth/login
-#* @serializer unboxedJSON
 .login_basic = function(req,res) {
   auth = req$HTTP_AUTHORIZATION
   encoded=substr(auth,7,nchar(auth))
