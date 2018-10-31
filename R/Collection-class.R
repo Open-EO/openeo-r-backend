@@ -640,7 +640,7 @@ importCollection = function(path,fun=brick) {
   # TODO deal with open temporal intervals 
   e = as(extent(col),"SpatialPolygons")
   crs(e) = crs(col)
-  e = spTransform(e, crs("+init=EPSG:4326"))
+  e = spTransform(e, crs("+init=epsg:4326"))
   meta$extent$spatial = extent(e)[c(1,3,2,4)]
   meta$extent$temporal = c(openEO.R.Backend:::iso_datetime(col$getMinTime()), 
                            openEO.R.Backend:::iso_datetime(col$getMaxTime()))
