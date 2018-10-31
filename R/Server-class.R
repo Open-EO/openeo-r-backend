@@ -469,7 +469,7 @@ OpenEOServer <- R6Class(
           private$router$handle(endpoint = endpoint)
           
           if (withCORS) {
-            corsEndpoint = private$router$createEndpoint(methods = "OPTIONS",path = path,handler = .cors_option_bypass)
+            corsEndpoint = private$router$createEndpoint(methods = "OPTIONS",path = plumber.path,handler = .cors_option_bypass)
             #TODO register Filters?
             private$router$handle(endpoint = corsEndpoint)
           }
