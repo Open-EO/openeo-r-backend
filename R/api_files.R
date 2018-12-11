@@ -54,16 +54,27 @@
     
     dir.split = unlist(strsplit(storedFilePath, "/(?=[^/]+$)", perl=TRUE))
     
-    req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
+    if (inherits(req$rook.input,"NullInputStream")) {
+      stop("Uploaded File is non existent - NullInputStream")
+    } else {
+      req$rook.input$initialize(req$rook.input$.conn,req$rook.input$.length)
+    }
     
     dir.create(dir.split[1],recursive = TRUE,showWarnings = FALSE)
     file.create(storedFilePath,showWarnings = FALSE)
     
     outputFile = file(storedFilePath,"wb")
-    writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
-    close(outputFile,type="wb")
+    tryCatch(
+      {
+        writeBin(req$rook.input$read(req$rook.input$.length), con=outputFile, useBytes = TRUE)
+        res$status = 204
+      },
+      finally={
+        close(outputFile,type="wb")
+      }
+    )
     
-    res$status = 204
+    return(res)
   } else {
     error(res,401,"Not authorized to upload data into other users workspaces")
   }

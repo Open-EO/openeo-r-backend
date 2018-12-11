@@ -32,7 +32,7 @@ OpenEOServer <- R6Class(
     # public ====
     public = list(
       # attributes ----
-      api.version = "0.3.0",
+      api.version = "0.3.1",
       secret.key = NULL,
       
       data.path = NULL,
