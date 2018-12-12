@@ -262,6 +262,35 @@
   )
 }
 
+.validateProcessGraphFilter = function(req, res, ...) {
+  parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+  
+  is_process_graph_set = "process_graph" %in% names(parsedGraph)
+  
+  if (is_process_graph_set) {
+    process_graph = ProcessGraph$new(process_graph = parsedGraph[["process_graph"]])
+  } else {
+    if (req$REQUEST_METHOD == "POST") {
+      return(error(res = res,status = 400,msg = "No process graph sent to the backend"))
+    } else {
+      # the other option is PATCH, but there we don't require process_graph
+      forward()
+    }
+  }
+  
+  
+  
+  tryCatch({
+    process_graph$buildExecutableProcessGraph(user = req$user)
+    forward()
+    
+    
+  },error=function(e) {
+    # TODO improve this further
+    return(openEO.R.Backend:::error(res,501,"Process graph contains errors...")) 
+  }) 
+}
+
 .cors_filter = function(req,res) {
   res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
   res$setHeader("Access-Control-Allow-Credentials", "true")
@@ -331,6 +360,7 @@ createAPI = function() {
   
   AuthFilter = openeo.server$createFilter("authorization",.authorized)
   MeFilter = openeo.server$createFilter("me_filter", .replace_user_me_in_body)
+  ProcessGraphValidationFilter = openeo.server$createFilter("pg_validator",.validateProcessGraphFilter)
   
   # serializer default is serializer_unboxed_json() if serializer is omitted
   
@@ -400,7 +430,8 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/jobs",
                                  method = "POST",
                                  handler = .createNewJob,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
 
   # jobs - describe ====
   openeo.server$registerEndpoint(path = "/jobs/{job_id}",
@@ -412,7 +443,8 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/jobs/{job_id}",
                                  method = "PATCH",
                                  handler = .updateJob,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
 
   # jobs - delete ====
   openeo.server$registerEndpoint(path = "/jobs/{job_id}",
@@ -466,7 +498,8 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/process_graphs",
                                  method = "POST",
                                  handler = .createProcessGraph,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
 
   # graphs - list all ====
   openeo.server$registerEndpoint(path = "/process_graphs",
@@ -490,19 +523,22 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/process_graphs/{process_graph_id}",
                                  method = "PATCH",
                                  handler = .modifyProcessGraph,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
 
   # server - preview ====
   openeo.server$registerEndpoint(path = "/preview", 
                                  method = "POST",
                                  handler = .executeSynchronous,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
   
   # services - create ====
   openeo.server$registerEndpoint(path = "/services",
                                  method = "POST",
                                  handler = .createNewService,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
   
   # services - list all ====
   openeo.server$registerEndpoint(path = "/services",
@@ -526,7 +562,8 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/services/{service_id}",
                                  method = "PATCH",
                                  handler = .updateService,
-                                 filters = list(AuthFilter))
+                                 filters = list(AuthFilter,
+                                                ProcessGraphValidationFilter))
 
   # wms - referer ====
   openeo.server$registerEndpoint(path = "/wms/{service_id}",
