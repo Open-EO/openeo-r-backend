@@ -65,6 +65,7 @@ Collate:
     'ProcessGraph-class.R'
     'Product-class.R'
     'R2Generic-class.R'
+    'errors.R'
     'api_process_graphs.R'
     'api_credentials.R'
     'api_processes.R'

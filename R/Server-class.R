@@ -65,6 +65,9 @@ OpenEOServer <- R6Class(
         self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
         
         self$initEndpoints()
+        
+        # load the errors table
+        data(errors)
       },
       
       startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
