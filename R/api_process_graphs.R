@@ -13,6 +13,7 @@
     graph$store()
     
     res$setHeader(name = "Location",value=paste(openeo.server$baseserver.url,"process_graphs/",graph$graph_id,sep=""))
+    res$setHeader(name = "OpenEO-Identifier",value=graph$graph_id)
     # res$setHeader(name = "Authorization", value=req$HTTP_AUTHORIZATION)
     
     res$status = 201
@@ -23,7 +24,6 @@
 
 # GET /api/users/<userid>/process_graphs
 .listUserProcessGraphs = function(req, res) {
-  con = openeo.server$getConnection()
   
   graph_ids = req$user$process_graphs
   if (length(graph_ids) > 0 ) {
@@ -109,6 +109,5 @@
   },error=function(e) {
     return(openEO.R.Backend:::error(res,501,"Process graph contains errors...")) #TODO improve!
   }) 
-  
-  
 }
+

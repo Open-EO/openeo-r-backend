@@ -49,6 +49,7 @@ NULL
   job$store()
   res$setHeader(name = "Location",
                 value= paste(openeo.server$baseserver.url,"jobs/",job$job_id,sep=""))
+  res$setHeader(name = "OpenEO-Identifier",value=job$job_id)
   res$status = 201
   
 }

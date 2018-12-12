@@ -52,6 +52,7 @@
   service$buildMapFile()
   
   res$setHeader("Location",paste(openeo.server$baseserver.url,"services/",service$service_id))
+  res$setHeader(name = "OpenEO-Identifier",value=service$service_id)
   res$status = 201
 }
 
