@@ -73,7 +73,8 @@ User <- R6Class(
         
         invisible(self)
       } else {
-        stop("Cannot load user. It doesn't exists or too many user entries.")
+        throwError("TokenInvalid")
+        # Cannot load user. It doesn't exists or too many user entries.
       }
       
     },

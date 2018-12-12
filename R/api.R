@@ -17,6 +17,7 @@
 #' @include api_credentials.R
 #' @include api_process_graphs.R
 #' @include FilterableEndpoint.R
+#' @include errors.R
 #' @import raster
 #' @import plumber
 #' @importFrom sodium data_encrypt
@@ -127,33 +128,29 @@
 }
 
 
-#
-# download endpoint ====
-#
-
+# /preview endpoint ----
 .executeSynchronous = function(req,res,format=NULL) {
-
-  if (!is.null(req$postBody)) {
-    sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-    output = sent_job$output
-    process_graph = sent_job$process_graph
-    
-    if (is.null(format)) {
-      format = output$format
-    } 
-    
-    if (is.null(format) || 
-        !(format %in% openeo.server$outputGDALFormats || 
-          format %in% openeo.server$outputOGRFormats)) {
-      return(error(res,400,paste("Format '",format,"' is not supported or recognized by GDAL or OGR",sep="")))
+  tryCatch({
+    if (!is.null(req$postBody)) {
+      sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+      output = sent_job$output
+      process_graph = sent_job$process_graph
+      
+      if (is.null(format)) {
+        format = output$format
+      } 
+      
+      if (is.null(format) || 
+          !(format %in% openeo.server$outputGDALFormats || 
+            format %in% openeo.server$outputOGRFormats)) {
+        throwError("FormatUnsupported")
+      }
+      
+    } else {
+      throwError("ContentTypeInvalid",types="application/json")
+      
     }
     
-  } else {
-    return(error(res,400,"No process graph specified."))
-    
-  }
-
-  tryCatch({
     job = Job$new(process_graph=process_graph,user_id = req$user$user_id)
     job$output = output
     job$job_id = syncJobId()
@@ -162,12 +159,14 @@
     
     job$clearLog()
     return(res)
-    
-  }, error= function(e) {
-    return(openEO.R.Backend:::error(res=res, status = 500, msg = e))
-  }, finally = {
+
+      
+  
+  },error=handleError,
+  finally = {
     removeJobsUdfData(job)
   })
+  
 }
 
 .ogrExtension = function(format) {
@@ -215,7 +214,7 @@
              contentType=contentType,
              data=readBin(first, "raw", n=file.info(first)$size))
   },error=function(e){
-    openEO.R.Backend:::error(res,500,e)
+    throwError("Internal",message=e)
   },finally = {
     if (!is.null(temp)) {
       unlink(temp$getData()$output.file)
@@ -230,12 +229,11 @@
 
 #* @filter checkAuth
 .authorized = function(req, res){
-  
-  if (req$REQUEST_METHOD == 'OPTIONS') {
-    return(forward())
-  }
-  
   tryCatch({
+    if (req$REQUEST_METHOD == 'OPTIONS') {
+      return(forward())
+    }
+
     auth = unlist(strsplit(req$HTTP_AUTHORIZATION," "))
     if (auth[1] == "Bearer") {
       token = auth[2]
@@ -251,44 +249,45 @@
       req$user = user
       
       forward()
-
+      
     } else {
-      stop("Incorrect authentication method.")
+      throwError("AuthenticationSchemeInvalid")
     }
-  },
-  error = function(e) {
-    openEO.R.Backend:::error(res,401,"Unauthorized")
-  }
-  )
+
+  }, error=handleError)
+  
 }
 
 .validateProcessGraphFilter = function(req, res, ...) {
-  parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-  
-  is_process_graph_set = "process_graph" %in% names(parsedGraph)
-  
-  if (is_process_graph_set) {
-    process_graph = ProcessGraph$new(process_graph = parsedGraph[["process_graph"]])
-  } else {
-    if (req$REQUEST_METHOD == "POST") {
-      return(error(res = res,status = 400,msg = "No process graph sent to the backend"))
-    } else {
-      # the other option is PATCH, but there we don't require process_graph
-      forward()
-    }
-  }
-  
-  
-  
   tryCatch({
-    process_graph$buildExecutableProcessGraph(user = req$user)
-    forward()
+    parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
+    
+    is_process_graph_set = "process_graph" %in% names(parsedGraph)
+    
+    if (is_process_graph_set) {
+      process_graph = ProcessGraph$new(process_graph = parsedGraph[["process_graph"]])
+    } else {
+      if (req$REQUEST_METHOD == "POST") {
+        throwError("ProcessGraphMissing")
+      } else {
+        # the other option is PATCH, but there we don't require process_graph
+        forward()
+      }
+    }
     
     
-  },error=function(e) {
-    # TODO improve this further
-    return(openEO.R.Backend:::error(res,501,"Process graph contains errors...")) 
-  }) 
+    
+    tryCatch({
+      process_graph$buildExecutableProcessGraph(user = req$user)
+      forward()
+      
+      
+    },error=function(e) {
+      # TODO improve this further
+      throwError("ProcessGraphMissing")
+    }) 
+  }, error=handleError)
+  
 }
 
 .cors_filter = function(req,res) {
@@ -304,15 +303,6 @@
   res$status = 200
 }
 
-.replace_user_me_in_body = function(req, res, ...) {
-  if (!is.null(req$postBody)) {
-    text = req$postBody
-    text = gsub("users/me/files",paste("users",req$user$user_id,"files",sep="/"), text)
-    req$postBody = text
-  }
-  forward()
-}
-
 .not_implemented_yet = function(req,res, ...) {
   error(res,501, "The back-end responds with this error code whenever an endpoint is specified in the openEO API, but is not supported.", code = 501)
 }
@@ -322,6 +312,7 @@
 # utility functions ====
 #
 
+# @deprecated in the next time
 error = function(res, status,msg, code = NULL) {
   res$status = status
   
@@ -357,9 +348,7 @@ sendFile = function(res, status, file.name = NA,file.ext=NA, contentType=NA, dat
 
 createAPI = function() {
   
-  
   AuthFilter = openeo.server$createFilter("authorization",.authorized)
-  MeFilter = openeo.server$createFilter("me_filter", .replace_user_me_in_body)
   ProcessGraphValidationFilter = openeo.server$createFilter("pg_validator",.validateProcessGraphFilter)
   
   # serializer default is serializer_unboxed_json() if serializer is omitted

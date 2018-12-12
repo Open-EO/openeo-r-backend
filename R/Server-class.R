@@ -396,15 +396,14 @@ OpenEOServer <- R6Class(
           
           job_id = job$job_id
           
-          #  && !dir.exists(job$output.folder)
           if (!response) {
             if (!dir.exists(job$output.folder)) {
               dir.create(job$output.folder,recursive = TRUE)
             }
             
-            log = paste(job$output.folder, "process.log",sep="/")
-            
-            logToFile(file=log)
+            # log = paste(job$output.folder, "process.log",sep="/")
+            # 
+            # logToFile(file=log)
           }
           
           
@@ -440,6 +439,7 @@ OpenEOServer <- R6Class(
                       
             logger$info("Output finished")
           }, error = function(e) {
+            throwError("Internal",message=e$message)
             cat(str(e))
           }, finally={
             removeJobsUdfData(job)

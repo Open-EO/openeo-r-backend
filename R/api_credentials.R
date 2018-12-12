@@ -14,7 +14,7 @@
       dbDisconnect(con)
       
       if (nrow(result) == 0) {
-        stop("Invalid user")
+        throwError("CredentialsInvalid")
       }
       
       user = as.list(result)
@@ -26,12 +26,10 @@
         
         list(user_id = user$user_id, access_token=token)
       } else {
-        stop("Wrong password")
+        throwError("CredentialsInvalid")
       }
     },
-    error=function(e) {
-      openEO.R.Backend:::error(res,403,"Login failed.")
-    }
+    error=handleError
   )
 }
 
