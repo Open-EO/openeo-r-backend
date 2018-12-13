@@ -5,38 +5,43 @@
 #* @get /api/users/<userid>/files
 #* @serializer unboxedJSON
 .listUserFiles = function(req,res,user_id) {
-  if (paste(user_id) == paste(req$user$user_id)) {
-    req$user$fileList()
-  } else {
-    error(res,401,"Not authorized to access other workspaces")
-  }
+  tryCatch({
+    if (paste(user_id) == paste(req$user$user_id)) { #TODO revisit if public files are a thing
+      req$user$fileList()
+    } else {
+      throwError("FilePathInvalid")
+    }
+  }, error=handleError)
+  
 }
 
 #* @get /api/users/<userid>/files/<path>
 #* @serializer unboxedJSON
 .downloadUserFile = function(req,res,user_id,path) {
-  if (paste(user_id) == paste(req$user$user_id)) {
-    path = URLdecode(path)
-    
-    files = req$user$files
-    selection = files[files[,"link"]==path,]
-    if (nrow(selection) == 0) {
-      error(res, 404,paste("File not found under path:",path))
-    } else {
-      path.ext = unlist(strsplit(selection[,"link"], "\\.(?=[^\\.]+$)", perl=TRUE))
+  tryCatch({
+    if (paste(user_id) == paste(req$user$user_id)) { #TODO revisit if public files are a thing
+      path = URLdecode(path)
       
-      sendFile(
-        res,
-        200,
-        file.name = path.ext[1],
-        file.ext = paste(".",path.ext[2],sep=""),
-        data = readBin(rownames(selection),"raw", n=selection$size)
-      )
+      files = req$user$files
+      selection = files[files[,"link"]==path,]
+      if (nrow(selection) == 0) {
+        throwError("FileNotFound")
+      } else {
+        path.ext = unlist(strsplit(selection[,"link"], "\\.(?=[^\\.]+$)", perl=TRUE))
+        
+        sendFile(
+          res,
+          200,
+          file.name = path.ext[1],
+          file.ext = paste(".",path.ext[2],sep=""),
+          data = readBin(rownames(selection),"raw", n=selection$size)
+        )
+      }
+    } else {
+      throwError("FilePathInvalid")
+      # "Not authorized to access others files"
     }
-  } else {
-    error(res,401,"Not authorized to access others files")
-  }
-  
+  },error=handleError)
 }
 
 # @put /api/users/<userid>/files/<path>

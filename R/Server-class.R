@@ -52,7 +52,9 @@ OpenEOServer <- R6Class(
       data = NULL,
       
       outputGDALFormats = NULL,
+      defaultRasterFormat = "GTiff",
       outputOGRFormats = NULL,
+      defaultVectorFormat = "GeoPackage",
       
       # functions ----
       initialize = function() {
@@ -386,7 +388,7 @@ OpenEOServer <- R6Class(
         
         if (is.null(self$mapserver.url)) {
           # in docker environment mapserver is accessible under
-          # "mapserver"
+          # "mapserver", if not change it here
           self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
@@ -408,16 +410,25 @@ OpenEOServer <- R6Class(
           
           
           tryCatch({
-
+            # run the job first to get the result collection in order to decide for the format
+            job = job$run(logger = logger)
+            
+            
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
               format = job$output$format
             }
             
             if (is.null(format) || length(format)==0) {
-              format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
+              if (is.st_raster(job$results)) {
+                format = openeo.server$defaultRasterFormat
+              } else if (is.st_feature(job$results)) {
+                format = openeo.server$defaultVectorFormat
+              } else {
+                # TODO add, not considered right now
+              }
             }
+            # TODO check if the format is valid
             
-            job = job$run(logger = logger)
 
 
             if (job$status == "error") {
@@ -440,7 +451,6 @@ OpenEOServer <- R6Class(
             logger$info("Output finished")
           }, error = function(e) {
             throwError("Internal",message=e$message)
-            cat(str(e))
           }, finally={
             removeJobsUdfData(job)
             
@@ -570,7 +580,6 @@ OpenEOServer <- R6Class(
         # 1 banded granules have to use 
         # raster function, multiband = brick
         
-        #TODO set self reference link for detailed description
         
         cat("[done]\n")
       },
@@ -668,5 +677,5 @@ DatabaseEntity = R6Class(
   )
 )
 
-
+# required for the new plumber Filter implementation (see FilterableEndpoint)
 openeo.globals = plumber:::.globals

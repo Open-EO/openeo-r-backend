@@ -194,7 +194,6 @@
 
 # creates file output for a direct webservice result (executeSynchronous)
 .create_output = function(res, result, format, logger) {
-  #store the job? even though it is completed?
   if (is.null(result)) {
     logger$error("Outputter did not receive a collection for output.")
   }
@@ -214,7 +213,7 @@
              contentType=contentType,
              data=readBin(first, "raw", n=file.info(first)$size))
   },error=function(e){
-    throwError("Internal",message=e)
+    logger$error(e$message)
   },finally = {
     if (!is.null(temp)) {
       unlink(temp$getData()$output.file)
@@ -463,25 +462,25 @@ createAPI = function() {
   openeo.server$registerEndpoint(path = "/files/{user_id}",
                                  method = "GET",
                                  handler = .listUserFiles,
-                                 filters = list(AuthFilter,MeFilter))
+                                 filters = list(AuthFilter))
   
   # files - download file ====
   openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
                                  method = "GET",
                                  handler = .downloadUserFile,
-                                 filters = list(AuthFilter,MeFilter))
+                                 filters = list(AuthFilter))
   
   # files - upload file ====
   openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
                                  method = "PUT",
                                  handler = .uploadFile,
-                                 filters = list(AuthFilter,MeFilter)) # think about a new filter that handles the URL encoding
+                                 filters = list(AuthFilter)) # think about a new filter that handles the URL encoding
 
   # files - delete file ====
   openeo.server$registerEndpoint(path = "/files/{user_id}/{path}",
                                  method = "DELETE",
                                  handler = .deleteUserFile,
-                                 filters = list(AuthFilter,MeFilter))
+                                 filters = list(AuthFilter))
 
   # graphs - create ====
   openeo.server$registerEndpoint(path = "/process_graphs",
