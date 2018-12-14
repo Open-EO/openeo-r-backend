@@ -1,20 +1,13 @@
 version: '3'
 services:
-    openeo-r-baseserver:
-        build: 
-            context: .
-            dockerfile: DOCKERFILE-base
-        image: openeo-baseserver:1.5
     openeo-r-server:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.2.5
+        image: openeo-r-backend:0.3.1
         container_name: openeo-r-server
         ports:
             - "8000:8000"
-        depends_on:
-            - openeo-r-baseserver
         volumes:
             - openeo-r-workspace:/var/openeo/workspace/
         external_links:

@@ -1,6 +1,6 @@
-FROM openeo-baseserver:1.5
+FROM openeor/r-tidy-geospatial
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.2.5"
+LABEL version="0.3.1"
 LABEL description="A simple openeo (almost) conformant backend for frontend development"
 
 # create the path for the user files
@@ -8,11 +8,18 @@ RUN mkdir -p /opt/dockerfiles/ && mkdir -p /var/openeo/workspace/
 
 COPY ./ /opt/dockerfiles/
 
-# install package
-RUN R -f /opt/dockerfiles/Dockerfiles/install_package.R
+RUN apt-get update -qq && apt-get -y --no-install-recommends install \ 
+	libsodium-dev \
+	gdal-bin \
+&& install2.r --error \ 
+	--deps TRUE \
+	plumber \
+	sodium \
+	&& R -e "devtools::install_github('pramitghosh/OpenEO.R.UDF',ref='v0.0.1')" \
+	&& R -e "devtools::install('/opt/dockerfiles',upgrade_dependencies=FALSE)"
 
 
 # cmd or entrypoint for startup
-ENTRYPOINT ["R", "-q", "--no-save", "-f /opt/dockerfiles/Dockerfiles/server_start.R"]
+CMD ["R", "-q", "--no-save", "-f /opt/dockerfiles/Dockerfiles/server_start.R"]
 
 EXPOSE 8000
