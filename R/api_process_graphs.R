@@ -94,12 +94,13 @@
     if (!process_graph_id %in% req$user$process_graphs) {
       throwError("ProcessGraphNotFound")
     }
-    
     parsedGraph = fromJSON(req$postBody,simplifyDataFrame = FALSE)
     
     if ("process_graph" %in% names(parsedGraph)) {
       process_graph = ProcessGraph$new(graph_id = process_graph_id,process_graph = parsedGraph[["process_graph"]])
-    } 
+    } else {
+      process_graph = ProcessGraph$new(graph_id = process_graph_id)
+    }
     
     process_graph$load()
     
