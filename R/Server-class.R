@@ -603,8 +603,9 @@ OpenEOServer <- R6Class(
         self$processes = list()
         
         self$register(filter_daterange)
-        self$register(find_min)
-        self$register(calculate_ndvi)
+        self$register(min_time)
+        self$register(max_time)
+        self$register(NDVI)
         self$register(filter_bands)
         self$register(zonal_statistics)
         self$register(filter_bbox)

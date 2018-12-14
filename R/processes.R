@@ -47,24 +47,19 @@ filter_daterange = Process$new(
       format = "eodata"
     ),
     Argument$new(
-      name = "from",
-      description = "start date/timestamp for the query interval",
+      name = "extent",
+      description = "an Array containing start and stop date/timestamp for the query interval",
       required = FALSE,
-      type = "string",
-      format = "date-time"
-    ),
-    Argument$new(
-      name = "to",
-      description = "end date/timestamp for the query interval",
-      required = FALSE,
-      type = "string",
-      format = "date-time"
+      type = "temporal-extent"
     )
   ),
   summary="Filter by a date range",
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
-  operation = function(imagery, from=NULL, to=NULL) {
+  operation = function(imagery, extent) {
+    from=extent[[1]] 
+    to=extent[[2]]
+    
     logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     logger$info("Starting filter_daterange")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
@@ -196,9 +191,9 @@ zonal_statistics = Process$new(
   }
 )
 
-# find_min ====
-find_min = Process$new(
-  process_id = "find_min",
+# min_time ====
+min_time = Process$new(
+  process_id = "min_time",
   description = "calculates the minimum value per pixel of a single valued band collection",
   args = list(
     Argument$new(
@@ -251,6 +246,61 @@ find_min = Process$new(
   }
 )
 
+# max_time ====
+max_time = Process$new(
+  process_id = "max_time",
+  description = "calculates the maximum value per pixel of a single valued band collection",
+  args = list(
+    Argument$new(
+      name = "imagery",
+      description = "the temporal dataset/collection",
+      required = TRUE,
+      type = "object",
+      format = "eodata"
+    )
+  ),
+  summary="Minimum value of collections per pixel",
+  returns=result.eodata,
+  modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
+  operation = function(imagery) {
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    
+    logger$info("Starting find_min")
+    #get the collection of the imagery
+    collection = getCollectionFromImageryStatement(imagery)
+    
+    if (!collection$dimensions$band) {
+      #get a list of the data (raster objects)
+      rasters = collection$getData()$data
+      
+      logger$info("Fetched related granules")
+      #create a brick
+      data = stack(rasters)
+      logger$info("Stacking data")
+      
+      #calculate
+      minimum = calc(data,fun=min,na.rm=T)
+      logger$info("calculating the minimum")
+      
+      #create a granule
+      logger$info("creating single granule for minimum calculation")
+      
+      dims = collection$dimensions
+      dims$time = FALSE
+      
+      #create a collection
+      
+      result = Collection$new(dimensions = dims) #modified afterwards
+      result$addGranule(data=minimum)
+      logger$info("Creating collection for single granule and setting meta data")
+      
+      return(result)
+    } else {
+      logger$error("Not implemented yet. Group by band and apply function, or reduce band dimension")
+    }
+  }
+)
+
 # filter_bbox ====
 filter_bbox = Process$new(
   process_id="filter_bbox",
@@ -262,43 +312,55 @@ filter_bbox = Process$new(
                 type = "object",
                 format = "eodata"),
               Argument$new(
-                name = "left",
-                description = "The left value of a spatial extent",
+                name = "extent",
+                description = "Spatial extent as object [west,south,east,north,crs,...], may include a vertical axis (height or depth)",
                 required = TRUE,
-                type="number"),
-              Argument$new(
-                name = "right",
-                description = "The right value of a spatial extent",
-                required = TRUE,
-                type="number"),
-              Argument$new(
-                name = "bottom",
-                description = "The bottom value of a spatial extent",
-                required = TRUE,
-                type="number"),
-              Argument$new(
-                name = "top",
-                description = "The top value of a spatial extent",
-                required = TRUE,
-                type="number")
+                type="spatial_extent")
               ),
   summary="Spatial filter with Bounding Box",
   returns=result.eodata,
   modifier = create_dimensionality_modifier(),
-  operation = function(imagery, left, right, bottom, top) {
-    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
-    
-    logger$info("Filter for bounding box")
-    collection = getCollectionFromImageryStatement(imagery)
+  operation = function(imagery, extent) {
+    left = extent$west
+    right = extent$east
+    bottom = extent$south
+    top = extent$north
     e = extent(left,right,bottom,top)
     
-    srs = collection$getGlobalSRS()
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    logger$info("Filter for bounding box")
+    collection = getCollectionFromImageryStatement(imagery)
+    target_crs = collection$getGlobalSRS()
+    
+    if (!is.null(extent$crs)) {
+      crs = trim(tolower(extent$crs))
+      
+      if (!startsWith(crs,"+")) {
+        crs = paste0("+init=",crs)
+      }
+      crs = crs(crs)
+      
+      request_extent = extent2polygon(e,crs)
+      
+      if (crs@projargs != target_crs@projargs) {
+        #transform request into collection crs
+        target_geom = spTransform(request_extent,target_crs) # can be distorted, so take the bbox of that again
+        target_extent = extent(bbox(target_geom))
+      } else {
+        target_extent = request_extent
+      }
+      
+    } else {
+      request_extent = extent2polygon(e,target_crs)
+      target_extent = request_extent
+    }
     
     data_table = collection$getData()
     
     #TODO filter for intersection first!!! also calculate intersections
-    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=e)),
-                                                space = list(extent2polygon(e,srs)))
+    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=target_extent)),
+                                                space = list(extent2polygon(target_extent,target_crs)))
+    # TODO this doesn't make sense (above)... space should be an index! the object should be in the sf
     
     output = collection$clone(deep=TRUE)
     output$setData(cropped_data)
@@ -307,9 +369,9 @@ filter_bbox = Process$new(
   }
 )
 
-# calculate_ndvi ====
-calculate_ndvi = Process$new(
-  process_id = "calculate_ndvi",
+# NDVI ====
+NDVI = Process$new(
+  process_id = "NDVI",
   description = "Calculates the ndvi per pixel and scene in a given collection",
   args = list(Argument$new(
                name = "imagery",
