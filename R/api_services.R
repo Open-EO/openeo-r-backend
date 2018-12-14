@@ -59,6 +59,8 @@
     res$setHeader("Location",paste(openeo.server$baseserver.url,"services/",service$service_id))
     res$setHeader(name = "OpenEO-Identifier",value=service$service_id)
     res$status = 201
+    
+    return(res)
   },error=handleError)
   
 }
@@ -177,6 +179,8 @@
       }
       
       res$status = 204
+      
+      return(res)
     } else {
       throwError("ServiceNotFound")
     }
@@ -193,6 +197,8 @@
       service$remove()
       
       res$status = 204
+      
+      return(res)
     } else {
       throwError("ServiceNotFound")
     }

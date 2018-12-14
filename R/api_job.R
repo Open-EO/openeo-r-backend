@@ -53,6 +53,8 @@ NULL
                   value= paste(openeo.server$baseserver.url,"jobs/",job$job_id,sep=""))
     res$setHeader(name = "OpenEO-Identifier",value=job$job_id)
     res$status = 201
+    
+    return(res)
   },error=handleError)
   
 }
@@ -102,6 +104,7 @@ NULL
     
     if (success) {
       res$status = 204
+      return(res)
     } else {
       throwError("JobNotFound")
     }
@@ -147,6 +150,8 @@ NULL
     job$store()
     
     res$status = 204
+    
+    return(res)
   },error=handleError)
   
 }
@@ -167,6 +172,8 @@ NULL
     }, packages=c("openEO.R.Backend","raster","RSQLite","DBI","rgdal","gdalUtils"))
     
     res$status = 202
+    
+    return(res)
   },error=handleError)
   
 }

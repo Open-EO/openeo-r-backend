@@ -38,4 +38,6 @@
                 value=openeo.server$oidcprovider.url)
   
   res$status = 303
+  
+  return(res)
 }

@@ -17,6 +17,8 @@
       res$setHeader(name = "OpenEO-Identifier",value=graph$graph_id)
       
       res$status = 201
+      
+      return(res)
     } else {
       throwError("ProcessGraphMissing")
       #No data or malformed json was send"
@@ -56,6 +58,8 @@
     dbDisconnect(con)
     if (success) {
       res$status = 204
+      
+      return(res)
     } else {
       throwError("ProcessGraphNotFound")
       # Cannot delete graph. Either it is already deleted, 
@@ -112,6 +116,8 @@
     process_graph$update()
     
     res$status = 204
+    
+    return(res)
   },error=handleError)
 }
 
@@ -137,7 +143,9 @@
       
     },error=function(e) {
       throwError("Internal",message="Process graph contains errors...") #TODO improve!
-    }) 
+    })
+    
+    return(res)
   }, error= handleError)
   
 }

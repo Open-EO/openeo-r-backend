@@ -7,7 +7,7 @@
 .listUserFiles = function(req,res,user_id) {
   tryCatch({
     if (paste(user_id) == paste(req$user$user_id)) { #TODO revisit if public files are a thing
-      req$user$fileList()
+      return(req$user$fileList())
     } else {
       throwError("FilePathInvalid")
     }
@@ -36,6 +36,8 @@
           file.ext = paste(".",path.ext[2],sep=""),
           data = readBin(rownames(selection),"raw", n=selection$size)
         )
+        
+        return(res)
       }
     } else {
       throwError("FilePathInvalid")
@@ -109,6 +111,8 @@
         unlink(file, recursive = TRUE,force=TRUE)
         
         res$status = 204
+        
+        return(res)
       }
     } else {
       # Not authorized to delete data of others

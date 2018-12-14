@@ -7,10 +7,12 @@
 #* @serializer unboxedJSON
 .listProcesses = function(qname) {
   tryCatch({
-    list(processes=unname(lapply(openeo.server$processes, function(process){
-      return(process$detailedInfo())
-    })),
-    links=list())
+    return(
+      list(processes=unname(lapply(openeo.server$processes, function(process){
+        return(process$detailedInfo())
+      })),
+      links=list())
+    )
   }, error = handleError)
   
 }

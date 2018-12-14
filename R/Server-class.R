@@ -413,27 +413,29 @@ OpenEOServer <- R6Class(
             # run the job first to get the result collection in order to decide for the format
             job = job$run(logger = logger)
             
+            if (job$status == "error") {
+              logger$error("Error during job execution. Please subscribe to the job to see further log information (not implemented yet)")
+            }
             
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
               format = job$output$format
             }
             
-            if (is.null(format) || length(format)==0) {
-              if (is.st_raster(job$results)) {
+            if (is.null(format) || 
+                length(format)==0 || 
+                !(!is.null(format) && (format %in% openeo.server$outputGDALFormats || 
+                  format %in% openeo.server$outputOGRFormats))) {
+              
+              if (is.raster(job$results)) {
                 format = openeo.server$defaultRasterFormat
-              } else if (is.st_feature(job$results)) {
+              } else if (is.feature(job$results)) {
                 format = openeo.server$defaultVectorFormat
               } else {
                 # TODO add, not considered right now
               }
             }
-            # TODO check if the format is valid
             
 
-
-            if (job$status == "error") {
-              logger$error("Canceling output creation due to prior error")
-            }
 
             if (!response) {
               logger$info("Creating output without HTTP response")
