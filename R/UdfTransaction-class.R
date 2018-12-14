@@ -12,10 +12,12 @@ UdfTransaction <- R6Class(
     status = NULL,
     
     script = NULL,
+    logger = NULL,
     
     # functions ====
     initialize = function(udf_id = NA) {
       self$udf_id = udf_id
+      
       self$job_id = NA
       self$start_date = NA
       self$end_date = NA
@@ -37,6 +39,7 @@ UdfTransaction <- R6Class(
         
         self$udf_id = udf_info$udf_id
         self$job_id = udf_info$job_id
+        
         self$start_date = udf_info$start_date
         self$end_date = udf_info$end_date
         self$status = udf_info$status
@@ -131,12 +134,16 @@ UdfTransaction <- R6Class(
     },
     
     prepareExportData = function(collection, export_type="file") {
+      if (is.null(self$logger)) {
+        self$logger = Logger$new(process = list(process_id="udf_transaction"),job=list(job_id=self$job_id))
+      }
+      
       if (!all(export_type %in% c("file","json"))) {
-        stop("Can only support file and json based data export")
+        self$logger$error("Can only support file and json based data export")
       }
       
       if (! is.Collection(collection)) {
-        stop("Passed object is not a Collection object")
+        self$logger$error("Passed object is not a Collection object")
       }
       
       if ("json" %in% export_type) {
@@ -148,7 +155,7 @@ UdfTransaction <- R6Class(
       }
       
       if ("file" %in% export_type) {
-        write_generics(collection,dir_name = self$workspace)
+        write_generics(collection,dir_name = self$workspace, logger = self$logger)
       }
       
       invisible(self)
@@ -308,7 +315,7 @@ udfIdsByJobId = function(jobid) {
     query = "select udf_id from udf where job_id = :jid"
     
     db = openeo.server$getConnection()
-    result = dbGetQuery(db, query, param = list(jid=jobid))
+    result = dbGetQuery(db, query, param = list(jid=jobid))[,1]
     return(result)
     
   },finally = {

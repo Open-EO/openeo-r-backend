@@ -22,8 +22,6 @@ graph.
 
 \item{\code{process_graph}}{graph of nested processes that is executable (ExecutableProcess)}
 
-\item{\code{view}}{Spatio-Temporal Extent to be used for the calculation (currently not in use)}
-
 \item{\code{submitted}}{Timestamp when the job was submitted to the server}
 
 \item{\code{user_id}}{The user who owns the job}
@@ -31,8 +29,6 @@ graph.
 \item{\code{consumed_credits}}{For accounting and billing the amount of credits consumed by this job}
 
 \item{\code{last_update}}{Timestamp when the job was last updated}
-
-\item{\code{output}}{output configuration like output$format copied from the process graph (pg)}
 
 \item{\code{results}}{Contains the result of the process_graph after execution (Collection)}
 

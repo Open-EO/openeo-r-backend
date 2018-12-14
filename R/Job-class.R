@@ -7,19 +7,19 @@
 #' @field job_id The unique identifier of the job
 #' @field status The current status in the job lifecycle
 #' @field process_graph graph of nested processes that is executable (ExecutableProcess)
-#' @field view Spatio-Temporal Extent to be used for the calculation (currently not in use)
 #' @field submitted Timestamp when the job was submitted to the server
 #' @field user_id The user who owns the job
 #' @field consumed_credits For accounting and billing the amount of credits consumed by this job
 #' @field last_update Timestamp when the job was last updated
-#' @field output output configuration like output$format copied from the process graph (pg)
 #' @field results Contains the result of the process_graph after execution (Collection)
 #' @field persistent Whether or not the job is stored in database
 #' @field output list containing the output configuration like format (or additional GDAL commands)
 #' 
 #' @include Process-class.R
+#' @include utils.R
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
+#' @importFrom lubridate as_datetime
 #' @export
 Job <- R6Class(
   "Job",
@@ -28,14 +28,18 @@ Job <- R6Class(
   public = list(
     # attributes ----
     job_id = NULL,
-    status=NULL,
+    status=NA,
     process_graph = NULL,
-    view=NULL,
-    submitted=NULL,
-    last_update=NULL,
+    submitted=NA,
+    last_update=NA,
     user_id=NULL,
-    consumed_credits=NULL,
-    output=NULL, # output configuration like output$format copied from the process graph (pg)
+    consumed_credits=NA,
+    output=NA,
+    budget=NA,
+    title= NA,
+    description = NA,
+    plan = NA,
+    
     results = NULL, # contains the results of the process_graph after execution
     persistent = FALSE, # whether or not the job is stored in data base
     
@@ -46,14 +50,20 @@ Job <- R6Class(
       if (!is.null(user_id)) {
         self$user_id = user_id
       }
+      if (is.na(self$submitted)) {
+        self$submitted = now()
+        self$last_update = self$submitted
+      }
       
+      if (!is.na(self$status)) {
+        self$status = "submitted"
+      }
       self$consumed_credits = 0
-      
       if (!is.null(process_graph)) {
         if (!is.ProcessGraph(process_graph)) {
-          if (is.graph_id(process_graph[["process_graph"]])) {
+          if (is.graph_id(process_graph)) {
             #load graph id and overwrite user and grpah_id
-            private$pg = ProcessGraph$new(graph_id=process_graph[["process_graph"]])
+            private$pg = ProcessGraph$new(graph_id=process_graph)
             private$pg$user_id = user_id
             private$pg$graph_id = NULL # will be created on store
           } else {
@@ -74,8 +84,14 @@ Job <- R6Class(
         self$job_id = private$newJobId()
       }
       
-      if (is.null(private$pg$graph_id)) {
+      if (is.na(private$pg$graph_id) || is.null(private$pg$graph_id)) {
         private$pg$store()
+      }
+      
+      encodedOutput = NA
+      
+      if (!is.null(self$output)) {
+        encodedOutput = encodeChar2Hex(toJSON(x=self$output,auto_unbox = TRUE,pretty = TRUE))
       }
       
       if (!exists.Job(self$job_id)) {
@@ -87,7 +103,12 @@ Job <- R6Class(
             process_graph,
             submitted,
             last_update,
-            consumed_credits
+            consumed_credits,
+            output,
+            budget,
+            title,
+            description,
+            plan
         ) values (
             :job_id, 
             :user_id, 
@@ -95,7 +116,12 @@ Job <- R6Class(
             :process_graph, 
             :submitted, 
             :last_update, 
-            :consumed_credits 
+            :consumed_credits,
+            :output,
+            :budget,
+            :title,
+            :description,
+            :plan
         );"
         
         con = openeo.server$getConnection()
@@ -106,29 +132,42 @@ Job <- R6Class(
           process_graph = private$pg$graph_id, # it is the graph_id at this point
           submitted=as.character(self$submitted),
           last_update = as.character(self$last_update),
-          consumed_credits = self$consumed_credits
+          consumed_credits = self$consumed_credits,
+          output = encodedOutput,
+          budget = self$budget,
+          title = self$title,
+          description = self$description,
+          plan = self$plan
         ))
         dbDisconnect(con)
 
       } else {
         updateQuery = "update job 
                        set 
-                          user_id = :id, 
                           status = :status,
                           submitted = :submitted, 
                           last_update = :last_update,
-                          consumed_credits = :consumed_credits 
+                          consumed_credits = :consumed_credits,
+                          output = :output,
+                          budget = :budget,
+                          title = :title,
+                          description = :description,
+                          plan = :plan
                        where 
                           job_id = :job_id;"
         
         con = openeo.server$getConnection()
         dbExecute(con, updateQuery, param = list(
-          user_id = self$user_id,
           status = self$status,
           submitted = as.character(self$submitted),
           last_update = as.character(self$last_update),
           consumed_credits = self$consumed_credits,
-          job_id = self$job_id
+          job_id = self$job_id,
+          output = encodedOutput,
+          budget = self$budget,
+          title = self$title,
+          description = self$description,
+          plan = self$plan
         ))
         dbDisconnect(con)
       }
@@ -157,24 +196,37 @@ Job <- R6Class(
       self$last_update = job_info$last_update
       self$consumed_credits = job_info$consumed_credits
       
+      if (is.null(job_info$output) || is.na(job_info$output) || length(job_info$output) < 1) {
+        self$output = NULL
+      } else {
+        self$output = fromJSON(txt=decodeHex2Char(job_info$output),simplifyDataFrame = FALSE)
+      }
+      
+      self$budget = job_info$budget
+      self$title = job_info$title
+      self$description = job_info$description
+      self$plan = job_info$plan
+      
       # when stored in a db then all the time the graph is loaded from db, regardless if it is published or not
       private$pg = ProcessGraph$new(graph_id = job_info$process_graph)
       
       self$process_graph = private$pg$buildExecutableProcessGraph(user = User$new()$load(user_id=self$user_id), job=self) #from db
-      self$output = private$pg$output
       self$persistent = TRUE
       
       invisible(self)
 
     },
-
     shortInfo = function() {
       info = list(
         job_id = self$job_id,
+        title = self$title,
+        description = self$description,
         status = self$status,
-        submitted = self$submitted,
-        updated = self$last_update,
-        consumed_credits = self$consumed_credits
+        submitted = iso_datetime(self$submitted),
+        updated = iso_datetime(self$last_update),
+        plan = self$plan,
+        costs = self$consumed_credits,
+        budget = self$budget
       )
       
       return(info)
@@ -193,6 +245,8 @@ Job <- R6Class(
       success2 = dbExecute(con,"delete from job where job_id = :id",param=list(id = self$job_id)) == 1
       dbDisconnect(con)
       
+      self$clearLog()
+      
       if (dir.exists(self$output.folder)) {
         unlink(self$output.folder,recursive = TRUE)
       }
@@ -206,22 +260,63 @@ Job <- R6Class(
       }
       info = list(
         job_id = self$job_id,
-        user_id = self$user_id,
-        status = self$status,
+        title = self$title,
+        description = self$description,
         process_graph = private$pg$process_graph,
-        output = private$pg$output,
-        submitted = self$submitted,
-        updated = self$last_update,
-        consumed_credits = self$consumed_credits
+        output = self$output,
+        status = self$status,
+        submitted = iso_datetime(self$submitted),
+        updated =iso_datetime(self$last_update),
+        plan = self$plan,
+        costs = self$consumed_credits,
+        budget = self$budget
       )
       
       return(info)
     },
     
-    run = function() {
+    getProcessGraph = function() {
+      return(private$pg)
+    },
+    
+    modifyProcessGraph = function(graph) {
+      old_pg_id = private$pg$graph_id
+      # graph is the list represenation of the process graph as parsed from the job input object
+      private$pg = ProcessGraph$new(process_graph = graph, user_id = self$user_id)
+      private$pg$graph_id = old_pg_id
+      private$pg$update()
+      
+      user = User$new()$load(user_id=self$user_id)
+      self$process_graph = private$pg$buildExecutableProcessGraph(user=user,job=self)
+    },
+    
+    clearLog = function() {
+      con = openeo.server$getConnection()
+      tryCatch(
+        {
+          return(con %>% dbExecute("delete from log where job_id = :jid", param=list(jid=self$job_id)))
+        },
+        finally = {
+          dbDisconnect(con)
+        }
+      )
+    },
+    
+    getLog = function() {
+      con = openeo.server$getConnection()
+      tryCatch({
+          results = con %>% dbGetQuery("select * from log where job_id = :jid", param=list(jid=self$job_id))
+          return(results)
+       },
+       finally = {
+         dbDisconnect(con)
+       })
+    },
+    
+    run = function(logger) {
 
       tryCatch({
-        cat("Start job processing...\n")
+        logger$info("Start job processing...")
         self$status = "running"
         
         if (self$persistent) {
@@ -233,9 +328,7 @@ Job <- R6Class(
           dbDisconnect(con)
         }
         
-        
         self$results = self$process_graph$execute()
-        
         
         self$status = "finished"
         
@@ -248,9 +341,8 @@ Job <- R6Class(
           dbDisconnect(con)
         }
         
-        cat("Job done\n")
+        logger$info("Job done")
       }, error=function (e) {
-        cat("Error. Aborting execution.\n")
         self$status = "error"
         self$results = NULL
         if (self$persistent) {
@@ -261,6 +353,7 @@ Job <- R6Class(
                                                     job_id=self$job_id))
           dbDisconnect(con)
         }
+        logger$error("Error. Aborting execution.")
       }, finally={
         return(self)
       })

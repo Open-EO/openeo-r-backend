@@ -18,12 +18,14 @@ R2Generic = R6Class(
     scenes = NULL,
     legend_counter = NULL,
     legend = NULL,
+    logger = NULL,
     
     # functions ====
-    initialize = function(scenes = NULL, legend_counter = NULL, legend = NULL)
+    initialize = function(scenes = NULL, legend_counter = NULL, legend = NULL, logger)
     {
       self$scenes = scenes
       self$legend_counter = 0
+      self$logger = logger
       
       self$legend = matrix(ncol = 10, nrow = dim(scenes)[1]) # For extents, filename, timestamp and band - more could be added later by increasing the value of ncol
       colnames(self$legend) = c("xmin", "xmax", "ymin", "ymax", "filename", "time_index", "timestamp", "band_index", "band", "whether_raster")
@@ -32,7 +34,7 @@ R2Generic = R6Class(
     
     legend_to_disk = function(dir_name)
     {
-      cat("Writing legend file to disk...\n")
+      self$logger$info("Writing legend file to disk...")
       tryCatch( {
         legend_file_path = paste(dir_name, "legend.csv", sep = "/")
         if (!file.exists(legend_file_path)) {
@@ -43,14 +45,14 @@ R2Generic = R6Class(
         write.csv(x = self$legend, file = con)
       }, finally = function() {
         close(con)
-        cat("Done!\n")
+        self$logger$info("Done!")
       })
       
     },
     
     write_scenes = function(scene_table = self$scenes, dir_name = "disk")
     {
-      cat("Writing scenes to disk...\n")
+      self$logger$info("Writing scenes to disk...")
       if (!dir.exists(dir_name)) {
         dir.create(dir_name,recursive = TRUE)  
       }
@@ -62,8 +64,8 @@ R2Generic = R6Class(
       
       for(i in 1:length(t_num))
       {
-        print_statement = paste("\tWriting observations at t = ", i, "\n", sep = "")
-        cat(print_statement)
+        print_statement = paste("Writing observations at t = ", i, sep = "")
+        self$logger$info(print_statement)
         dir.create(paste(dir_name, "/t_", i, sep = ""))
         b_num = scene_table$band[scene_table$time == t_num[i]]
         for(j in 1:length(b_num))
@@ -80,7 +82,7 @@ R2Generic = R6Class(
           self$legend[self$legend_counter, ] = c(space_extent, paste(file_path_rel, ".tif", sep = ""), i, as.character.Date(t_num[i]), j, b_num[j], 1)
         }
       }
-      cat("Done!\n")
+      self$logger$info("Done!")
     }
     
   )
@@ -98,10 +100,10 @@ R2Generic = R6Class(
 #'
 #' @export
 #'
-write_generics = function(collection_obj, dir_name = "disk") #dir_name could be obtained if it is defined while registering the UDF
+write_generics = function(collection_obj, dir_name = "disk", logger) #dir_name could be obtained if it is defined while registering the UDF
 {
   scene_table = collection_obj$getData()
-  R2G_obj = R2Generic$new(scenes = scene_table)
+  R2G_obj = R2Generic$new(scenes = scene_table, logger = logger)
   R2G_obj$write_scenes(dir_name = dir_name)
   
   R2G_obj$legend_to_disk(dir_name)

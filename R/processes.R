@@ -1,6 +1,38 @@
 #' @include Server-class.R
 #' @include Process-class.R
 #' @include dimensionality.R
+#' @include parameter_type_definitions.R
+
+# get_collection ====
+get_collection = Process$new(
+  process_id = "get_collection",
+  description = "Loads the EO data into a process",
+  args = list(
+    Argument$new(
+      name = "name",
+      description = "the temporal dataset/collection",
+      required = TRUE,
+      type = "string"
+    )
+  ),
+  summary="Select a collection",
+  returns=result.eodata,
+  modifier = create_dimensionality_modifier(),
+  operation = function(name) {
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+
+    msg = paste("Selecting product:",name)
+    if (!is.null(parent.frame()$job)) {
+      logger$info(msg)
+    } else {
+      cat(paste(msg,"\n",sep=""))
+    }
+    
+    
+    coll = getCollectionFromImageryStatement(name)
+    return(coll)
+  }
+)
 
 # filter_daterange ====
 filter_daterange = Process$new(
@@ -10,29 +42,38 @@ filter_daterange = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "from",
       description = "start date/timestamp for the query interval",
-      required = FALSE
+      required = FALSE,
+      type = "string",
+      format = "date-time"
     ),
     Argument$new(
       name = "to",
       description = "end date/timestamp for the query interval",
-      required = FALSE
+      required = FALSE,
+      type = "string",
+      format = "date-time"
     )
   ),
+  summary="Filter by a date range",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, from=NULL, to=NULL) {
-    cat("Starting filter_daterange\n")
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    logger$info("Starting filter_daterange")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
     if (is.null(collection)) {
-      stop("no collection element found in function call")
+      logger$error("no collection element found in function call")
     }
     
     if (!is.null(from) && class(from) == "character") {
@@ -56,20 +97,27 @@ filter_bands = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "bands",
       description = "one or more band ids",
-      required = TRUE
+      required = TRUE,
+      type = c("string","array"),
+      items = "string"
     )
   ),
+  summary="Filter by band(s)",
+  returns = result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
-    cat("Filtering for bands")
+    logger$info("Filtering for bands")
     return(collection$filterByBands(bands))
   }
 )
@@ -82,23 +130,33 @@ zonal_statistics = Process$new(
     Argument$new(
       name = "imagery",
       description = "The imagery data set on which the zonal statistics shall be performed",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     ),
     Argument$new(
       name = "regions",
       description = "The relative link in the user workspace, where to find the geometries file",
-      required = TRUE
+      required = TRUE,
+      type="string",
+      format="url"
     ),
     Argument$new(
       name = "func",
       description = "An aggregation function like 'mean', 'median' or 'sum'",
-      required = TRUE
+      required = TRUE,
+      type="string"
     )
   ),
+  summary="Zonal statistics for polygons on EO data",
+  returns=result.vector,
   modifier = create_dimensionality_modifier(remove = list(raster=TRUE),add = list(feature=TRUE)),
   operation = function(imagery,regions,func) {
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     func_name = func
     func = get(tolower(func))
+    
+    logger$info("Start calculating zonal statistics")
     
     if (startsWith(regions,"/")) {
       regions = gsub("^/","",regions)
@@ -111,6 +169,7 @@ zonal_statistics = Process$new(
     
     polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
     crs(polygonList) = crs(regions)
+    logger$info("Imported polygons")
     
     collection = getCollectionFromImageryStatement(imagery)
     
@@ -125,10 +184,7 @@ zonal_statistics = Process$new(
                              fun=func,
                              df=FALSE)
     
-    
-    # colnames(values) = c(colnames(regions@data),timestamps)
-    # out = SpatialPolygonsDataFrame(polygonList,data=values)
-    # crs(out) <- crs(regions)
+    logger$info("Finished extracting data for polygons")
     
     old_dimensionality = collection$dimensions
     result = Collection$new(old_dimensionality)
@@ -148,12 +204,18 @@ find_min = Process$new(
     Argument$new(
       name = "imagery",
       description = "the temporal dataset/collection",
-      required = TRUE
+      required = TRUE,
+      type = "object",
+      format = "eodata"
     )
   ),
+  summary="Minimum value of collections per pixel",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time=TRUE)),
   operation = function(imagery) {
-    cat("Starting find_min\n")
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    
+    logger$info("Starting find_min")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
     
@@ -161,18 +223,17 @@ find_min = Process$new(
       #get a list of the data (raster objects)
       rasters = collection$getData()$data
       
-      cat("Fetched related granules\n")
+      logger$info("Fetched related granules")
       #create a brick
       data = stack(rasters)
-      cat("Stacking data\n")
+      logger$info("Stacking data")
       
       #calculate
       minimum = calc(data,fun=min,na.rm=T)
-      cat("calculating the minimum\n")
+      logger$info("calculating the minimum")
       
       #create a granule
-      # aggregation = Granule$new(time=collection$getMinTime(),data=minimum,extent=extent(minimum),srs=crs(minimum))
-      cat("creating single granule for minimum calculation\n")
+      logger$info("creating single granule for minimum calculation")
       
       dims = collection$dimensions
       dims$time = FALSE
@@ -181,11 +242,11 @@ find_min = Process$new(
 
       result = Collection$new(dimensions = dims) #modified afterwards
       result$addGranule(data=minimum)
-      cat("Creating collection for single granule and setting meta data\n")
+      logger$info("Creating collection for single granule and setting meta data")
       
       return(result)
     } else {
-      stop("Not implemented yet. Group by band and apply function, or reduce band dimension")
+      logger$error("Not implemented yet. Group by band and apply function, or reduce band dimension")
     }
   }
 )
@@ -194,23 +255,40 @@ find_min = Process$new(
 filter_bbox = Process$new(
   process_id="filter_bbox",
   description="Subsets an imagery by a specific extent",
-  args = list(Argument$new(name = "imagery",
-                           description = "the spatio-temporal dataset/collection",
-                           required = TRUE),
-              Argument$new(name = "left",
-                           description = "The left value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "right",
-                           description = "The right value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "bottom",
-                           description = "The bottom value of a spatial extent",
-                           required = TRUE),
-              Argument$new(name = "top",
-                           description = "The top value of a spatial extent",
-                           required = TRUE)),
+  args = list(Argument$new(
+                name = "imagery",
+                description = "the spatio-temporal dataset/collection",
+                required = TRUE,
+                type = "object",
+                format = "eodata"),
+              Argument$new(
+                name = "left",
+                description = "The left value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "right",
+                description = "The right value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "bottom",
+                description = "The bottom value of a spatial extent",
+                required = TRUE,
+                type="number"),
+              Argument$new(
+                name = "top",
+                description = "The top value of a spatial extent",
+                required = TRUE,
+                type="number")
+              ),
+  summary="Spatial filter with Bounding Box",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(),
   operation = function(imagery, left, right, bottom, top) {
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    
+    logger$info("Filter for bounding box")
     collection = getCollectionFromImageryStatement(imagery)
     e = extent(left,right,bottom,top)
     
@@ -236,27 +314,39 @@ calculate_ndvi = Process$new(
   args = list(Argument$new(
                name = "imagery",
                description = "the spatio-temporal dataset/collection",
-               required = TRUE
+               required = TRUE,
+               type = "object",
+               format = "eodata"
              ),
              Argument$new(
                name = "nir",
                description = "The band id of the Near Infrared (NIR) band",
-               required = TRUE
+               required = TRUE,
+               type="string"
              ),
              Argument$new(
                name = "red",
                description = "The band id of the visible red band",
-               required = TRUE
+               required = TRUE,
+               type="string"
              )),
+  summary="NDVI calculation per pixel",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band=TRUE)),
   operation=function(imagery,nir,red) {
-    cat("Starting calculate_ndvi\n")
+    logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
+    
+    logger$info("Starting calculate_ndvi")
 
     collection = getCollectionFromImageryStatement(imagery)
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
-    cat("Fetched indices for bands\n")
     
+    if (is.na(nir.index) || is.na(red.index)) {
+      logger$error("Incorrect band indices.")
+    }
+    
+    logger$info("Fetched indices for bands")
     if (collection$dimensions$time) {
       group = collection$getData() %>% group_by(time) 
     } else {
@@ -276,12 +366,12 @@ calculate_ndvi = Process$new(
     
     # fetch the data elements and simultanously calculate ndvi
 
-    cat("ndvi calculation applied on all granules\n")
+    logger$info("ndvi calculation applied on all granules")
     
     result.collection = collection$clone(deep=TRUE)
  
     result.collection$setData(ndvi_calculation)
-    cat("set metadata for newly calculated collection\n")
+    logger$info("set metadata for newly calculated collection")
     
     return(result.collection)
   }
@@ -294,20 +384,27 @@ aggregate_time = Process$new(
   args = list(Argument$new(
                 name = "imagery",
                 description = "the spatio-temporal dataset/collection",
-                required = TRUE
+                required = TRUE,
+                type = "object",
+                format = "eodata"
                 ),
               Argument$new(
                 name = "script",
                 description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
-                required = TRUE
+                required = TRUE,
+                type="string",
+                format="url"
                 )
   ),
+  summary="UDF: Applies an aggregation function over time.",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
-  operation = function(imagery, script)
-  {
+  operation = function(imagery, script) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
+    
+    logger = Logger$new(process=parent, job = parent.frame()$job)
     
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
@@ -350,7 +447,7 @@ aggregate_time = Process$new(
       return(result.collection)
     }, 
     error = function(e) {
-      cat(paste("ERROR:",e))
+      logger$error(paste("ERROR:",e))
       udf_transaction = udf_transaction$load()
       udf_transaction$status = "error"
       udf_transaction$end_date = NA
@@ -374,20 +471,27 @@ apply_pixel = Process$new(
   args = list(Argument$new(
     name = "imagery",
     description = "the spatio-temporal dataset/collection",
-    required = TRUE
+    required = TRUE,
+    type = "object",
+    format = "eodata"
   ),
   Argument$new(
     name = "script",
     description = "the URL or path relative to the current working directory to the user's R script containing the UDF definition",
-    required = TRUE
+    required = TRUE,
+    type="string",
+    format="url"
   )
   ),
+  summary="UDF: applies a function pixel wise",
+  returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band = TRUE)),
-  operation = function(imagery, script)
-  {
+  operation = function(imagery, script) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
+    
+    logger = Logger$new(process=parent, job = job)
     
     collection = getCollectionFromImageryStatement(imagery)
     if (startsWith(script, "/"))
@@ -420,7 +524,7 @@ apply_pixel = Process$new(
       return(result.collection)
     }, 
     error = function(e) {
-      cat(paste("ERROR:",e))
+      logger$error(paste("ERROR:",e))
       udf_transaction = udf_transaction$load()
       udf_transaction$status = "error"
       udf_transaction$end_date = NA
@@ -448,13 +552,18 @@ getCollectionFromImageryStatement = function (imagery) {
     collection = imagery
   } else if (class(imagery) == "character") {
     #load image or create process
+    if (imagery %in% names(openeo.server$data)) {
+      collection = openeo.server$data[[imagery]]$getCollection()
+    } else {
+      stop(paste("Cannot find product:",imagery))
+    }
+    
+    
   } else if (is.ExecutableProcess(imagery)) {
     collection = imagery$execute()
-  } else if (class(imagery) == "list") {
-    if ("product_id" %in% names(imagery)) {
-      collection = openeo.server$data[[imagery$product_id]]$getCollection()
-    }
-  }
+  } 
+  # since accessing the collection is a process we don't any other type check here
+  
   if (is.null(collection)) {
     stop("no collection element found in function call")
   }

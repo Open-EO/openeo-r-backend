@@ -4,7 +4,7 @@
 \alias{write_generics}
 \title{Write generics to disk}
 \usage{
-write_generics(collection_obj, dir_name = "disk")
+write_generics(collection_obj, dir_name = "disk", logger)
 }
 \arguments{
 \item{collection_obj}{Object of class Collection as produced in the previous step while executing the process graph before encountering the UDF}

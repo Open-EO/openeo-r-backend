@@ -1,187 +1,252 @@
-# services endpoints ----
-createServicesEndpoint = function() {
-  services = plumber$new()
-  
-  services$handle("POST",
-                  "/",
-                  handler=.createNewService,
-                  serializer = serializer_unboxed_json())
-  services$handle("OPTIONS",
-                  "/",
-                  handler=.cors_option_bypass)
-  
-  services$handle("GET",
-                  "/<service_id>",
-                  handler=.getServiceInformation,
-                  serializer = serializer_unboxed_json())
-  services$handle("PATCH",
-                  "/<service_id>",
-                  handler=.updateService,
-                  serializer = serializer_unboxed_json())
-  services$handle("DELETE",
-                  "/<service_id>",
-                  handler=.deleteService,
-                  serializer = serializer_unboxed_json())
-  services$handle("OPTIONS",
-                  "/<service_id>",
-                  handler=.cors_option_bypass)
-  
-  services$filter("authorization",.authorized)
-  
-  return(services)
-}
+# /services handler functions ----
 
-# redirecter endpoints ----
-createWMSEndpoint = function() {
-  wms = plumber$new()
-  
-  wms$handle("GET",
-                  "/<service_id>",
-                  handler=.referToMapserver,
-                  serializer = serializer_proxy())
-  
-  wms$handle("OPTIONS",
-                  "/<service_id>",
-                  handler=.cors_option_bypass)
-  
-  return(wms)
-}
-
-createWFSEndpoint = function() {
-  wfs = plumber$new()
-  
-  wfs$handle("GET",
-             "/<service_id>",
-             handler=.referToMapserver,
-             serializer = serializer_proxy())
-  
-  wfs$handle("OPTIONS",
-             "/<service_id>",
-             handler=.cors_option_bypass)
-  
-  return(wfs)
-}
-
-# handler ----
 .createNewService = function(req, res) {
-  service_input = fromJSON(req$postBody,simplifyDataFrame = FALSE)
-  
-  service = Service$new()
-  type = tolower(service_input$service_type)
-  if (is.null(type)) {
-    return(error(res, 400, "No service type specified"))
-  } else {
-    service$service_type = type
-  }
-  
-  
-  args = service_input$service_args
-  service$service_args = args
-  
-  job_id = service_input$job_id
-  if (!is.null(job_id) && exists.Job(job_id)) {
-    service$job_id = job_id
-  } else {
-    return(error(res,500,"Cannot link to job. Please create a job first."))
-  }
-  
-  service$store()
-  
-  job = Job$new(job_id)
-  job$load()
-  #if not running or finished then run job!
-  if (job$status %in% c("submitted","error")) {
-    openeo.server$runJob(job=job, format = job$output[["format"]])
-  }
-  # when finished then create: create map file
-  if (type %in% c("wms","wcs")) {
-    job_result_path = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
-    files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
-    files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
-    config = MapServerConfig$new()
-    config = config$fromRaster(obj = lapply(files,brick),service=service)
-    #TODO maybe we need to create layers for each additional file...
-
-    mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
-    config$toFile(mapfile)
-  } else {
-    job_folder = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
-    files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
-    if (is.null(files) || length(files) == 0) {
-      stop("Cannot find SHP file to create WFS from.")
+  tryCatch({
+    if (length(req$postBody) == 0 || is.null(req$postBody) || is.na(req$postBody)) {
+      throwError("ContentTypeInvalid",types="application/json")
     }
     
-    config = MapServerConfig$new()
-    config = config$fromVector(obj = readOGR(files[1]),service=service,data.dir=job_folder)
+    service_input = fromJSON(req$postBody,simplifyDataFrame = FALSE)
     
-    mapfile = paste(openeo.server$workspaces.path,"services",paste(service$service_id,".map",sep=""),sep="/")
-    config$toFile(mapfile)
-  }
+    if (is.null(service_input$process_graph)) {
+      throwError("ServiceArgumentRequired",argument="process_graph")  
+    }
+    
+    if ( is.null(service_input$type)) {
+      throwError("ServiceArgumentRequired",argument="type")
+    }
+    
+    service = Service$new()
+    
+    service$type = tolower(service_input$type)
+    
+    if (!is.null(service_input$title)) {
+      service$title = service_input$title
+    }
+    
+    if (!is.null(service_input$description)) {
+      service$description = service_input$description
+    }
+    
+    if (!is.null(service_input$enabled)) {
+      service$enabled = service_input$enabled
+    }
+    
+    if (!is.null(service_input$plan)) {
+      service$plan = service_input$plan
+    }
+    
+    if (!is.null(service_input$budget)) {
+      service$budget = service_input$budget
+    }
+    
+    params = service_input$parameters
+    if (!is.null(params)) {
+      service$parameters = params
+    }
+    
+    .createNewServiceJob(service = service, user_id = req$user$user_id, process_graph = service_input$process_graph)
+    
+    
+    #if not running or finished then run job!
+    .runServiceJob(service = service)
+    
+    # TODO wait until finished before proceeding
+    
+    # when finished then create: create map file
+    service$buildMapFile()
+    
+    res$setHeader("Location",paste(openeo.server$baseserver.url,"services/",service$service_id))
+    res$setHeader(name = "OpenEO-Identifier",value=service$service_id)
+    res$status = 201
+    
+    return(res)
+  },error=handleError)
   
-  return(service$detailedInfo())
 }
 
 .referToMapserver = function(req,res,service_id) {
-  s = URLdecode(req$QUERY_STRING)
-  queryKVP = unlist(strsplit(substr(s,2,nchar(s)),"[&=]"))
-  keys = "map"
-  values = list(paste("/maps/services/",service_id,".map",sep=""))
-  
-  for (key_index in seq(1,length(queryKVP),2)) {
-    key = queryKVP[key_index]
-    value = queryKVP[key_index+1]
+  tryCatch({
+    if (!exists.Service(service_id)) {
+      throwError("ServiceNotFound")
+    }
     
-    keys = append(keys,key)
-    values = append(values,value)
-  }
-  names(values) = keys
+    s = URLdecode(req$QUERY_STRING)
+    queryKVP = unlist(strsplit(substr(s,2,nchar(s)),"[&=]"))
+    keys = "map"
+    values = list(paste("/maps/services/",service_id,".map",sep=""))
+    
+    for (key_index in seq(1,length(queryKVP),2)) {
+      key = queryKVP[key_index]
+      value = queryKVP[key_index+1]
+      
+      keys = append(keys,key)
+      values = append(values,value)
+    }
+    names(values) = keys
+    
+    
+    url = openeo.server$mapserver.url
+    if (endsWith(url, "?")) {
+      url = substr(url, 1, nchar(url)-1)
+    }
+    response = GET(url = url,query = values)
+    #TODO eventually use 303 redirect with Location header
+    return(response)
+  },error=handleError)
   
-  
-  url = openeo.server$mapserver.url
-  if (endsWith(url, "?")) {
-    url = substr(url, 1, nchar(url)-1)
-  }
-  response = GET(url = url,query = values)
 }
 
 .getServiceInformation = function(req,res,service_id) {
-  if (exists.Service(service_id)) {
-    service = Service$new(service_id)$load()
-    
-    return(service$detailedInfo())
-  } else {
-    error(re, 404, "Cannot find service")
-  }
+  tryCatch({
+    if (exists.Service(service_id)) {
+      service = Service$new(service_id)$load()
+      
+      return(service$detailedInfo())
+    } else {
+      throwError("ServiceNotFound")
+    }
+  },error=handleError)
+  
 }
 
 .updateService = function(req,res,service_id) {
-  if (exists.Service(service_id)) {
-    patch = fromJSON(req$postBody,simplifyDataFrame=FALSE)
-    if (names(patch) == "service_args") {
-      args = patch[["service_args"]]
+  tryCatch({
+    if (exists.Service(service_id)) {
+      patch = fromJSON(req$postBody,simplifyDataFrame=FALSE)
+      
       service = Service$new(service_id)$load()
       
-      for (key in names(args)) {
-        value = args[[key]]
-        service$service_args[[key]] = value
+      rebuildMapFile = FALSE
+      rerunJob = FALSE
+      
+      if (!is.null(patch$title)) {
+        service$title = patch$title
+      }
+      
+      if (!is.null(patch$description)) {
+        service$description = patch$description
+      }
+      
+      if (!is.null(patch$process_graph)) {
+        job = service$job
+        pg = job$getProcessGraph()
+        
+        update_pg = ProcessGraph$new()
+        update_pg$graph_id = pg$graph_id 
+        update_pg$user_id = pg$user_id
+        update_pg$process_graph = patch$process_graph
+        update_pg$update()
+        
+        job$status = "submitted"
+        job$last_update = as.character(now())
+        
+        job$store()
+        
+        rerunJob=TRUE
+        rebuildMapFile = TRUE
+      }
+      
+      if (!is.null(patch$enabled)) {
+        service$enabled = patch$enabled
+      }
+      
+      if (!is.null(patch$parameters)) {
+        service$parameters = patch$parameters
+        rebuildMapFile = TRUE
+      } else {
+        if ("parameters" %in% names(patch)) {
+          service$parameters = NA
+        }
+      }
+      
+      if (!is.null(patch$plan)) {
+        service$plan = patch$plan
+      }
+      
+      if (!is.null(patch$budget)) {
+        service$budget = patch$budget
       }
       
       service$store()
-      ok(res)
+      
+      if (rerunJob) {
+        .runServiceJob(service)
+      }
+      
+      if (rebuildMapFile) {
+        service$buildMapFile()
+      }
+      
+      res$status = 204
+      
+      return(res)
+    } else {
+      throwError("ServiceNotFound")
     }
-    
-  } else {
-    error(res, 404, "Cannot find service")
-  }
+  }, error=handleError)
+  
 }
 
 .deleteService = function(req,res,service_id) {
-  if (exists.Service(service_id)) {
-    service = Service$new(service_id)
-    service$remove()
-    
-    ok(res)
-  } else {
-    error(re, 404, "Cannot find service")
+  tryCatch({
+    if (exists.Service(service_id)) {
+      # TODO check user_id also
+      service = Service$new(service_id)$load()
+      
+      service$remove()
+      
+      res$status = 204
+      
+      return(res)
+    } else {
+      throwError("ServiceNotFound")
+    }
+  }, error=handleError)
+  
+}
+
+.listUserServices = function(req,res) {
+  tryCatch({
+    return(list(
+      services=lapply(req$user$services, function(service_id) {
+        return(Service$new(service_id)$load()$shortInfo())
+      }),
+      links=list()
+    ))
+  }, error=handleError)
+  
+}
+
+.runServiceJob = function(service) {
+  job = service$job
+  
+  if (dir.exists(job$output.folder)) {
+    file.remove(list.files(job$output.folder, full.names = TRUE))
   }
+  
+  # TODO consider also that the result is a feature
+  if (job$status %in% c("submitted","error")) {
+    if (is.null(job$output) || is.null(job$output[["format"]])) {
+      format = "GTiff"
+    } else {
+      format = job$output[["format"]]
+    }
+    openeo.server$runJob(job=job, format = format,response=FALSE)
+  }
+}
+
+.createNewServiceJob = function(service, user_id, process_graph) {
+  job = Job$new(user_id = user_id, process_graph = process_graph)
+  job$store()
+  service$job_id = job$job_id
+  
+  service$store()
+  
+  job$load()
+  
+  # also set a title that is assigned to a service
+  job$title = paste("Service",service$service_id)
+  job$status = "submitted"
+  job$store()
 }

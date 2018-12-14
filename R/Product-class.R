@@ -7,7 +7,8 @@ Product <- R6Class(
         # public ----
         public = list(
           # attributes ====
-          product_id = NULL,
+          id = NULL,
+          title = NULL,
           description = NULL,
           source= NULL,
           extent = NULL,
@@ -15,35 +16,29 @@ Product <- R6Class(
           srs=NULL,
           
           # functions ====
-          initialize = function(product_id=NA,description=NA,source=NA) {
-            self$product_id = product_id
+          initialize = function(id=NA,title = NA, description=NA,source=NA) {
+            self$id = id
+            self$title = title
             self$description= description
             self$source=source
           },
           shortInfo = function() {
             list(
-              product_id=self$product_id,
-              description=self$description,
-              source=self$source
+              name = private$collection_metadata$name,
+              title = private$collection_metadata$title,
+              description = private$collection_metadata$description,
+              license = private$collection_metadata$license,
+              extent = private$collection_metadata$extent,
+              links = private$collection_metadata$links
             )
           },
           detailedInfo = function() {
-            ext=self$extent
-            
-            list(
-              product_id=self$product_id,
-              description=self$description,
-              source=self$source,
-              extent=list(left=xmin(ext),right=xmax(ext),bottom=ymin(ext),top=ymax(ext),srs=toString(self$srs)),
-              time=self$time,
-              bands=self$getBandList()
-            )
+            return(private$collection_metadata)
           },
           deriveMetadata = function() {
             private$collection$sortGranulesByTime()
             
-            self$time = list(from = private$collection$getMinTime(),
-                             to = private$collection$getMaxTime())
+            self$time = paste(private$collection$getMinTime(),private$collection$getMaxTime(),sep="/")
             
             self$extent = private$collection$calculateExtent()
             self$srs = private$collection$getGlobalSRS()
@@ -64,6 +59,34 @@ Product <- R6Class(
             }
             
             private$collection = collection
+          },
+          
+          setCollectionMetadata=function(md) {
+            private$collection_metadata = md
+          },
+          getCollectionMetadata = function() {
+            return(private$collection_metadata)
+          },
+          addSelfReferenceLink = function() {
+            if (endsWith(openeo.server$baseserver.url,"/")) {
+              baseurl = substr(openeo.server$baseserver.url,1,nchar(openeo.server$baseserver.url)-1)
+            } else {
+              baseurl = openeo.server$baseserver.url
+            }
+            
+            selfRefLink = paste(baseurl,"collections",self$id,sep="/")
+            
+            if (!is.null(private$collection_metadata)) {
+              private$collection_metadata$links = c(private$collection_metadata$links,
+                                                    list(
+                                                      list(
+                                                        rel="self",
+                                                        href=selfRefLink
+                                                      )
+                                                    ))
+            }
+            
+            return(self)
           }
           
         ),
@@ -76,6 +99,7 @@ Product <- R6Class(
         # private ----
         private = list(
           #attributes ====
+          collection_metadata = NULL,
           collection=NULL
         )
 )

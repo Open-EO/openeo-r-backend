@@ -1,6 +1,6 @@
 Package: openEO.R.Backend
 Title: Reference backend implementation for openEO conformant backend with a local filesystem
-Version: 0.2.5
+Version: 0.3.0
 Authors@R: c(person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre")),
   person("Pramit","Ghosh",email = "pramitghosh@uni-muenster.de", role = c("aut","ctb")))
 Description: The package contains a backend solution in compliance with the openEO API. In this demonstration 
@@ -54,7 +54,10 @@ Collate:
     'dimensionality.R'
     'Process-class.R'
     'ExecutableProcess-class.R'
+    'FilterableEndpoint.R'
+    'utils.R'
     'Job-class.R'
+    'Logger-class.R'
     'MapServerConfig-class.R'
     'MapServerLayer-class.R'
     'MapServerMap-class.R'
@@ -62,18 +65,21 @@ Collate:
     'ProcessGraph-class.R'
     'Product-class.R'
     'R2Generic-class.R'
-    'data.R'
-    'processes.R'
-    'Server-class.R'
-    'Service-class.R'
-    'Udf-class.R'
-    'User-class.R'
-    'View-class.R'
+    'errors.R'
+    'api_process_graphs.R'
+    'api_credentials.R'
     'api_processes.R'
-    'api_udf_runtimes.R'
     'api_services.R'
     'api_users.R'
     'api_job.R'
     'api_data.R'
+    'data.R'
+    'parameter_type_definitions.R'
+    'processes.R'
     'api.R'
+    'Server-class.R'
+    'Service-class.R'
+    'UdfTransaction-class.R'
+    'User-class.R'
+    'api_files.R'
     'serializer_proxy.R'

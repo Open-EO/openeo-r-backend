@@ -1,3 +1,10 @@
+UnboxedPlumber = R6Class(
+  "UnboxedPlumber",
+  inherit=plumber,
+  public=list(getPrivate=function()private)
+)
+
+
 #' OpenEOServer
 #' 
 #' This is the server class, wich has different variables regarding the storage paths, as well as the loaded processes, products and
@@ -12,6 +19,7 @@
 #' 
 #' @include processes.R
 #' @include data.R
+#' @include api.R
 #' @importFrom plumber plumb
 #' @importFrom R6 R6Class
 #' @importFrom jsonlite fromJSON
@@ -24,7 +32,7 @@ OpenEOServer <- R6Class(
     # public ====
     public = list(
       # attributes ----
-      api.version = "0.0.2",
+      api.version = "0.3.1",
       secret.key = NULL,
       
       data.path = NULL,
@@ -36,14 +44,17 @@ OpenEOServer <- R6Class(
       
       api.port = NULL,
       host = NULL,
-      baseserver.url = "http://localhost:8000/api/",
+      baseserver.url = "http://localhost:8000/",
       mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
+      oidcprovider.url = NULL,
       
       processes = NULL,
       data = NULL,
       
       outputGDALFormats = NULL,
+      defaultRasterFormat = "GTiff",
       outputOGRFormats = NULL,
+      defaultVectorFormat = "GeoPackage",
       
       # functions ----
       initialize = function() {
@@ -54,6 +65,11 @@ OpenEOServer <- R6Class(
         ogr_drivers = ogrDrivers()
         self$outputGDALFormats = drivers[drivers$create,"name"]
         self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
+        
+        self$initEndpoints()
+        
+        # load the errors table
+        data(errors)
       },
       
       startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
@@ -78,27 +94,14 @@ OpenEOServer <- R6Class(
           dir.create(udf_temp_dir,recursive = TRUE)
         }
         
-        # TODO revise this... probably we don't need to migrate any longer
-        # migrate all user workspaces to /users/
-        folder.names = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|jobs|udf|services]",full.names = TRUE)
-        user_ids = list.files(openeo.server$workspaces.path,pattern = "[^openeo.sqlite|users|data|udf|jobs|services]")
-        if (length(user_ids) > 0) {
-          if (!dir.exists(paste(openeo.server$workspaces.path,"users",sep="/"))) {
-            dir.create(paste(openeo.server$workspaces.path,"users",sep="/"))
-          }
-          invisible(file.rename(from=folder.names,to=paste(openeo.server$workspaces.path,"users",user_ids,sep="/")))
-        }
+        private$initRouter()
+        createAPI()
         
-        root = createAPI()
-        
-        root$registerHook("exit", function(){
-          print("Bye bye!")
-        })
         
         job_downloads = PlumberStatic$new(batch_job_download_dir)
-        root$mount("/api/result", job_downloads)
+        private$router$mount("/result", job_downloads)
         
-        root$run(port = self$api.port,host = host)
+        private$router$run(port = self$api.port,host = host)
       },
       
       register = function(obj) {
@@ -121,7 +124,7 @@ OpenEOServer <- R6Class(
           listName = "data"
           
           newObj = list(obj)
-          names(newObj) = c(obj$product_id)
+          names(newObj) = c(obj$id)
           
         } else {
           warning("Cannot register object. It is neither Process, Product nor Job.")
@@ -132,10 +135,12 @@ OpenEOServer <- R6Class(
         
       },
 
-      createUser = function(user_name, password, silent=FALSE) {
+      createUser = function(user_name, password, budget=-1, storage_quota = 200000000, silent=FALSE) {
         user = User$new()
         user$user_name = user_name
         user$password = password
+        user$budget = budget
+        user$storage_quota = storage_quota
         
         user$store()
         
@@ -166,8 +171,23 @@ OpenEOServer <- R6Class(
           dbExecute(con, "create table user (user_id integer, 
                     user_name text, 
                     password text, 
-                    login_secret text)")
+                    login_secret text,
+                    budget real,
+                    storage_quota integer)")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from user limit 0"))
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table user add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "storage_quota" %in% columns) {
+            addColumnsQuery = "alter table user add storage_quota integer"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
         if (!dbExistsTable(con,"job")) {
           dbExecute(con, "create table job (job_id text, 
                     user_id integer, 
@@ -175,20 +195,130 @@ OpenEOServer <- R6Class(
                     submitted text,
                     last_update text,
                     consumed_credits integer,
+                    output text,
+                    budget real,
+                    title text,
+                    description text,
+                    plan text,
                     process_graph text)")
+        } else {
+          # migration
+          columns = colnames(con %>% dbGetQuery("select * from job limit 0"))
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table job add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "output" %in% columns) {
+            addColumnsQuery = "alter table job add output text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "title" %in% columns) {
+            addColumnsQuery = "alter table job add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "description" %in% columns) {
+            addColumnsQuery = "alter table job add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "plan" %in% columns) {
+            addColumnsQuery = "alter table job add plan text"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
+        
         if (!dbExistsTable(con,"process_graph")) {
           dbExecute(con, "create table process_graph (graph_id text, 
-                    user_id integer, 
+                    user_id integer,
+                    title text,
+                    description text,
                     process_graph text)")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from process_graph limit 0"))
+          
+          if (!"title" %in% columns) {
+            addColumnsQuery = "alter table process_graph add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (! "description" %in% columns) {
+            addColumnsQuery = "alter table process_graph add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
+        
         if (!dbExistsTable(con,"service")) {
           dbExecute(con, "create table service (
                     service_id text,
                     job_id text,
-                    args text,
-                    type text
+                    title text,
+                    description text,
+                    type text,
+                    parameters text,
+                    attributes text,
+                    plan text,
+                    costs real,
+                    budget real,
+                    enabled integer,
+                    submitted datetime
           )")
+        } else {
+          columns = colnames(con %>% dbGetQuery("select * from service limit 0"))
+          #args -> parameters
+          if (!"parameters" %in% columns) {
+            addColumnsQuery = "alter table service add parameters text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"title" %in% columns) {
+            addColumnsQuery = "alter table service add title text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"description" %in% columns) {
+            addColumnsQuery = "alter table service add description text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"type" %in% columns) {
+            addColumnsQuery = "alter table service add type text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"attributes" %in% columns) {
+            addColumnsQuery = "alter table service add attributes text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"plan" %in% columns) {
+            addColumnsQuery = "alter table service add plan text"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"costs" %in% columns) {
+            addColumnsQuery = "alter table service add costs real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"budget" %in% columns) {
+            addColumnsQuery = "alter table service add budget real"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"enabled" %in% columns) {
+            addColumnsQuery = "alter table service add enabled integer"
+            con %>% dbExecute(addColumnsQuery)
+          }
+          
+          if (!"submitted" %in% columns) {
+            addColumnsQuery = "alter table service add submitted datetime"
+            con %>% dbExecute(addColumnsQuery)
+          }
         }
         
         if (!dbExistsTable(con,"udf")) {
@@ -198,6 +328,27 @@ OpenEOServer <- R6Class(
                     start_date datetime default current_timestamp,
                     end_date datetime,
                     status text
+          )")
+        }
+        
+        if (!dbExistsTable(con,"job_result")) {
+          dbExecute(con, "create table job_result (
+                    job_id text,
+                    path text,
+                    created datetime,
+                    expiry datetime,
+                    size long
+          )")
+        }
+        
+        if (!dbExistsTable(con,"log")) {
+          dbExecute(con, "create table log (
+                    timestamp datetime,
+                    job_id text,
+                    service_id text,
+                    process_id text,
+                    category text,
+                    message text
           )")
         }
         
@@ -237,53 +388,133 @@ OpenEOServer <- R6Class(
         
         if (is.null(self$mapserver.url)) {
           # in docker environment mapserver is accessible under
-          # "mapserver"
+          # "mapserver", if not change it here
           self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
 
-      runJob = function(job, format=NULL) {
+      runJob = function(job, format=NULL, response=FALSE, res = NULL) {
+          logger = Logger$new(process=list(process_id = "job_runner"), job = job)
+          
           job_id = job$job_id
           
-          if (!dir.exists(job$output.folder)) {
-            dir.create(job$output.folder,recursive = TRUE)
+          if (!response) {
+            if (!dir.exists(job$output.folder)) {
+              dir.create(job$output.folder,recursive = TRUE)
+            }
+            
+            # log = paste(job$output.folder, "process.log",sep="/")
+            # 
+            # logToFile(file=log)
           }
           
-          log = paste(job$output.folder, "process.log",sep="/")
           
-          logToFile(file=log)
           tryCatch({
-
+            # run the job first to get the result collection in order to decide for the format
+            job = job$run(logger = logger)
+            
+            if (job$status == "error") {
+              logger$error("Error during job execution. Please subscribe to the job to see further log information (not implemented yet)")
+            }
+            
             if ("output" %in% names(job) && "format" %in% names(job$output)) {
               format = job$output$format
             }
             
-            if (is.null(format) || length(format)==0) {
-              format = "GTiff" #TODO needs to be stated in server-class and also needs to be decided if gdal or ogr
+            if (is.null(format) || 
+                length(format)==0 || 
+                !(!is.null(format) && (format %in% openeo.server$outputGDALFormats || 
+                  format %in% openeo.server$outputOGRFormats))) {
+              
+              if (is.raster(job$results)) {
+                format = openeo.server$defaultRasterFormat
+              } else if (is.feature(job$results)) {
+                format = openeo.server$defaultVectorFormat
+              } else {
+                # TODO add, not considered right now
+              }
             }
             
-            job = job$run()
-            
 
-            if (job$status == "error") {
-              stop("Canceling output creation due to prior error")
+
+            if (!response) {
+              logger$info("Creating output without HTTP response")
+              openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder, logger = logger)
+            } else {
+              logger$info("Creating output and HTTP response")
+              
+              if (is.null(res)) {
+                logger$error("Passed no response object. Please provide parameter 'res' from plumber")
+              }
+              
+              return(.create_output(res = res,result = job$results, format = format, logger = logger))
             }
-
-            cat("Creating output\n")
-            openEO.R.Backend:::.create_output_no_response(job$results, format, dir = job$output.folder)
-            cat("Output finished\n")
+                      
+            logger$info("Output finished")
           }, error = function(e) {
-            cat(str(e))
+            throwError("Internal",message=e$message)
           }, finally={
             removeJobsUdfData(job)
-            logToConsole()
+            
+            if (!response) {
+              logToConsole()
+            }
           })
 
+      },
+      initEndpoints = function() {
+        private$endpoints = tibble(path=character(0), method = character(0))
+      },
+      registerEndpoint = function(path, method, filters=list(),handler=NULL, serializer=serializer_unboxed_json(),
+                                  withCORS=TRUE, unsupported = FALSE) {
+        if (!unsupported) {
+          private$endpoints = private$endpoints %>% add_row(path=path,method=method)
+        } else {
+          if (is.null(handler)) {
+            handler = .not_implemented_yet
+          }
+        }
+        
+        
+        if (!is.null(private$router)) {
+          plumber.path = path %>% gsub(pattern="\\{",replacement="<") %>% gsub(pattern="\\}",replacement=">")
+          endpoint=private$router$createEndpoint(methods = method,path = plumber.path,handler = handler,serializer = serializer)
+          endpoint$registerFilter(filter = filters)
+          
+          private$router$handle(endpoint = endpoint)
+          
+          if (withCORS) {
+            corsEndpoint = private$router$createEndpoint(methods = "OPTIONS",path = plumber.path,handler = .cors_option_bypass)
+            #TODO register Filters?
+            private$router$handle(endpoint = corsEndpoint)
+          }
+        }
+        
+        
+        invisible(self)
+      },
+      
+      getEndpoints = function() {
+        return(private$endpoints)
+      },
+      
+      createFilter = function(name, expr, serializer) {
+        if (is.null(private$router)) return(NULL)
+        
+        return(private$router$createFilter(name, expr, serializer))
       }
     ),
-    # private ====
+    # private ----
     private = list(
+      # attributes ====
+      endpoints = NULL,
+      router = NULL,
+      
+      # functions ====
       loadDemoData = function() {
+        landsat7_md_url = "https://uni-muenster.sciebo.de/s/D2HMuKlxo2dxeWb/download"
+        sentinel2_md_url = "https://uni-muenster.sciebo.de/s/rqfiErEIV0wALjp/download"
+        
         if (! all(c("landsat7","sentinel2") %in% list.files(self$data.path))) {
           cat("Downloading the demo data...  ")
 
@@ -304,10 +535,68 @@ OpenEOServer <- R6Class(
           cat("[done]\n")
         }
         
-        self$data = list()
+        # check metadata files and download them if missing
+        ls7path = paste(self$data.path,"landsat7",sep="/")
+        ls7md = paste(ls7path,"md.json",sep="/")
+        ls7lookup = paste(ls7path,"lookup.csv",sep="/")
+        if (! file.exists(ls7md)) {
+          cat("Downloading missing metadata file for Landsat 7 dataset... ")
+          download.file(url = paste(landsat7_md_url,"?files=md.json",sep=""),
+                        destfile = ls7md,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        if (! file.exists(ls7lookup)) {
+          cat("Downloading missing lookup table for Landsat 7 dataset... ")
+          download.file(url = paste(landsat7_md_url,"?files=lookup.csv",sep=""),
+                        destfile = ls7lookup,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
         
-        loadLandsat7Dataset()
-        loadSentinel2Data()
+        s2path = paste(self$data.path,"sentinel2",sep="/")
+        s2md = paste(s2path,"md.json",sep="/")
+        s2lookup = paste(s2path,"lookup.csv",sep="/")
+        if (! file.exists(s2md)) {
+          cat("Downloading missing metadata file for Sentinel 2 dataset... ")
+          download.file(url = paste(sentinel2_md_url,"?files=md.json",sep=""),
+                        destfile = s2md,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        if (! file.exists(s2lookup)) {
+          cat("Downloading missing lookup table for Sentinel 2 dataset... ")
+          download.file(url = paste(sentinel2_md_url,"?files=lookup.csv",sep=""),
+                        destfile = s2lookup,
+                        quiet=TRUE)
+          cat("[done]\n")
+        }
+        
+        self$data = list()
+        cat("Loading demo data sets...")
+        # loadLandsat7Dataset()
+        # loadSentinel2Data()
+        
+        importCollection(paste(self$data.path,"sentinel2",sep="/"))$addSelfReferenceLink() %>% openeo.server$register()
+        importCollection(paste(self$data.path,"landsat7",sep="/"),fun=raster)$addSelfReferenceLink() %>% openeo.server$register()
+        # 1 banded granules have to use 
+        # raster function, multiband = brick
+        
+        
+        cat("[done]\n")
+      },
+      
+      initRouter = function() {
+        if(!is.null(private$endpoints) && nrow(private$endpoints)>=1) self$initEndpoints()
+        
+        private$router=OpenEORouter$new()
+        
+        # add the CORS filter to the router
+        private$router$registerHook("postroute",.cors_filter)
+        
+        private$router$registerHook("exit", function(){
+          print("Bye bye!")
+        })
       },
       
       loadDemoProcesses = function() {
@@ -321,6 +610,7 @@ OpenEOServer <- R6Class(
         self$register(filter_bbox)
         self$register(aggregate_time)
         self$register(apply_pixel)
+        self$register(get_collection)
       }
       
 
@@ -365,7 +655,7 @@ createAlphaNumericId = function(n=1, length=15) {
 #' @export
 createServerInstance = function() {
   assign("openeo.server", OpenEOServer$new(),envir=.GlobalEnv)
-  invisible()
+  invisible(openeo.server)
 }
 
 
@@ -388,3 +678,6 @@ DatabaseEntity = R6Class(
     }
   )
 )
+
+# required for the new plumber Filter implementation (see FilterableEndpoint)
+openeo.globals = plumber:::.globals

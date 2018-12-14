@@ -6,7 +6,15 @@ A reference implementation for the openEO core API as a proof-of-concept written
 security aspects not optimized. The goal of this package is to provide a simplistic version of local [openEO conformant server backend](https://open-eo.github.io/openeo-api/).
 
 ## Installation
-Install the package by using `install_github` from the devtools package.
+Install the package by using `install_github` from the devtools package. If you run R on Windows then the packages are build from binaries, but on a Linux distribution the packages are compiled. This means that if yon a Linux OS you need to install some required system libraries,first. For Ubuntu this is:
+
+```
+sudo apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev
+```
+
+But also on Windows it is highly recommended to have GDAL installed and configured in the systems path environment variable.
+
+After that you can install the R packages by running:
 
 ```
 library(devtools)
@@ -68,7 +76,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 
 ## Process Graphs for Proof-of-Concept
 
-### [Use Case 1](https://open-eo.github.io/openeo-api/poc/index.html#use-case-1-deriving-minimum-ndvi-measurements-over-pixel-time-series-of-sentinel-2-imagery)
+### [Use Case 1](https://open-eo.github.io/openeo-api/examples-poc/#use-case-1)
 | | |
 | --- | --- |
 | Endpoint: | POST /jobs or POST /execute |
@@ -78,24 +86,19 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 {
     "process_graph": {
       "process_id": "find_min",
-      "args": {
-        "imagery": {
-          "process_id": "calculate_ndvi",
-          "args": {
+      "imagery": {
+        "process_id": "calculate_ndvi",
+          "imagery": {
+            "process_id": "filter_daterange",
             "imagery": {
-              "process_id": "filter_daterange",
-              "args": {
-                "imagery": {
-                  "product_id": "sentinel2_subset"
-                },
-                "from": "2017-04-01",
-                "to": "2017-05-01"
-              }
+              "process_id": "get_collection"
+              "name": "sentinel2_subset"
             },
-            "nir": 8,
-            "red": 4
-          }
-        }
+            "from": "2017-04-01",
+            "to": "2017-05-01"
+          },
+        "nir": "B8",
+        "red": "B4"
       }
     },
     "output": {
@@ -105,7 +108,7 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 ```
 
 
-### [Use Case 3](https://open-eo.github.io/openeo-api/poc/index.html#use-case-3-compute-time-series-of-zonal-regional-statistics-of-sentinel-2-imagery-over-user-uploaded-polygons)
+### [Use Case 3](https://open-eo.github.io/openeo-api/examples-poc/#use-case-3)
 | | |
 | --- | --- |
 | Prerequisites: | An uploaded ["polygons.geojson"](https://raw.githubusercontent.com/Open-EO/openeo-r-client/master/examples/polygons.geojson) file in the users workspace (PUT /users/me/files/<path>)|
@@ -116,26 +119,21 @@ There are some minor variations to the openEO API, regarding naming of the endpo
 {
     "process_graph": {
       "process_id": "zonal_statistics",
-      "args": {
+      "imagery": {
+        "process_id": "filter_daterange",
         "imagery": {
-          "process_id": "filter_daterange",
-          "args": {
-            "imagery": {
-              "process_id": "filter_bands",
-              "args": {
-                "imagery": {
-                  "product_id": "sentinel2_subset"
-                },
-                "bands": "8"
-              }
-            },
-            "from": "2017-04-01",
-            "to": "2017-07-01"
-          }
+          "process_id": "filter_bands",
+          "imagery": {
+            "process_id": "get_collection",
+            "name": "sentinel2_subset"
+          },  
+          "bands": "B8"
         },
-        "regions": "/users/me/files/polygons.geojson",
-        "func": "median"
-      }
+        "from": "2017-04-01",
+        "to": "2017-07-01"
+      },
+      "regions": "/users/me/files/polygons.geojson",
+      "func": "median"
     },
     "output": {
         "format": "GPKG"

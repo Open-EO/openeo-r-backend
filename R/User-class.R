@@ -1,5 +1,6 @@
 #' @docType class
 #' @importFrom R6 R6Class
+#' @importFrom lubridate as_datetime
 #' @export
 User <- R6Class(
   "User",
@@ -11,33 +12,40 @@ User <- R6Class(
     user_name = NULL,
     password = NULL,
     token = NULL,
+    budget = NULL,
+    storage_quota = NULL,
     
     # functions ====
     initialize = function(user_id = NULL) {
       self$user_id = user_id
     },
     
-    toList = function() {
-      return(
-        list(
-          user_id = self$user_id,
-          user_name = self$user_name,
-          password = self$password,
-          jobs = self$jobs
-        )
-      )
+    shortInfo = function() {
+      return(list(
+        user_id = self$user_id,
+        user_name = self$user_name,
+        storage = list(
+          free = self$storage_quota - self$storage_size,
+          quota = self$storage_quota
+        ),
+        budget = self$budget
+      ))
     },
     
     fileList = function() {
       files.df = self$files
       rownames(files.df) <- NULL
       
-      return(apply(files.df,1,function(row) {
-       return(list(
-         name = row["link"],
-         size = row["size"]
-       )) 
-      }))
+      return(list(
+        files=apply(files.df,1,function(row) {
+         return(list(
+           name = row["link"],
+           size = as.integer(trim(row["size"])),
+           modified = format(as_datetime(row["ctime"]),format="%Y-%m-%dT%H:%M:%SZ")
+         ))
+        }),
+        links=list())
+      )
     },
     
     load = function(user_id=NULL,user_name=NULL) {
@@ -60,10 +68,13 @@ User <- R6Class(
         
         self$user_id = user_info$user_id
         self$user_name = user_info$user_name
+        self$budget = user_info$budget
+        self$storage_quota = user_info$storage_quota
         
         invisible(self)
       } else {
-        stop("Cannot load user. It doesn't exists or too many user entries.")
+        throwError("TokenInvalid")
+        # Cannot load user. It doesn't exists or too many user entries.
       }
       
     },
@@ -77,13 +88,15 @@ User <- R6Class(
         
         con = openeo.server$getConnection()
         insertUserQuery = "insert into user 
-        (user_id, user_name, password) values 
-        (:id, :name, :password)"
+        (user_id, user_name, password, budget, storage_quota) values 
+        (:id, :name, :password, :budget, :storage_quota)"
         
         dbExecute(con,insertUserQuery,param=list(
           id = self$user_id,
           name = self$user_name,
-          password = self$password
+          password = self$password,
+          budget = self$budget,
+          storage_quota = self$storage_quota
         ))
         dbDisconnect(con)
         
@@ -98,6 +111,7 @@ User <- R6Class(
 
         invisible(self)
       } else {
+        # TODO perform update for adding budget or disk quota        
         message("Skipping creation. User already exists.")
         invisible(self)
       }
@@ -126,14 +140,14 @@ User <- R6Class(
       fileInfos=file.info(list.files(workspace,recursive = TRUE,full.names = TRUE))
       fileInfos$link = relPath
       
-      return(fileInfos[,c("link","size")])
+      return(fileInfos[,c("link","size","ctime")])
     },
     
     jobs = function() {
       con = openeo.server$getConnection()
-      result = dbGetQuery(con, "select job_id from job where user_id = :id",param=list(id = self$user_id))
+      result = dbGetQuery(con, "select job_id from job where user_id = :id and job_id not in (select job_id from service where user_id = :id)",param=list(id = self$user_id))
       dbDisconnect(con)
-      if (is.null(result)) {
+      if (is.null(result) || length(result) < 1) {
         return(list())
       } else {
         return(as.list(result)[[1]])
@@ -148,6 +162,45 @@ User <- R6Class(
       } else {
         return(as.list(result)[[1]])
       }
+    },
+    process_graphs = function() {
+      con = openeo.server$getConnection()
+      result = dbGetQuery(con, "select graph_id from process_graph where user_id = :id and graph_id not in (select distinct process_graph from job)",param=list(id = self$user_id))
+      dbDisconnect(con)
+      
+      if (is.null(result)) {
+        return(list())
+      } else {
+        return(as.list(result)[[1]])
+      }    
+    },
+    storage_size = function() {
+      workspace.files = list.files(self$workspace,recursive = TRUE,full.names = TRUE)
+      if (length(workspace.files) < 1) {
+        size.workspace = 0
+      } else {
+        size.workspace = sum(file.size(workspace.files))
+      }
+      
+      # TODO maybe change this request to find also jobs from services
+      user_jobs = self$jobs
+      
+      if (length(user_jobs) < 1) {
+        size.jobs = 0
+      } else {
+        size.jobs = sum(
+          file.size(
+            list.files(
+              sapply(user_jobs, function(job){
+                job.db = Job$new(job_id = job) 
+                return(job.db$output.folder)
+              }),
+              full.names = TRUE,
+              recursive = TRUE)
+          ), 
+          na.rm=TRUE)
+      }
+      return(size.workspace+size.jobs)
     }
   ),
   # private ----
