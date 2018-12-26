@@ -11,7 +11,7 @@ COPY ./ /opt/dockerfiles/
 # install package
 RUN apt-get -y update && apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev
 RUN R --no-save -f /opt/dockerfiles/Dockerfiles/install_package_dependencies.R
-RUN R -f /opt/dockerfiles/Dockerfiles/install_package.R
+RUN R --no-save -f /opt/dockerfiles/Dockerfiles/install_package.R
 
 # cmd or entrypoint for startup
 ENTRYPOINT ["R", "-q", "--no-save", "-f /opt/dockerfiles/Dockerfiles/server_start.R"]
