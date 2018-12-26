@@ -9,7 +9,7 @@ RUN mkdir -p /opt/dockerfiles/ && mkdir -p /var/openeo/workspace/
 COPY ./ /opt/dockerfiles/
 
 # install package
-RUN apt-get -y update && apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev
+RUN apt-get -y update && apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev libgeos++-dev
 RUN R --no-save -f /opt/dockerfiles/Dockerfiles/install_package_dependencies.R
 RUN R --no-save -f /opt/dockerfiles/Dockerfiles/install_package.R
 
