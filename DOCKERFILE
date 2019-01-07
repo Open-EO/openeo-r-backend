@@ -1,7 +1,7 @@
 FROM openeor/r-tidy-geospatial
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.3.1"
-LABEL description="A simple openeo (almost) conformant backend for frontend development"
+LABEL version="0.3.1-1"
+LABEL description="A simple openEO backend for frontend development"
 
 # create the path for the user files
 RUN mkdir -p /opt/dockerfiles/ && mkdir -p /var/openeo/workspace/
@@ -15,7 +15,7 @@ RUN apt-get update -qq && apt-get -y --no-install-recommends install \
 	--deps TRUE \
 	plumber \
 	sodium \
-	&& R -e "devtools::install_github('pramitghosh/OpenEO.R.UDF',ref='v0.0.1')" \
+	&& R -e "devtools::install_github('pramitghosh/OpenEO.R.UDF',ref='v0.0.4')" \
 	&& R -e "devtools::install('/opt/dockerfiles',upgrade_dependencies=FALSE)"
 
 

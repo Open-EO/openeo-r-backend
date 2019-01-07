@@ -3,5 +3,5 @@
 .RData
 *.Rproj
 .git
-data
+doc
 openeo.sqlite

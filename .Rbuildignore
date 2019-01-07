@@ -8,3 +8,4 @@
 ^DOCKERFILE$
 ^DOCKERFILE-base$
 ^docker-compose.yml$
+./doc
