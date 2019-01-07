@@ -91,7 +91,7 @@ MapServerConfig <- R6Class(
               stop("Cannot find SHP file to create a WFS from")
             }
             
-            layer$CONNECTION = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",vector.files[1]))
+            layer$CONNECTION = sub(pattern=openeo.server$configuration$workspaces.path, replacement="/maps", x=gsub("\\\\","/",vector.files[1]))
             layer$DATA= "0"
           }
           
@@ -160,7 +160,7 @@ MapServerConfig <- R6Class(
               layer$STATUS = "ON"
               layer$TYPE = "RASTER"
               # on the mapserver service the workspace will be found at another directory, so replace it
-              layer$DATA = sub(pattern=openeo.server$workspaces.path, replacement="/maps", x=gsub("\\\\","/",ras@file@name))
+              layer$DATA = sub(pattern=openeo.server$configuration$workspaces.path, replacement="/maps", x=gsub("\\\\","/",ras@file@name))
               
               processings = list()
               if (!is.null(normalize)) {

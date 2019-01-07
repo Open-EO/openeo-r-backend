@@ -6,7 +6,7 @@
 #' @importFrom gdalUtils gdalbuildvrt
 loadLandsat7Dataset = function() {
 
-  data.path = openeo.server$data.path
+  data.path = openeo.server$configuration$data.path
   
   if (endsWith(data.path,"/")) {
     ls7.path = paste(data.path,"landsat7/",sep="")
@@ -79,7 +79,7 @@ loadLandsat7Dataset = function() {
 
 #' @export
 loadSentinel2Data = function() {
-  sentinel2.folder = openeo.server$data.path
+  sentinel2.folder = openeo.server$configuration$data.path
   if (endsWith(sentinel2.folder,"/")) {
     sentinel2.folder = paste(sentinel2.folder,"sentinel2",sep="")
   } else {

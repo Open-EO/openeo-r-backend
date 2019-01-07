@@ -20,7 +20,7 @@
       user = as.list(result)
       
       if (user$password == user_pwd) {
-        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$secret.key)
+        encryption = data_encrypt(charToRaw(paste(user$user_id)),openeo.server$configuration$secret.key)
         
         token = bin2hex(append(encryption, attr(encryption,"nonce")))
         
@@ -35,7 +35,7 @@
 
 .login_oidc = function(req,res) {
   res$setHeader(name = "Location",
-                value=openeo.server$oidcprovider.url)
+                value=openeo.server$configuration$oidcprovider.url)
   
   res$status = 303
   

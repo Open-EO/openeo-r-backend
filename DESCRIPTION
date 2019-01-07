@@ -78,6 +78,7 @@ Collate:
     'processes.R'
     'api.R'
     'Server-class.R'
+    'ServerConfig.R'
     'Service-class.R'
     'UdfTransaction-class.R'
     'User-class.R'

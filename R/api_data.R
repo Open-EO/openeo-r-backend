@@ -6,10 +6,10 @@
 #* @serializer unboxedJSON
 .listData = function() {
   tryCatch({
-    if (endsWith(openeo.server$baseserver.url,"/")) {
-      baseurl = substr(openeo.server$baseserver.url,1,nchar(openeo.server$baseserver.url)-1)
+    if (endsWith(openeo.server$configuration$baseserver.url,"/")) {
+      baseurl = substr(openeo.server$configuration$baseserver.url,1,nchar(openeo.server$configuration$baseserver.url)-1)
     } else {
-      baseurl = openeo.server$baseserver.url
+      baseurl = openeo.server$configuration$baseserver.url
     }
     
     datalist = openeo.server$data

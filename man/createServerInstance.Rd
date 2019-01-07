@@ -4,7 +4,7 @@
 \alias{createServerInstance}
 \title{Creates a server instance}
 \usage{
-createServerInstance()
+createServerInstance(configuration = NULL)
 }
 \description{
 The function creates a new server instance on the global variable 'openeo.server'. The names for
