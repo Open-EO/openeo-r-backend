@@ -1,6 +1,6 @@
 FROM openeor/r-tidy-geospatial
 MAINTAINER Florian Lahn (florian.lahn@uni-muenster.de)
-LABEL version="0.3.1-1"
+LABEL version="0.3.1-2"
 LABEL description="A simple openEO backend for frontend development"
 
 # create the path for the user files
