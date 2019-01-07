@@ -329,7 +329,7 @@ removeJobsUdfData = function(job) {
     
     if (length(udfids)>0) {
       for (id in udfids) {
-        udf = Udf$new()
+        udf = UdfTransaction$new()
         udf$udf_id = id
         udf$load()
         udf$remove()
