@@ -379,9 +379,13 @@ createAPI = function() {
                                  handler = .login_basic)
 
   # credentials - oidc ====
+  # this is just for testing, there is no actual oidc integration for this back-end
+  # openeo.server$registerEndpoint(path="/credentials/oidc",
+  #                                method="GET",
+  #                                handler=.login_oidc)
   openeo.server$registerEndpoint(path="/credentials/oidc",
                                  method="GET",
-                                 handler=.login_oidc)
+                                 unsupported = TRUE)
 
   # collections - list all ====
   openeo.server$registerEndpoint(path="/collections",
