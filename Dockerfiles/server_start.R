@@ -1,10 +1,11 @@
 library(openEO.R.Backend)
 
-createServerInstance()
+config = ServerConfig()
+config$workspaces.path = "/var/openeo/workspace"
+config$initEnvironmentDefault()
+config$initializeDatabase()
 
-openeo.server$workspaces.path = "/var/openeo/workspace"
-openeo.server$initEnvironmentDefault()
-openeo.server$initializeDatabase()
+createServerInstance(configuration = config)
 
 openeo.server$createUser(user_name="test", password="test") #only created if not exists
 openeo.server$loadDemo()

@@ -157,7 +157,7 @@ zonal_statistics = Process$new(
       regions = gsub("^/","",regions)
     }
     
-    file.path = paste(openeo.server$workspaces.path,regions,sep="/")
+    file.path = paste(openeo.server$configuration$workspaces.path,regions,sep="/")
     layername = ogrListLayers(file.path)[1]
     
     regions = readOGR(dsn=file.path,layer = layername)

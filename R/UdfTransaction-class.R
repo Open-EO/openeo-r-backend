@@ -123,7 +123,7 @@ UdfTransaction <- R6Class(
     },
     
     clearExportData = function() {
-      if (openeo.server$udf_cleanup) {
+      if (openeo.server$configuration$udf_cleanup) {
         # deletes all export file except the results
         files = list.files(path=self$workspace, recursive = TRUE,full.names = TRUE)
         unlink(files[!grepl("result",files)],recursive = TRUE)
@@ -165,7 +165,7 @@ UdfTransaction <- R6Class(
   active = list(
     workspace = function() {
       if (!is.null(self$udf_id)) {
-        return(paste(openeo.server$udf_transactions.path,self$udf_id,sep="/"))
+        return(paste(openeo.server$configuration$udf_transactions.path,self$udf_id,sep="/"))
       } else {
         stop("Uninitialized Udf object: no id.")
       }
@@ -324,7 +324,7 @@ udfIdsByJobId = function(jobid) {
 }
 
 removeJobsUdfData = function(job) {
-  if (openeo.server$udf_cleanup) {
+  if (openeo.server$configuration$udf_cleanup) {
     udfids = udfIdsByJobId(job$job_id)
     
     if (length(udfids)>0) {

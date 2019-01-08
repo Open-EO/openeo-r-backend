@@ -50,7 +50,7 @@ NULL
     
     job$store()
     res$setHeader(name = "Location",
-                  value= paste(openeo.server$baseserver.url,"jobs/",job$job_id,sep=""))
+                  value= paste(openeo.server$configuration$baseserver.url,"jobs/",job$job_id,sep=""))
     res$setHeader(name = "OpenEO-Identifier",value=job$job_id)
     res$status = 201
     
@@ -74,9 +74,9 @@ NULL
       }
       # TODO add notification if job had failed already
       
-      job_results = paste(openeo.server$workspaces.path,"jobs",job_id,sep="/")
+      job_results = paste(openeo.server$configuration$workspaces.path,"jobs",job_id,sep="/")
       
-      base_url = paste(openeo.server$baseserver.url,"result/",job_id,sep="")
+      base_url = paste(openeo.server$configuration$baseserver.url,"result/",job_id,sep="")
       
       #get files in outputfolder but not the log file
       links = paste(base_url,list.files(job_results,pattern="[^process\\.log]"),sep="/")

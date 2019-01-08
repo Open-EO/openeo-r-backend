@@ -32,63 +32,51 @@ OpenEOServer <- R6Class(
     # public ====
     public = list(
       # attributes ----
-      api.version = "0.3.1",
-      secret.key = NULL,
-      
-      data.path = NULL,
-      workspaces.path = NULL,
-      sqlite.path = NULL,
-      
-      udf_transactions.path = NULL,
-      udf_cleanup = TRUE,
-      
-      api.port = NULL,
-      host = NULL,
-      baseserver.url = "http://localhost:8000/",
-      mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
-      oidcprovider.url = NULL,
+
       
       processes = NULL,
       data = NULL,
       
-      outputGDALFormats = NULL,
-      defaultRasterFormat = "GTiff",
-      outputOGRFormats = NULL,
-      defaultVectorFormat = "GeoPackage",
-      
       # functions ----
-      initialize = function() {
+      initialize = function(configuration = NULL) {
+        
+        if (is.null(configuration) || class(configuration) != "ServerConfig") configuration = ServerConfig()
+        
         self$processes = list()
         self$data = list()
         
         drivers = gdalDrivers()
         ogr_drivers = ogrDrivers()
-        self$outputGDALFormats = drivers[drivers$create,"name"]
-        self$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
+        configuration$outputGDALFormats = drivers[drivers$create,"name"]
+        configuration$outputOGRFormats = ogr_drivers[ogr_drivers$write, "name"]
+        
+        private$config = configuration
         
         self$initEndpoints()
         
         # load the errors table
         data(errors)
+        
+        return(self)
       },
       
       startup = function (port=8000,host="127.0.0.1",host_name="localhost") {
         if (! is.na(port)) {
-          self$api.port = port
+          private$config$api.port = port
         }
-        self$host = host_name
+        private$config$host = host_name
         
         # fill missing environment variables
         self$initEnvironmentDefault()
         
         # create folders if they don't exist already
-        batch_job_download_dir = paste(openeo.server$workspaces.path,"jobs",sep="/")
+        batch_job_download_dir = paste(private$config$workspaces.path,"jobs",sep="/")
         
         if (! dir.exists(batch_job_download_dir)) {
           dir.create(batch_job_download_dir,recursive = TRUE)
         }
         
-        udf_temp_dir = paste(openeo.server$workspaces.path,"udf",sep="/")
+        udf_temp_dir = paste(private$config$workspaces.path,"udf",sep="/")
         
         if (! dir.exists(udf_temp_dir)) {
           dir.create(udf_temp_dir,recursive = TRUE)
@@ -101,7 +89,7 @@ OpenEOServer <- R6Class(
         job_downloads = PlumberStatic$new(batch_job_download_dir)
         private$router$mount("/result", job_downloads)
         
-        private$router$run(port = self$api.port,host = host)
+        private$router$run(port = self$configuration$api.port,host = host)
       },
       
       register = function(obj) {
@@ -162,7 +150,7 @@ OpenEOServer <- R6Class(
       }, 
       
       getConnection = function() {
-        return(dbConnect(RSQLite::SQLite(),self$sqlite.path))
+        return(dbConnect(RSQLite::SQLite(),self$configuration$sqlite.path))
       },
       
       initializeDatabase = function() {
@@ -357,39 +345,39 @@ OpenEOServer <- R6Class(
       
       initEnvironmentDefault = function() {
         
-        if (is.null(self$workspaces.path)) {
-          self$workspaces.path <- getwd()
+        if (is.null(private$config$workspaces.path)) {
+          private$config$workspaces.path <- getwd()
         }
         
-        if (is.null(self$data.path)) {
-          self$data.path <- paste(self$workspaces.path,"data",sep="/")
+        if (is.null(private$config$data.path)) {
+          private$config$data.path <- paste(private$config$workspaces.path,"data",sep="/")
         }
-        if (!dir.exists(self$data.path)) {
-          dir.create(self$data.path,recursive = TRUE)
-        }
-        
-        if (is.null(self$udf_transactions.path)) {
-          self$udf_transactions.path = paste(self$workspaces.path,"udf",sep="/")
-        }
-        if (!dir.exists(self$udf_transactions.path)) {
-          dir.create(self$udf_transactions.path, recursive = TRUE)
+        if (!dir.exists(private$config$data.path)) {
+          dir.create(private$config$data.path,recursive = TRUE)
         }
         
-        if (is.null(self$secret.key)) {
-          self$secret.key <- sha256(charToRaw("openEO-R"))
+        if (is.null(private$config$udf_transactions.path)) {
+          private$config$udf_transactions.path = paste(private$config$workspaces.path,"udf",sep="/")
         }
-        if (is.null(self$sqlite.path)) {
-          self$sqlite.path <- paste(self$workspaces.path,"openeo.sqlite",sep="/")
-        }
-        
-        if (is.null(self$api.port)) {
-          self$api.port <- 8000
+        if (!dir.exists(private$config$udf_transactions.path)) {
+          dir.create(private$config$udf_transactions.path, recursive = TRUE)
         }
         
-        if (is.null(self$mapserver.url)) {
+        if (is.null(private$config$secret.key)) {
+          private$config$secret.key <- sha256(charToRaw("openEO-R"))
+        }
+        if (is.null(private$config$sqlite.path)) {
+          private$config$sqlite.path <- paste(private$config$workspaces.path,"openeo.sqlite",sep="/")
+        }
+        
+        if (is.null(private$config$api.port)) {
+          private$config$api.port <- 8000
+        }
+        
+        if (is.null(private$config$mapserver.url)) {
           # in docker environment mapserver is accessible under
           # "mapserver", if not change it here
-          self$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
+          private$config$mapserver.url = "http://mapserver/cgi-bin/mapserv?"
         }
       },
 
@@ -423,13 +411,13 @@ OpenEOServer <- R6Class(
             
             if (is.null(format) || 
                 length(format)==0 || 
-                !(!is.null(format) && (format %in% openeo.server$outputGDALFormats || 
+                !(!is.null(format) && (format %in% openeo.server$configuration$outputGDALFormats || 
                   format %in% openeo.server$outputOGRFormats))) {
               
               if (is.raster(job$results)) {
-                format = openeo.server$defaultRasterFormat
+                format = openeo.server$configuration$defaultRasterFormat
               } else if (is.feature(job$results)) {
-                format = openeo.server$defaultVectorFormat
+                format = openeo.server$configuration$defaultVectorFormat
               } else {
                 # TODO add, not considered right now
               }
@@ -504,21 +492,28 @@ OpenEOServer <- R6Class(
         return(private$router$createFilter(name, expr, serializer))
       }
     ),
+    # actives ----
+    active = list(
+      configuration = function() {
+        return(private$config)
+      }
+    ),
     # private ----
     private = list(
       # attributes ====
       endpoints = NULL,
-      router = NULL,
+      router = NULL, # plumber class
+      config = NULL,
       
       # functions ====
       loadDemoData = function() {
         landsat7_md_url = "https://uni-muenster.sciebo.de/s/D2HMuKlxo2dxeWb/download"
         sentinel2_md_url = "https://uni-muenster.sciebo.de/s/rqfiErEIV0wALjp/download"
         
-        if (! all(c("landsat7","sentinel2") %in% list.files(self$data.path))) {
+        if (! all(c("landsat7","sentinel2") %in% list.files(self$configuration$data.path))) {
           cat("Downloading the demo data...  ")
 
-          data.path = gsub("/$","",self$data.path)
+          data.path = gsub("/$","",self$configuration$data.path)
           
           dir.create(data.path, recursive = TRUE)
           zipfile = paste(data.path,"openeo-demo.zip",sep="/")
@@ -528,15 +523,17 @@ OpenEOServer <- R6Class(
           cat("[done]\n")
           # unzip
           cat("Unzipping...  ")
-          unzip(zipfile=zipfile, exdir = gsub("/$","",self$data.path))
+          unzip(zipfile=zipfile, exdir = data.path)
           # remove zip
           file.remove(zipfile)
           
           cat("[done]\n")
+        } else {
+          data.path = gsub("/$","",self$configuration$data.path)
         }
         
         # check metadata files and download them if missing
-        ls7path = paste(self$data.path,"landsat7",sep="/")
+        ls7path = paste(data.path,"landsat7",sep="/")
         ls7md = paste(ls7path,"md.json",sep="/")
         ls7lookup = paste(ls7path,"lookup.csv",sep="/")
         if (! file.exists(ls7md)) {
@@ -554,7 +551,7 @@ OpenEOServer <- R6Class(
           cat("[done]\n")
         }
         
-        s2path = paste(self$data.path,"sentinel2",sep="/")
+        s2path = paste(data.path,"sentinel2",sep="/")
         s2md = paste(s2path,"md.json",sep="/")
         s2lookup = paste(s2path,"lookup.csv",sep="/")
         if (! file.exists(s2md)) {
@@ -577,8 +574,8 @@ OpenEOServer <- R6Class(
         # loadLandsat7Dataset()
         # loadSentinel2Data()
         
-        importCollection(paste(self$data.path,"sentinel2",sep="/"))$addSelfReferenceLink() %>% openeo.server$register()
-        importCollection(paste(self$data.path,"landsat7",sep="/"),fun=raster)$addSelfReferenceLink() %>% openeo.server$register()
+        importCollection(paste(self$configuration$data.path,"sentinel2",sep="/"))$addSelfReferenceLink() %>% openeo.server$register()
+        importCollection(paste(self$configuration$data.path,"landsat7",sep="/"),fun=raster)$addSelfReferenceLink() %>% openeo.server$register()
         # 1 banded granules have to use 
         # raster function, multiband = brick
         
@@ -654,8 +651,8 @@ createAlphaNumericId = function(n=1, length=15) {
 #' many endpoints will be accessing and depending on the correctly set variable 'openeo.server'.
 #' 
 #' @export
-createServerInstance = function() {
-  assign("openeo.server", OpenEOServer$new(),envir=.GlobalEnv)
+createServerInstance = function(configuration = NULL) {
+  assign("openeo.server", OpenEOServer$new(configuration),envir=.GlobalEnv)
   invisible(openeo.server)
 }
 

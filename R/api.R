@@ -31,10 +31,6 @@
 # serverinformation endpoint ====
 #
 
-.version = function() {
-  list(version=openeo.server$api.version)
-}
-
 .capabilities = function() {
   endpoints = openeo.server$getEndpoints()
   
@@ -45,7 +41,7 @@
   )
   
   list(
-    version = openeo.server$api.version,
+    version = openeo.server$configuration$api.version,
     endpoints = endpoints$path_capabilities,
     billing = list(
       currency = "EUR",
@@ -61,7 +57,7 @@
 }
 
 .output_formats = function() {
-  raster.only.formats = openeo.server$outputGDALFormats[which(! openeo.server$outputGDALFormats %in% openeo.server$outputOGRFormats)]
+  raster.only.formats = openeo.server$configuration$outputGDALFormats[which(! openeo.server$configuration$outputGDALFormats %in% openeo.server$configuration$outputOGRFormats)]
   rasterformats = lapply(raster.only.formats, function(formatname) {
     format = list(
       gis_data_types = c("raster")
@@ -70,7 +66,7 @@
   })
   names(rasterformats) = raster.only.formats
   
-  vector.only.formats = openeo.server$outputOGRFormats[which(! openeo.server$outputOGRFormats %in% openeo.server$outputGDALFormats)]
+  vector.only.formats = openeo.server$configuration$outputOGRFormats[which(! openeo.server$configuration$outputOGRFormats %in% openeo.server$configuration$outputGDALFormats)]
   vectorformats = lapply(vector.only.formats, function(formatname) {
     format = list(
       gis_data_types = c("vector")
@@ -81,7 +77,7 @@
   names(vectorformats) = vector.only.formats
   
   
-  both.type.formats = openeo.server$outputOGRFormats[which(openeo.server$outputOGRFormats %in% openeo.server$outputGDALFormats)]
+  both.type.formats = openeo.server$configuration$outputOGRFormats[which(openeo.server$configuration$outputOGRFormats %in% openeo.server$configuration$outputGDALFormats)]
   bothformats = lapply(both.type.formats, function(formatname) {
     format = list(
       gis_data_types = c("raster","vector"),
@@ -141,8 +137,8 @@
       } 
       
       if (is.null(format) || 
-          !(format %in% openeo.server$outputGDALFormats || 
-            format %in% openeo.server$outputOGRFormats)) {
+          !(format %in% openeo.server$configuration$outputGDALFormats || 
+            format %in% openeo.server$configuration$outputOGRFormats)) {
         throwError("FormatUnsupported")
       }
       
@@ -241,7 +237,7 @@
       msg = hextoken[1:(length(hextoken)-nonce.length)]
       nonce = hextoken[((length(hextoken)-nonce.length)+1):length(hextoken)]
       
-      user_id = rawToChar(data_decrypt(msg,openeo.server$secret.key,nonce))
+      user_id = rawToChar(data_decrypt(msg,openeo.server$configuration$secret.key,nonce))
       
       user = User$new()
       user = user$load(user_id = user_id)
@@ -383,9 +379,13 @@ createAPI = function() {
                                  handler = .login_basic)
 
   # credentials - oidc ====
+  # this is just for testing, there is no actual oidc integration for this back-end
+  # openeo.server$registerEndpoint(path="/credentials/oidc",
+  #                                method="GET",
+  #                                handler=.login_oidc)
   openeo.server$registerEndpoint(path="/credentials/oidc",
                                  method="GET",
-                                 handler=.login_oidc)
+                                 unsupported = TRUE)
 
   # collections - list all ====
   openeo.server$registerEndpoint(path="/collections",

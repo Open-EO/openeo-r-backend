@@ -242,7 +242,7 @@ Service <- R6Class(
   # actives ----
   active = list(
     url = function() {
-      return(paste("http://",openeo.server$host,":",openeo.server$api.port,"/",
+      return(paste("http://",openeo.server$configuration$host,":",openeo.server$configuration$api.port,"/",
                    self$type,"/",self$service_id,sep=""))
     },
     job = function() {

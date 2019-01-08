@@ -364,7 +364,7 @@ Job <- R6Class(
   active = list(
     output.folder = function() {
       jobs.folder = "jobs"
-      return(paste(openeo.server$workspaces.path, jobs.folder, self$job_id,sep="/"))
+      return(paste(openeo.server$configuration$workspaces.path, jobs.folder, self$job_id,sep="/"))
     }
   ), 
   # private ----
