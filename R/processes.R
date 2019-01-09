@@ -456,12 +456,17 @@ aggregate_time = Process$new(
                 required = TRUE,
                 type="string",
                 format="url"
-                )
+                ),
+              Argument$new(
+                name="udf_runtime",
+                description = "the identifier which UDF strategy is used.",
+                type="string"
+              )
   ),
   summary="UDF: Applies an aggregation function over time.",
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(time = TRUE)),
-  operation = function(imagery, script) {
+  operation = function(imagery, script,udf_runtime=NULL) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
@@ -543,12 +548,17 @@ apply_pixel = Process$new(
     required = TRUE,
     type="string",
     format="url"
+  ),
+  Argument$new(
+    name="udf_runtime",
+    description = "the identifier which UDF strategy is used.",
+    type="string"
   )
   ),
   summary="UDF: applies a function pixel wise",
   returns=result.eodata,
   modifier = create_dimensionality_modifier(remove = list(band = TRUE)),
-  operation = function(imagery, script) {
+  operation = function(imagery, script,udf_runtime=NULL) {
     parent = parent.frame()
     job = parent$job
     user = parent$user
