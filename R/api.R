@@ -124,7 +124,11 @@
 }
 
 .udf_runtimes = function() {
-  return(lapply(openeo.server$udf_runtimes, unclass))
+  return(lapply(openeo.server$udf_runtimes, function(x){
+    x=unclass(x)
+    x$performTransaction = NULL
+    return(x)
+  } ))
 }
 
 

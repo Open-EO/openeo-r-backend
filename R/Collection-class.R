@@ -720,7 +720,7 @@ read_legend = function(legend.path,code, ...) {
       absolute.filepath = paste(parentFolder,row$filename,sep="/")
       collection$addGranule(time=table[i,]$timestamp,band=row$band_index,data=raster(absolute.filepath), meta_band = dots)
     } else {
-      stop("Importing a vector feture collection is not yet supported by this function")
+      stop("Importing a vector feature collection is not yet supported by this function")
     }
   }
   
