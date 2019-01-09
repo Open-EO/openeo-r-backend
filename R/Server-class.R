@@ -33,9 +33,9 @@ OpenEOServer <- R6Class(
     public = list(
       # attributes ----
 
-      
       processes = NULL,
       data = NULL,
+      udf_runtimes = NULL,
       
       # functions ----
       initialize = function(configuration = NULL) {
@@ -52,7 +52,12 @@ OpenEOServer <- R6Class(
         
         private$config = configuration
         
+        self$udf_runtimes = list()
+        
         self$initEndpoints()
+        
+        # register the commandline based runtime
+        self$register(r_filebased_udf_runtime())
         
         # load the errors table
         data(errors)
@@ -68,6 +73,7 @@ OpenEOServer <- R6Class(
         
         # fill missing environment variables
         self$initEnvironmentDefault()
+        self$initializeDatabase()
         
         # create folders if they don't exist already
         batch_job_download_dir = paste(private$config$workspaces.path,"jobs",sep="/")
@@ -114,8 +120,18 @@ OpenEOServer <- R6Class(
           newObj = list(obj)
           names(newObj) = c(obj$id)
           
-        } else {
-          warning("Cannot register object. It is neither Process, Product nor Job.")
+        } else if (is.UdfRuntime(obj)) {
+          if (is.null(self$udf_runtimes)) {
+            self$udf_runtimes = list()
+          }
+          
+          listName = "udf_runtimes"
+          newObj = list(obj)
+          names(newObj) = c(obj$id)
+          obj$id = NULL
+          
+        }  else {
+          warning("Cannot register object. It is neither Process, Product nor Udf Runtime.")
           return()
         }
         

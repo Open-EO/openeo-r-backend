@@ -123,6 +123,10 @@
   ))
 }
 
+.udf_runtimes = function() {
+  return(lapply(openeo.server$udf_runtimes, unclass))
+}
+
 
 # /preview endpoint ----
 .executeSynchronous = function(req,res,format=NULL) {
@@ -362,6 +366,11 @@ createAPI = function() {
   openeo.server$registerEndpoint(path="/service_types",
                                  method="GET",
                                  handler=.services)
+  
+  # server - udf runtimes ====
+  openeo.server$registerEndpoint(path="/udf_runtimes",
+                                 method="GET",
+                                 handler=.udf_runtimes)
 
   # server - subscription ====
   openeo.server$registerEndpoint(path="/subscription",
