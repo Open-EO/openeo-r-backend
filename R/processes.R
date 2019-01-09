@@ -492,35 +492,13 @@ aggregate_time = Process$new(
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
-    # udf_transaction$prepareExportData(collection,export_type=c("json","file"))
-    
-    # # export data
-    # write_generics(collection,dir_name = udf_transaction$workspace)
-    # #testing
-    # write(toJSON(udf_request(collection=collection,udf_transaction = udf_transaction),auto_unbox=TRUE,pretty = TRUE),paste(udf_transaction$workspace,"udf_request.json",sep="/"))
-    # 
     oldwd = getwd()
     
     tryCatch({
-      # setwd(udf_transaction$workspace) 
-      # source(file = udf_transaction$script, local = TRUE) 
-      # # Now read back results present at results.file.path
-      # # To be implemented once classes for data I/O have been re-written
-      # # The argument "code" will eventually be evaulated from the dimensions of "collection" and "modifier" 
-      # # -> modification is applied afterwards
-      # 
-      # # TODO replace code with something that is read from a global meta data file
-      # result.collection = read_legend(legend.path = paste(udf_transaction$results_workspace, "out_legend.csv", sep = "/"), code = "11110")
-      # 
-      # udf_transaction = udf_transaction$load()
-      # udf_transaction$status = "finished"
-      # udf_transaction$end_date = format(now(),format="%Y-%m-%d %H:%M:%S")
-      # udf_transaction$store()
-      # 
-      # return(result.collection)
       return(udf_runtime$performTransaction(collection = collection,
                                             udf_transaction=udf_transaction,
-                                            importDimensionality="11110"))
+                                            importDimensionality="11110",
+                                            dimensionalityModifier = parent.frame()$dimensions_modifier$remove_dimension))
     }, 
     error = function(e) {
       logger$error(paste("ERROR:",e))
@@ -587,36 +565,19 @@ apply_pixel = Process$new(
       udf_runtime = openeo.server$udf_runtimes[[1]]
     }
     
-    # udf_runtime
-    
     # fla: if the file is hosted at this backend
     # else we need to download it first.
     # prepare paths
     udf_transaction = prepare_udf_transaction(user,script,job$job_id)
     
-    # udf_transaction$prepareExportData(collection,export_type="file")
-    
     oldwd = getwd()
     
     
     tryCatch({
-      # setwd(udf_transaction$workspace) 
-      # 
-      # source(file = udf_transaction$script, local = TRUE) 
-      # 
-      # # TODO replace code with something that is read from a global meta data file
-      # result.collection = read_legend(legend.path = paste(udf_transaction$results_workspace, "out_legend.csv", sep = "/"), code = "11110")
-      # 
-      # udf_transaction = udf_transaction$load()
-      # udf_transaction$status = "finished"
-      # udf_transaction$end_date = format(now(),format="%Y-%m-%d %H:%M:%S")
-      # udf_transaction$store()
-      # 
-      # return(result.collection)
-      
       return(udf_runtime$performTransaction(collection = collection, 
                                             udf_transaction=udf_transaction,
-                                            importDimensionality = "11110"))
+                                            importDimensionality = "11110",
+                                            dimensionalityModifier = parent.frame()$dimensions_modifier$remove_dimension))
     }, 
     error = function(e) {
       logger$error(paste("ERROR:",e))

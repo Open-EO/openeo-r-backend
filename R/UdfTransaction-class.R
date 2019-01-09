@@ -133,7 +133,7 @@ UdfTransaction <- R6Class(
       }
     },
     
-    prepareExportData = function(collection, export_type="file") {
+    prepareExportData = function(collection, export_type="file", dim_mod = NULL) {
       if (is.null(self$logger)) {
         self$logger = Logger$new(process = list(process_id="udf_transaction"),job=list(job_id=self$job_id))
       }
@@ -147,7 +147,7 @@ UdfTransaction <- R6Class(
       }
       
       if ("json" %in% export_type) {
-        json = private$createJsonRequest(collection = collection, strategy = NULL, language = "R")  
+        json = private$createJsonRequest(collection = collection, strategy = NULL, language = "R", dim_mod = dim_mod)  
         # TODO tiling, coordinate HTTP requests, stitch everything together
         # for now just write to disk
         write(toJSON(json, auto_unbox=TRUE,pretty = TRUE),
@@ -197,7 +197,7 @@ UdfTransaction <- R6Class(
     # Prepares the collection data for the UDF service request
     # 
     # Transforms the data contained in a Collection into a JSON representation. It will be passed along the code script URL as data
-    # to the specified UDF REST processing service. Currently implemented only for raster timeserires collections.
+    # to the specified UDF REST processing service. Currently implemented only for raster timeseries collections.
     # 
     # @param collection Collection object
     # @param strategy the tiling strategy (not implemented yet)
@@ -218,12 +218,12 @@ UdfTransaction <- R6Class(
       
     },
     
-    createJsonRequest = function(collection,strategy=NULL,language="R") {
-      # TODO remove the hard coded backend selection
+    createJsonRequest = function(collection,strategy=NULL,language="R", dim_mod = NULL) {
       request = list(
         code = list(
           language = language,
-          source = readChar(self$script, file.info(self$script)$size)
+          source = readChar(self$script, file.info(self$script)$size),
+          dim_mod = dim_mod
         ),
         data = private$exportCollection.json(collection = collection, strategy = strategy)
       )

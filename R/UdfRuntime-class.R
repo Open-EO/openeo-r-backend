@@ -13,7 +13,15 @@
 #' @param links a link to point to additional information
 #' 
 #' @return UdfRuntime class
-UdfRuntime = function(id, description=NULL, language, version = NULL, libraries = NULL, docker = NULL, tag=NULL, links = NULL, performTransaction) {
+UdfRuntime = function(id, 
+                      description=NULL, 
+                      language, 
+                      version = NULL, 
+                      libraries = NULL, 
+                      docker = NULL, 
+                      tag=NULL, 
+                      links = NULL, 
+                      performTransaction) {
   class_obj = list(
     id = id,
     language = language,
@@ -65,9 +73,12 @@ r_filebased_udf_runtime = function() {
     version = paste0(R.version$major,".",R.version$minor),
     description = "Filebased commandline approach in R.",
     libraries = libs,
-    performTransaction = function(collection, udf_transaction, importDimensionality) {
+    performTransaction = function(collection, 
+                                  udf_transaction, 
+                                  importDimensionality,
+                                  dimensionalityModifier) {
       
-      udf_transaction$prepareExportData(collection,export_type="file")
+      udf_transaction$prepareExportData(collection,export_type="file", dim_mod = names(which(dimensionalityModifier == TRUE)))
       
       setwd(udf_transaction$workspace) 
       
