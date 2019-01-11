@@ -4,7 +4,7 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.3.1-2
+        image: openeo-r-backend:0.3.1-3
         container_name: openeo-r-server
         ports:
             - "8000:8000"
@@ -12,6 +12,7 @@ services:
             - openeo-r-workspace:/var/openeo/workspace/
         external_links:
             - openeo-r-mapserver:mapserver
+            - openeo-r-udfserver:r-udfserver
     openeo-r-mapserver:
         image: geodata/mapserver
         container_name: openeo-r-mapserver
@@ -19,8 +20,11 @@ services:
             - openeo-r-workspace:/maps/
         depends_on:
             - openeo-r-server
+    openeo-r-udf-server:
+        image: openeor/openeo-r-udf-server:0.0.4-2
+        container_name: openeo-r-udfserver
         ports:
-            - "8080:80"
+            - "8010:8010"
 
 volumes:
     openeo-r-workspace: 

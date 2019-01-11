@@ -150,8 +150,10 @@ UdfTransaction <- R6Class(
         json = private$createJsonRequest(collection = collection, strategy = NULL, language = "R", dim_mod = dim_mod)  
         # TODO tiling, coordinate HTTP requests, stitch everything together
         # for now just write to disk
-        write(toJSON(json, auto_unbox=TRUE,pretty = TRUE),
-              paste(self$workspace,"udf_request.json",sep="/"))
+        # write(toJSON(json, auto_unbox=TRUE,pretty = TRUE),
+        #       paste(self$workspace,"udf_request.json",sep="/"))
+        
+        return(json)
       }
       
       if ("file" %in% export_type) {

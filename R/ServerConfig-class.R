@@ -20,6 +20,7 @@ ServerConfig = function() {
     baseserver.url = "http://localhost:8000/",
     mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
     oidcprovider.url = NULL,
+    rudfservice.url = NULL,
     
     outputGDALFormats = NULL,
     defaultRasterFormat = "GTiff",

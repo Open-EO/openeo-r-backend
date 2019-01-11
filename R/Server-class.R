@@ -58,6 +58,7 @@ OpenEOServer <- R6Class(
         
         # register the commandline based runtime
         self$register(r_filebased_udf_runtime())
+        self$register(r_udf_service_runtime())
         
         # load the errors table
         data(errors)

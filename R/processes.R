@@ -498,7 +498,7 @@ aggregate_time = Process$new(
       return(udf_runtime$performTransaction(collection = collection,
                                             udf_transaction=udf_transaction,
                                             importDimensionality="11110",
-                                            dimensionalityModifier = parent.frame()$dimensions_modifier$remove_dimension))
+                                            dimensionalityModifier = parent.frame()$dimensions_modifier))
     }, 
     error = function(e) {
       logger$error(paste("ERROR:",e))
@@ -577,7 +577,7 @@ apply_pixel = Process$new(
       return(udf_runtime$performTransaction(collection = collection, 
                                             udf_transaction=udf_transaction,
                                             importDimensionality = "11110",
-                                            dimensionalityModifier = parent.frame()$dimensions_modifier$remove_dimension))
+                                            dimensionalityModifier = parent.frame()$dimensions_modifier))
     }, 
     error = function(e) {
       logger$error(paste("ERROR:",e))

@@ -2,7 +2,7 @@ library(openEO.R.Backend)
 
 config = ServerConfig()
 config$workspaces.path = "/var/openeo/workspace"
-
+config$rudfservice.url = "http://r-udfserver:8010/udf"
 
 createServerInstance(configuration = config)
 
