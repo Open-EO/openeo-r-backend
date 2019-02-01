@@ -10,12 +10,9 @@ UnboxedPlumber = R6Class(
 #' This is the server class, wich has different variables regarding the storage paths, as well as the loaded processes, products and
 #' jobs.
 #' 
-#' @field api.version The current api version used
-#' @field data.path The filesystem path where to find the datasets
-#' @field workspaces.path The filesystem path where user data and jobs are stored
-#' @field api.port The port where the plumber webservice is working under
 #' @field processes This field is also managed during runtime. Here all template processes are listed
 #' @field data A list of products offered by the service which is managed at runtime.
+#' @field udf_runtimes A list of supported UDF runtimes
 #' 
 #' @include processes.R
 #' @include data.R

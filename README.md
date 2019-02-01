@@ -1,9 +1,8 @@
 # openEO Backend in R for proof-of-concept
 
-[![Status](https://img.shields.io/badge/Status-proof--of--concept-yellow.svg)]()
-
-A reference implementation for the openEO core API as a proof-of-concept written in R, utilizing the `plumber` package as a lightweight webserver. The webserver is not final and in terms of
-security aspects not optimized. The goal of this package is to provide a simplistic version of local [openEO conformant server backend](https://open-eo.github.io/openeo-api/).
+A reference implementation for the openEO core API as a proof-of-concept written in R, utilizing the `plumber` package as a 
+lightweight webserver. The webserver is not final and in terms of security aspects not optimized. The goal of this package 
+is to provide a simplistic version of local [openEO conformant server backend](https://open-eo.github.io/openeo-api/) with the API version 0.3.1.
 
 ## Installation
 Install the package by using `install_github` from the devtools package. If you run R on Windows then the packages are build from binaries, but on a Linux distribution the packages are compiled. This means that if yon a Linux OS you need to install some required system libraries,first. For Ubuntu this is:
@@ -12,7 +11,7 @@ Install the package by using `install_github` from the devtools package. If you 
 sudo apt-get -y install libgdal-dev libcurl4-gnutls-dev libssl-dev libssh2-1-dev libsodium-dev gdal-bin libudunits2-dev
 ```
 
-But also on Windows it is highly recommended to have GDAL installed and configured in the systems path environment variable.
+But also on Windows it is highly recommended to have GDAL installed and configured in the systems `PATH` environment variable.
 
 After that you can install the R packages by running:
 
@@ -21,13 +20,12 @@ library(devtools)
 install_github(repo="Open-EO/openeo-r-backend",ref="master")
 ```
 
-The package contains a set of example data in `inst/extdata`, so it might take some more time to install as usual. The data can be found in the packages install directory under `/extdata`
+When the back-end is started the first time or if the demo data is not present it will be downloaded from an external source. The demo data set contains two small spatio-temporal raster data sets. One is a NDVI raster time series calculated from Landsat-8 and the other one is a small spatial subset of Sentinel-2 data.
 
 ## Getting Started
-After loading the package an object call `createServerInstance()` to create the _openeo.server_ object. The variable and object is important and should not be renamed or removed in any case, because otherwise the server won't work. The object itself, however, can be configured further. With the parameters `data.path` and `workspaces.path` you configure where to look for 
-the example data sets provided by this package and where to store newly created users, their data and jobs. 
+After loading the package, you can create a server object by calling `createServerInstance()`. The server object is directly available as `openeo.server` in the global environment (`.GlobalEnv`). This object is intended to perform all server relevant tasks like managing references to the server data and processes as well as for starting the server.
 
-As with versions > 0.2.0 the data was removed from the GitHub repository and was stored externally. When loading the demo data the data will be downloaded, so please make sure to have an internet connection and be aware about eventual internet costs. You can specify where the data shall be stored with `openeo.server$data.path`. As a default it will store the data in the subfolder `data` in `openeo.server$workspaces.path`.
+The `openeo.server` can be customly configured by configuring and passing a `ServerConfig` object into the `createServerInstance` function. The configuration object has e.g. attributes like `data.path` and `workspace.path` to reference to the demo data or to the folder where the users data and job results are stored. As a default the downloaded demo data will be stored in the subfolder `data` under `config$workspaces.path`.
 
 Note: please remove the '/' suffix from your directory paths. If the `workspaces.path` is not set explicitly, then it will assume to look and/or store the created data in the current working directory `getwd()`.
 
@@ -36,16 +34,20 @@ Also if you are starting the server for the first time, then you might create a 
 
 ```
 library(openEO.R.Backend)
-createServerInstance()
 
-openeo.server$workspaces.path = "somewhere/on/computer"
+config = ServerConfig()
+config$workspaces.path = "path/to/back-end/workspace"
+config$mapserver.url = "http://url/to/mapserver" #e.g. http://localhost:8080/cgi-bin/mapserv
+config$rudfservice.url = "http://url/to/r-udf-service" #e.g. http://localhost:8010/udf
+
+createServerInstance(configuration = config)
 
 openeo.server$initEnvironmentDefault()
 openeo.server$initializeDatabase()
-
-openeo.server$createUser(user_name="test", password="test")
+openeo.server$createUser(user_name="test", password="test") #only created if not exists
 openeo.server$loadDemo()
-openeo.server$startup(port = 8000)
+
+openeo.server$startup()
 ```
 
 To stop the server you need to terminate the R session process (e.g. CTRL + C).
@@ -56,23 +58,23 @@ When you want to use the server on operational level, meaning you have created y
 R -f path/to/your_file.R
 ```
 
+### Additional Requirements
+If you also want to use the R-UDF webservice implementation you need also to install and run [r-udf-service](TODO::ADD_LINK). Also if you want to use
+preliminary webservice support, you also need to install [mapserver](TODO::ADD_LINK).
+
 ## Docker installation
-As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend. It is important that you build the baseserver before the openeo-rserver, because it will contain the basic server configuration for the application server (openeo-rserver).
+As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend. It is important that you build the baseserver before the openeo-r-server, because it will contain the basic server configuration for the application server (openeo-rserver).
 
 ```
 docker-compose up -d
 ```
 
-Note: preparing the base server will take a considerable amount of time. But when it is done, then you can install newer versions of the backend faster, since the baseserver will contain R and all required dependencies.
+Note: Starting with version back-end version 0.3.1-X we will also provide docker images for the r-server with demo data and the r-udf-service on docker hub [openeor](TODO::ADD_DOCKER_HUB_LINK_OPENEOR)
 
 ## Authentication / Authorization Behavior
-On this local backend we consider three levels of access that require either _open access_, _basic authorization_ and _bearer token authorization_. For _open access_ we consider all meta data services that support exploration of data, processes and other functionalities. Then _basic authorization_ is currently used for the authentication services (login), and finally the _bearer token authorization_ is applied on services for the job management and the user data.
+On this local backend we consider three levels of access that require either _open access_, _basic authorization_ and _bearer token authorization_ depending on the called endpoint (see [api reference](TODO::ADD_LINK_FOR_API_REF)). But basically we consider all meta data services that support exploration of data, processes and other functionalities as _open access_. Then _basic authorization_ is currently used for the authentication services (login), and finally the _bearer token authorization_ is applied on all services that are linked to the user like user workspace and job and service handling.
 
 This means that you should be aware to use the proper HTTP headers in your requests. `Authorization: Basic <encoded_credentials>` at the login process and `Authorization: Bearer <token>` at the other authorized services. For the bearer token authorization you will send the token that you have retrieved at the login.
-
-## Notes
-There are some minor variations to the openEO API, regarding naming of the endpoints. Due to the different access methods we use multiple _plumber_ routes that run on a shared _root_ route. By doing this we cannot leave an endpoint blank, which means that some enpoints require a trailing `/`. For example, you will need to query `GET http://host:port/api/processes/` to fetch the list of offered processes. The basic rule of thump here, is that all the endpoints directly after `/api/xxx` need the trailing slash, but not the basic server endpoints like
-`capabilities`.
 
 ## Process Graphs for Proof-of-Concept
 

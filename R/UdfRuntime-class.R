@@ -11,6 +11,7 @@
 #' @param docker the docker image name (either on dockerhub or on a private repository)
 #' @param tag the tag of the docker image
 #' @param links a link to point to additional information
+#' @param performTransaction a function that handles the interaction between back-end and UDF runtime
 #' 
 #' @return UdfRuntime class
 UdfRuntime = function(id, 
