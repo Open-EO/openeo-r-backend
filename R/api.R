@@ -296,6 +296,7 @@
 .cors_filter = function(req,res) {
   res$setHeader("Access-Control-Allow-Origin", req$HTTP_ORIGIN)
   res$setHeader("Access-Control-Allow-Credentials", "true")
+  res$setHeader("Access-Control-Expose-Headers", "OpenEO-Identifier, OpenEO-Costs")
   forward()
 }
 
