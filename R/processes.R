@@ -326,41 +326,53 @@ filter_bbox = Process$new(
     bottom = extent$south
     top = extent$north
     e = extent(left,right,bottom,top)
-    
+
     logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     logger$info("Filter for bounding box")
     collection = getCollectionFromImageryStatement(imagery)
     target_crs = collection$getGlobalSRS()
     
-    if (!is.null(extent$crs)) {
+    crs = crs("+init=epsg:4326")
+    
+    if (!is.null(extent$crs)) { # modify crs if it is set
       crs = trim(tolower(extent$crs))
       
-      if (!startsWith(crs,"+")) {
+      if (!startsWith(crs,"+")) { #if not proj4 string
+        if (!startsWith(crs,"epsg:")) crs = paste0("epsg:",crs)
+        
         crs = paste0("+init=",crs)
       }
       crs = crs(crs)
       
-      request_extent = extent2polygon(e,crs)
       
-      if (crs@projargs != target_crs@projargs) {
-        #transform request into collection crs
-        target_geom = spTransform(request_extent,target_crs) # can be distorted, so take the bbox of that again
-        target_extent = extent(bbox(target_geom))
-      } else {
-        target_extent = request_extent
-      }
-      
-    } else {
-      request_extent = extent2polygon(e,target_crs)
-      target_extent = request_extent
     }
+    request_extent = extent2polygon(e,crs)
     
-    data_table = collection$getData()
+    # transform request extent if request_crs != target_crs
+    if (crs@projargs != target_crs@projargs) {
+      #transform request into collection crs
+      target_geom = spTransform(request_extent,target_crs) # can be distorted, so take the bbox of that again
+    } else {
+      target_geom = request_extent
+    }
+
+    #apply intersection on sf object which also directly filters out outlier
+    intersection = st_intersection(collection$space,st_as_sf(target_geom)) 
     
-    #TODO filter for intersection first!!! also calculate intersections
-    cropped_data = data_table %>% dplyr::mutate(data = list(raster::crop(data[[1]],y=target_extent)),
-                                                space = list(extent2polygon(target_extent,target_crs)))
-    # TODO this doesn't make sense (above)... space should be an index! the object should be in the sf
+    if (nrow(intersection)==0) logger$error("Selected extent is disjoint to data set.")
+    
+    space_id_selection = unique(intersection$ID)
+    
+    collection$space = intersection
+    
+    # filter
+    cropped_data = collection$getData() %>% dplyr::filter(space %in% space_id_selection) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(data = {
+        #TODO think about using a lazy approach
+        list(raster::crop(data,as(intersection %>% dplyr::filter(ID==space),"Spatial")))
+      }) %>%
+      dplyr::ungroup()
     
     output = collection$clone(deep=TRUE)
     output$setData(cropped_data)
