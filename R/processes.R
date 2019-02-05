@@ -64,9 +64,9 @@ filter_daterange = Process$new(
     logger$info("Starting filter_daterange")
     #imagery might be an identifier or a function (Process$execute()) or a json process description or a
     # udf or a collection we need to specify that
-    collection = NULL
     
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
     if (is.null(collection)) {
       logger$error("no collection element found in function call")
     }
@@ -109,11 +109,17 @@ filter_bands = Process$new(
   modifier = create_dimensionality_modifier(),
   operation = function(imagery,bands) {
     logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
-    collection = NULL
     
-    collection = getCollectionFromImageryStatement(imagery)
-    logger$info("Filtering for bands")
-    return(collection$filterByBands(bands))
+    tryCatch({
+      collection = getCollectionFromImageryStatement(imagery)
+      if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
+      logger$info("Filtering for bands")
+      return(collection$filterByBands(bands))
+    },
+    error =function(e){
+      logger$error(e$message)
+    })
+    
   }
 )
 
@@ -156,8 +162,8 @@ zonal_statistics = Process$new(
     if (startsWith(regions,"/")) {
       regions = gsub("^/","",regions)
     }
-    
-    file.path = paste(openeo.server$configuration$workspaces.path,regions,sep="/")
+
+    file.path = paste(parent.frame()$user$workspace,"files",regions,sep="/")
     layername = ogrListLayers(file.path)[1]
     
     regions = readOGR(dsn=file.path,layer = layername)
@@ -167,6 +173,8 @@ zonal_statistics = Process$new(
     logger$info("Imported polygons")
     
     collection = getCollectionFromImageryStatement(imagery)
+    
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
     
     rasterList = unlist(collection$getData() %>% dplyr::select("data"))
     
@@ -213,6 +221,7 @@ min_time = Process$new(
     logger$info("Starting find_min")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
     
     if (!collection$dimensions$band) {
       #get a list of the data (raster objects)
@@ -268,6 +277,7 @@ max_time = Process$new(
     logger$info("Starting find_min")
     #get the collection of the imagery
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
     
     if (!collection$dimensions$band) {
       #get a list of the data (raster objects)
@@ -330,6 +340,8 @@ filter_bbox = Process$new(
     logger = Logger$new(process=parent.frame(), job = parent.frame()$job)
     logger$info("Filter for bounding box")
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
+    
     target_crs = collection$getGlobalSRS()
     
     crs = crs("+init=epsg:4326")
@@ -413,6 +425,8 @@ NDVI = Process$new(
     logger$info("Starting calculate_ndvi")
 
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
+    
     nir.index = collection$getBandIndex(nir)
     red.index = collection$getBandIndex(red)
     
@@ -486,6 +500,8 @@ aggregate_time = Process$new(
     logger = Logger$new(process=parent, job = parent.frame()$job)
     
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
+    
     if (startsWith(script, "/"))
     {
       script = gsub("^/", "", script)
@@ -565,6 +581,8 @@ apply_pixel = Process$new(
     logger = Logger$new(process=parent, job = job)
     
     collection = getCollectionFromImageryStatement(imagery)
+    if (nrow(collection$getData()) == 0) logger$error("Trying to perform an operation on a collection with no entries")
+    
     if (startsWith(script, "/"))
     {
       script = gsub("^/", "", script)

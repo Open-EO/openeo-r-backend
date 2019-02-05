@@ -289,7 +289,10 @@ Collection <- R6Class(
       }
       
       res = self$clone(deep=TRUE)
-      res$setData(private$data_table %>% dplyr::filter(band %in% bands))
+      band_indices = self$getBandIndex(bands)
+      if (any(is.na(band_indices))) stop("One or more band ids cannot be found in collection. Aborting.")
+        
+      res$setData(private$data_table %>% dplyr::filter(band %in% band_indices))
       
       return(res)
     },
