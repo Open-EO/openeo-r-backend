@@ -204,20 +204,19 @@ Service <- R6Class(
       dbExecute(con, deleteQuery, param=list(sid=service_id))
       dbDisconnect(con)
       
-      mapfile = paste(openeo.server$workspaces.path,"services",paste(service_id,"map",sep="."),sep="/")
+      mapfile = paste(openeo.server$configuration$workspaces.path,"services",paste(service_id,"map",sep="."),sep="/")
       
       if (file.exists(mapfile)) {
         unlink(mapfile)
       }
     },
     buildMapFile = function() {
-      mapfile = paste(openeo.server$workspaces.path,"services",paste(self$service_id,".map",sep=""),sep="/")
+      mapfile = paste(openeo.server$configuration$workspaces.path,"services",paste(self$service_id,".map",sep=""),sep="/")
       if (file.exists(mapfile)) {
         file.remove(mapfile)
       }
-      
       if (self$type %in% c("wms","wcs")) {
-        job_result_path = paste(openeo.server$workspaces.path,"jobs",self$job$job_id,sep="/")
+        job_result_path = paste(openeo.server$configuration$workspaces.path,"jobs",self$job$job_id,sep="/")
         files = list.files(job_result_path,pattern="[^process.log|map.map]",full.names = TRUE)
         files = setdiff(files,list.files(job_result_path,pattern="aux.xml",full.names = TRUE))
         config = MapServerConfig$new()
@@ -226,7 +225,7 @@ Service <- R6Class(
         
         config$toFile(mapfile)
       } else {
-        job_folder = paste(openeo.server$workspaces.path,"jobs",self$job$job_id,sep="/")
+        job_folder = paste(openeo.server$configuration$workspaces.path,"jobs",self$job$job_id,sep="/")
         files = list.files(job_folder,pattern="*.shp",full.names = TRUE)
         if (is.null(files) || length(files) == 0) {
           stop("Cannot find SHP file to create WFS from.")

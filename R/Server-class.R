@@ -404,10 +404,6 @@ OpenEOServer <- R6Class(
             if (!dir.exists(job$output.folder)) {
               dir.create(job$output.folder,recursive = TRUE)
             }
-            
-            # log = paste(job$output.folder, "process.log",sep="/")
-            # 
-            # logToFile(file=log)
           }
           
           
@@ -457,10 +453,6 @@ OpenEOServer <- R6Class(
             throwError("Internal",message=e$message)
           }, finally={
             removeJobsUdfData(job)
-            
-            if (!response) {
-              logToConsole()
-            }
           })
 
       },

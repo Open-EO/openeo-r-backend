@@ -44,14 +44,11 @@
     if (!is.null(params)) {
       service$parameters = params
     }
-    
     .createNewServiceJob(service = service, user_id = req$user$user_id, process_graph = service_input$process_graph)
     
     
     #if not running or finished then run job!
     .runServiceJob(service = service)
-    
-    # TODO wait until finished before proceeding
     
     # when finished then create: create map file
     service$buildMapFile()
