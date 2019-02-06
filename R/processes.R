@@ -165,11 +165,14 @@ zonal_statistics = Process$new(
 
     file.path = paste(parent.frame()$user$workspace,"files",regions,sep="/")
     layername = ogrListLayers(file.path)[1]
+    logger$info(paste("Found layer:",layername))
     
     regions = readOGR(dsn=file.path,layer = layername)
+    logger$info(paste("Opened file",file.path))
     
-    polygonList = as.SpatialPolygons.PolygonsList(slot(regions,layername))
-    crs(polygonList) = crs(regions)
+    polygonList = as.SpatialPolygons.PolygonsList(slot(regions, "polygons"),crs(regions))
+    
+    # crs(polygonList) = crs(regions)
     logger$info("Imported polygons")
     
     collection = getCollectionFromImageryStatement(imagery)
@@ -178,8 +181,6 @@ zonal_statistics = Process$new(
     
     rasterList = unlist(collection$getData() %>% dplyr::select("data"))
     
-    timestamps = unlist(collection$getData() %>% dplyr::select("time") %>% dplyr::transmute(as.character(time)))
-
     b = brick(rasterList)
     values = raster::extract(b,
                              regions,
