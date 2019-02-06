@@ -13,6 +13,19 @@
 #' @param links a link to point to additional information
 #' @param performTransaction a function that handles the interaction between back-end and UDF runtime
 #' 
+#' @details The performTransaction function is very important! It handles how the UDF is externalized, run and reimported. The UDF processes
+#' need to take care of building a UDF transaction object which will work as the link to the calling job or service. The 'performTransaction'
+#' then needs to state how to interact with the UDF runtime (hence perform transaction). The function is required to look like this:
+#' 
+#' function(collection, udf_transaction, importDimensionality,dimensionalityModifier) { ... }
+#' 
+#' collection = the collection that comes into the transaction
+#' udf_transaction = the UdfTransaction object
+#' importDimensionality = (optional) Dimensionality that is used when importing a collection
+#' dimensionalityModifier = DimensionalityModifier that is applied on collection to describe the change
+#' 
+#' The importDimensionality is currently a legacy artifact from the R2Generic implementation.
+#' 
 #' @return UdfRuntime class
 UdfRuntime = function(id, 
                       description=NULL, 
@@ -51,7 +64,9 @@ is.UdfRuntime = function(x) {
   return(!is.null(class(x)) && class(x) == "UdfRuntime")
 }
 
-# provide a function to at offer the file based approach for UDF evaluation
+#' UDF runtime filebased
+#' 
+#' Creates a UDF runtime that is able to run the UDF in the R local filebased approach.
 r_filebased_udf_runtime = function() {
   
   libraries = as_data_frame(installed.packages()) %>%
@@ -105,6 +120,9 @@ r_filebased_udf_runtime = function() {
   ))
 }
 
+#' Create the service runtime
+#' 
+#' Creates a UDFRuntime object for the server in order to run an UDF on the R-UDF webservice.
 r_udf_service_runtime = function() {
   
   # just leave it for now...

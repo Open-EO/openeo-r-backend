@@ -268,7 +268,7 @@ Service <- R6Class(
         return(randomString)
       }
     },
-    
+    # TODO deprecated?
     argsToString = function(args) {
       text = character()
       
@@ -279,7 +279,7 @@ Service <- R6Class(
       
       return(paste(text,collapse = ";"))
     },
-    
+    # TODO deprecated?
     stringToArgs = function(string) {
       kvp = unlist(strsplit(string,"[=|;]"))
       args = list()

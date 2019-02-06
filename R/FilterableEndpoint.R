@@ -1,4 +1,4 @@
-
+# FilterableEndpoint ----
 FilterableEndpoint <- R6Class(
   "FilterableEndpoint",
   inherit = PlumberEndpoint,
@@ -70,6 +70,7 @@ FilterableEndpoint <- R6Class(
       val
     }
   ),
+  # private ====
   private = list(
     filts = list(),
     
@@ -97,9 +98,11 @@ FilterableEndpoint <- R6Class(
   )
 )
 
+# OpenEORouter ----
 OpenEORouter = R6Class(
   "OpenEORouter",
   inherit = plumber,
+  # public ====
   public = list(
     initialize = function(filters=plumber:::defaultPlumberFilters,envir) {
       if (missing(envir)){

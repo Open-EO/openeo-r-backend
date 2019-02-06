@@ -15,17 +15,11 @@ jobs.
 \section{Fields}{
 
 \describe{
-\item{\code{api.version}}{The current api version used}
-
-\item{\code{data.path}}{The filesystem path where to find the datasets}
-
-\item{\code{workspaces.path}}{The filesystem path where user data and jobs are stored}
-
-\item{\code{api.port}}{The port where the plumber webservice is working under}
-
 \item{\code{processes}}{This field is also managed during runtime. Here all template processes are listed}
 
 \item{\code{data}}{A list of products offered by the service which is managed at runtime.}
+
+\item{\code{udf_runtimes}}{A list of supported UDF runtimes}
 }}
 
 \keyword{datasets}

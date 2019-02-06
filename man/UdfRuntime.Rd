@@ -5,7 +5,8 @@
 \title{A constructor for UdfRuntime class}
 \usage{
 UdfRuntime(id, description = NULL, language, version = NULL,
-  libraries = NULL, docker = NULL, tag = NULL, links = NULL)
+  libraries = NULL, docker = NULL, tag = NULL, links = NULL,
+  performTransaction)
 }
 \arguments{
 \item{id}{the id at which the udf runtime will be referencable at openeo.server$udf_runtimes}
@@ -23,6 +24,8 @@ UdfRuntime(id, description = NULL, language, version = NULL,
 \item{tag}{the tag of the docker image}
 
 \item{links}{a link to point to additional information}
+
+\item{performTransaction}{a function that handles the interaction between back-end and UDF runtime}
 }
 \value{
 UdfRuntime class
@@ -30,4 +33,18 @@ UdfRuntime class
 \description{
 A S3 class to store all relevant information about a udf runtime environment for visualization purposes to a user (used 
 at /udf_runtimes endpoint)
+}
+\details{
+The performTransaction function is very important! It handles how the UDF is externalized, run and reimported. The UDF processes
+need to take care of building a UDF transaction object which will work as the link to the calling job or service. The 'performTransaction'
+then needs to state how to interact with the UDF runtime (hence perform transaction). The function is required to look like this:
+
+function(collection, udf_transaction, importDimensionality,dimensionalityModifier) { ... }
+
+collection = the collection that comes into the transaction
+udf_transaction = the UdfTransaction object
+importDimensionality = (optional) Dimensionality that is used when importing a collection
+dimensionalityModifier = DimensionalityModifier that is applied on collection to describe the change
+
+The importDimensionality is currently a legacy artifact from the R2Generic implementation.
 }
