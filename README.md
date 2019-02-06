@@ -59,8 +59,8 @@ R -f path/to/your_file.R
 ```
 
 ### Additional Requirements
-If you also want to use the R-UDF webservice implementation you need also to install and run [r-udf-service](TODO::ADD_LINK). Also if you want to use
-preliminary webservice support, you also need to install [mapserver](TODO::ADD_LINK).
+If you also want to use the R-UDF webservice implementation you need also to install and run [r-udf-service](https://github.com/Open-EO/openeo-r-udf). Also if you want to use
+preliminary webservice support, you also need to install [mapserver](https://mapserver.org/).
 
 ## Docker installation
 As an alternatively to the installation on the local machine, you can run the R backend on a docker machine. We provided an docker-compose file to take care of most of the business. Make sure you are able to run `docker-compose` on the targeted machine and run the following lines to set up the base server and the actual r backend. It is important that you build the baseserver before the openeo-r-server, because it will contain the basic server configuration for the application server (openeo-rserver).
@@ -69,10 +69,10 @@ As an alternatively to the installation on the local machine, you can run the R 
 docker-compose up -d
 ```
 
-Note: Starting with version back-end version 0.3.1-X we will also provide docker images for the r-server with demo data and the r-udf-service on docker hub [openeor](TODO::ADD_DOCKER_HUB_LINK_OPENEOR)
+Note: Starting with version back-end version 0.3.1-X we will also provide docker images for the r-server with demo data and the r-udf-service on docker hub [openeor](https://hub.docker.com/u/openeor)
 
 ## Authentication / Authorization Behavior
-On this local backend we consider three levels of access that require either _open access_, _basic authorization_ and _bearer token authorization_ depending on the called endpoint (see [api reference](TODO::ADD_LINK_FOR_API_REF)). But basically we consider all meta data services that support exploration of data, processes and other functionalities as _open access_. Then _basic authorization_ is currently used for the authentication services (login), and finally the _bearer token authorization_ is applied on all services that are linked to the user like user workspace and job and service handling.
+On this local backend we consider three levels of access that require either _open access_, _basic authorization_ and _bearer token authorization_ depending on the called endpoint (see [api reference](https://open-eo.github.io/openeo-api/apireference/)). But basically we consider all meta data services that support exploration of data, processes and other functionalities as _open access_. Then _basic authorization_ is currently used for the authentication services (login), and finally the _bearer token authorization_ is applied on all services that are linked to the user like user workspace and job and service handling.
 
 This means that you should be aware to use the proper HTTP headers in your requests. `Authorization: Basic <encoded_credentials>` at the login process and `Authorization: Bearer <token>` at the other authorized services. For the bearer token authorization you will send the token that you have retrieved at the login.
 
@@ -81,28 +81,37 @@ This means that you should be aware to use the proper HTTP headers in your reque
 ### [Use Case 1](https://open-eo.github.io/openeo-api/examples-poc/#use-case-1)
 | | |
 | --- | --- |
-| Endpoint: | POST /jobs or POST /execute |
+| Endpoint: | POST /preview or POST /jobs |
 | Query-Configuration: | Authorization with Bearer-Token |
 
 ```JSON
 {
     "process_graph": {
-      "process_id": "find_min",
+      "process_id": "min_time",
       "imagery": {
-        "process_id": "calculate_ndvi",
+        "process_id": "NDVI",
+        "imagery": {
+          "process_id": "filter_bbox",
           "imagery": {
             "process_id": "filter_daterange",
             "imagery": {
-              "process_id": "get_collection"
+              "process_id": "get_collection",
               "name": "sentinel2_subset"
             },
-            "from": "2017-04-01",
-            "to": "2017-05-01"
+            "extent": ["2017-04-01T00:00:00Z", "2017-05-31T00:00:00Z"]
           },
+          "extent": {
+            "west": 700000,
+            "south": 7898000,
+            "east": 702960,
+            "north": 7900000,
+            "crs": "EPSG:32734"
+          }
+        },
         "nir": "B8",
         "red": "B4"
       }
-    },
+    } ,
     "output": {
         "format": "GTiff"
     }
@@ -113,29 +122,38 @@ This means that you should be aware to use the proper HTTP headers in your reque
 ### [Use Case 3](https://open-eo.github.io/openeo-api/examples-poc/#use-case-3)
 | | |
 | --- | --- |
-| Prerequisites: | An uploaded ["polygons.geojson"](https://raw.githubusercontent.com/Open-EO/openeo-r-client/master/examples/polygons.geojson) file in the users workspace (PUT /users/me/files/<path>)|
-| Endpoint: | POST /jobs or POST /execute |
+| Prerequisites: | An uploaded ["polygons.geojson"](https://raw.githubusercontent.com/Open-EO/openeo-r-client/master/examples/polygons.geojson) file in the users workspace (PUT /users/{user_id}/files/<path>)|
+| Endpoint: | POST /jobs or POST /preview |
 | Query-Configuration: | Authorization with Bearer-Token |
+
 
 ```JSON
 {
     "process_graph": {
       "process_id": "zonal_statistics",
       "imagery": {
-        "process_id": "filter_daterange",
+        "process_id": "filter_bbox",
         "imagery": {
           "process_id": "filter_bands",
           "imagery": {
-            "process_id": "get_collection",
-            "name": "sentinel2_subset"
-          },  
+            "process_id": "filter_daterange",
+            "imagery": {
+              "process_id": "get_collection",
+              "name": "sentinel2_subset"
+            },
+            "extent": ["2017-01-01T00:00:00Z", "2017-05-31T23:59:59Z"]
+          },
           "bands": "B8"
         },
-        "from": "2017-04-01",
-        "to": "2017-07-01"
+        "extent": {
+          "west": 22.8994,
+          "south": -19.0099,
+          "east": 22.9282,
+          "north": -18.9825
+        }
       },
-      "regions": "/users/me/files/polygons.geojson",
-      "func": "median"
+      "regions": "/uc3/polygons.geojson",
+      "func": "mean"
     },
     "output": {
         "format": "GPKG"
