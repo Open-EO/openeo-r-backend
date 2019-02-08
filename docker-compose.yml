@@ -10,6 +10,7 @@ services:
             - "8000:8000"
         volumes:
             - openeo-r-workspace:/var/openeo/workspace/
+        restart: unless-stopped
         external_links:
             - openeo-r-mapserver:mapserver
             - openeo-r-udfserver:r-udfserver
@@ -20,11 +21,13 @@ services:
             - openeo-r-workspace:/maps/
         depends_on:
             - openeo-r-server
+        restart: unless-stopped
     openeo-r-udf-server:
         image: openeor/openeo-r-udf-server:0.0.4-2
         container_name: openeo-r-udfserver
         ports:
             - "8010:8010"
+        restart: unless-stopped
 
 volumes:
     openeo-r-workspace: 
