@@ -13,7 +13,7 @@
                                description = process_graph[["description"]])
       graph$store()
       
-      res$setHeader(name = "Location",value=paste(openeo.server$configuration$baseserver.url,"process_graphs/",graph$graph_id,sep=""))
+      res$setHeader(name = "Location",value=paste0(openeo.server$configuration$baseserver.url,"/","process_graphs/",graph$graph_id))
       res$setHeader(name = "OpenEO-Identifier",value=graph$graph_id)
       
       res$status = 201

@@ -68,13 +68,10 @@ Product <- R6Class(
             return(private$collection_metadata)
           },
           addSelfReferenceLink = function() {
-            if (endsWith(openeo.server$configuration$baseserver.url,"/")) {
-              baseurl = substr(openeo.server$configuration$baseserver.url,1,nchar(openeo.server$configuration$baseserver.url)-1)
-            } else {
-              baseurl = openeo.server$configuration$baseserver.url
-            }
             
-            selfRefLink = paste(baseurl,"collections",self$id,sep="/")
+            selfRefLink = paste(openeo.server$configuration$baseserver.url,
+                                "collections",
+                                self$id,sep="/")
             
             if (!is.null(private$collection_metadata)) {
               private$collection_metadata$links = c(private$collection_metadata$links,

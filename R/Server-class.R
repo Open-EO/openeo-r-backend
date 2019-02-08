@@ -69,6 +69,11 @@ OpenEOServer <- R6Class(
         }
         private$config$host = host_name
         
+        baseurl = private$config$baseserver.url
+        if (endsWith(baseurl,"/")) baseurl = substr(baseurl,start = 1, stop = nchar(baseurl)-1)
+        
+        private$config$baseserver.url = baseurl
+        
         # fill missing environment variables
         self$initEnvironmentDefault()
         self$initializeDatabase()

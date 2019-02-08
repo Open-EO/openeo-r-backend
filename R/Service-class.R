@@ -241,8 +241,7 @@ Service <- R6Class(
   # actives ----
   active = list(
     url = function() {
-      return(paste("http://",openeo.server$configuration$host,":",openeo.server$configuration$api.port,"/",
-                   self$type,"/",self$service_id,sep=""))
+      return(paste0(openeo.server$configuration$baseserver.url,"/", self$type,"/",self$service_id))
     },
     job = function() {
       if (!is.na(self$job_id)) {

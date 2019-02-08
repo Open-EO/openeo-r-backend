@@ -2,6 +2,8 @@
 #' 
 #' The server configurations
 #' 
+#' @field baseserver.url The URL of where this server is accesible. Trailing slashes are removed.
+#' 
 #' @export
 ServerConfig = function() {
   default = list(
@@ -16,7 +18,7 @@ ServerConfig = function() {
     udf_cleanup = TRUE,
     
     api.port = NULL,
-    host = NULL,
+    host = NULL, #TODO check if deprecated
     baseserver.url = "http://localhost:8000/",
     mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
     oidcprovider.url = NULL,
