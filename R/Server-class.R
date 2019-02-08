@@ -457,7 +457,7 @@ OpenEOServer <- R6Class(
           }, error = function(e) {
             throwError("Internal",message=e$message)
           }, finally={
-            removeJobsUdfData(job)
+            if (!is.null(job)) removeJobsUdfData(job)
           })
 
       },

@@ -135,6 +135,7 @@
 # /preview endpoint ----
 .executeSynchronous = function(req,res,format=NULL) {
   tryCatch({
+    job = NULL
     if (!is.null(req$postBody)) {
       sent_job = fromJSON(req$postBody,simplifyDataFrame = FALSE)
       output = sent_job$output
@@ -168,7 +169,7 @@
   
   },error=handleError,
   finally = {
-    removeJobsUdfData(job)
+    if (!is.null(job)) removeJobsUdfData(job)
   })
   
 }
