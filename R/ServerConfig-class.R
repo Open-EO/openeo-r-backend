@@ -19,7 +19,7 @@ ServerConfig = function() {
     
     api.port = NULL,
     host = NULL, #TODO check if deprecated
-    baseserver.url = "http://localhost:8000/",
+    baseserver.url = "http://localhost:8000",
     mapserver.url = NULL, #assuming here a url, if not specified the backend is probably started with docker-compose
     oidcprovider.url = NULL,
     rudfservice.url = NULL,
