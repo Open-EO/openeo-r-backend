@@ -206,7 +206,6 @@ Collection <- R6Class(
         } else {
           layer = list(data)
         }
-        
         adding = add_column(adding,data=layer)
         
         if (self$dimensions$space) {
@@ -508,6 +507,7 @@ Collection <- R6Class(
     },
     # stores the spatial component in self$space and returns the spatial ID of the feature in self$space
     registerSpace.raster = function(elem) {
+      
       if (!is.list(elem)) {
         elem = list(elem)
       }
@@ -524,6 +524,8 @@ Collection <- R6Class(
         
         equals = st_equals(self$space,sf_elem)
         elemAlreadyContained = any(as.logical(equals))
+        
+        if (is.na(elemAlreadyContained)) elemAlreadyContained = FALSE
         
         if (elemAlreadyContained) {
           index = which(as.logical(equals))
