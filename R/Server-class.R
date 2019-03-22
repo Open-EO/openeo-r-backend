@@ -582,16 +582,19 @@ OpenEOServer <- R6Class(
         
         self$data = list()
         cat("Loading demo data sets...")
-        # loadLandsat7Dataset()
-        # loadSentinel2Data()
         
-        importCollection(paste(self$configuration$data.path,"sentinel2",sep="/"))$addSelfReferenceLink() %>% openeo.server$register()
-        importCollection(paste(self$configuration$data.path,"landsat7",sep="/"),fun=raster)$addSelfReferenceLink() %>% openeo.server$register()
-        # 1 banded granules have to use 
-        # raster function, multiband = brick
+        # the folders will be scanned for the "lookup.csv"; all data sets are loaded where this is present
+        lookup_dirs = dirname(list.files(data.path,pattern = "lookup.csv",recursive = TRUE,full.names = TRUE))
         
         
-        cat("[done]\n")
+        success = lookup_dirs %>% lapply(function(x){
+          cat("\n","Load data in: ",x,"\n")
+          importCollection(x)$addSelfReferenceLink() %>% openeo.server$register()
+          
+          return(TRUE)
+        })
+
+        cat("\n[done]\n")
       },
       
       initRouter = function() {
