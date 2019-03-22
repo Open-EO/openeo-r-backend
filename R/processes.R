@@ -445,11 +445,13 @@ NDVI = Process$new(
     ndvi_calculation = group %>% 
       filter(band %in% c(red.index,nir.index)) %>% 
       arrange(band) %>% 
-      dplyr::summarise(space = list(first(space)), data= tibble(data) %>% (function(x,...){
-        s = stack(x$data)
-        ndvi = calc(s, fun= function(x) {
-          (x[2] - x[1])/(x[2] + x[1])
+      dplyr::summarise(space = first(space), data= tibble(data) %>% (function(x,...){
+        # vectorized (https://gis.stackexchange.com/questions/59344/how-to-speed-up-band-math-in-r-raster-package)
+        s = stack(x$data)[[c(1,2)]]
+        ndvi = calc(s,function(x){
+          (x[,2] - x[,1])/(x[,2] + x[,1])
         })
+
         return(list(ndvi))
       }))
     
