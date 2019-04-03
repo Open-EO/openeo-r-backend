@@ -9,3 +9,9 @@ ServerConfig()
 \description{
 The server configurations
 }
+\section{Fields}{
+
+\describe{
+\item{\code{baseserver.url}}{The URL of where this server is accesible. Trailing slashes are removed.}
+}}
+

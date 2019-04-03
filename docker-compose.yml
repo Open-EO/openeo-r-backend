@@ -4,12 +4,12 @@ services:
         build: 
             context: .
             dockerfile: DOCKERFILE
-        image: openeo-r-backend:0.3.1-3
+        image: openeo-r-backend:0.3.1-4
         container_name: openeo-r-server
         ports:
             - "8000:8000"
         volumes:
-            - openeo-r-workspace:/var/openeo/workspace/
+            - C:\code\openeo-r-workspace:/var/openeo/workspace/
         restart: unless-stopped
         external_links:
             - openeo-r-mapserver:mapserver
@@ -18,7 +18,9 @@ services:
         image: geodata/mapserver
         container_name: openeo-r-mapserver
         volumes:
-            - openeo-r-workspace:/maps/
+            - C:\code\openeo-r-workspace:/maps/
+        ports:
+            - "8080:80"
         depends_on:
             - openeo-r-server
         restart: unless-stopped

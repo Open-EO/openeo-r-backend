@@ -1,6 +1,6 @@
 Package: openEO.R.Backend
 Title: A back-end implementation for openEO with a local filesystem
-Version: 0.3.1-3
+Version: 0.3.1-4
 Authors@R: c(person("Florian", "Lahn", email = "florian.lahn@uni-muenster.de", role = c("aut", "cre")),
   person("Pramit","Ghosh",email = "pramitghosh@uni-muenster.de", role = c("aut","ctb")))
 Description: The package contains a back-end solution in compliance with the openEO API. In this demonstration 
